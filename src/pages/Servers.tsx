@@ -1,116 +1,175 @@
-import { useState } from 'react';
-import { Search, Building2, CheckCircle2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, Server, Plus, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
-import { mockServers } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+
+interface ServerData {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  member_count: number;
+  staff_count: number;
+  is_verified: boolean;
+  is_featured: boolean;
+  is_hiring: boolean;
+  tags: string[];
+}
 
 const Servers = () => {
+  const { user } = useAuth();
+  const [servers, setServers] = useState<ServerData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState('featured');
+  const [filterHiring, setFilterHiring] = useState(false);
 
-  const categories = [...new Set(mockServers.map(s => s.category))];
+  useEffect(() => {
+    fetchServers();
+  }, [sortBy]);
 
-  const filteredServers = mockServers.filter(server => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!server.name.toLowerCase().includes(query) &&
-          !server.description.toLowerCase().includes(query)) {
-        return false;
-      }
+  const fetchServers = async () => {
+    setLoading(true);
+    let query = supabase
+      .from('servers')
+      .select('id, name, description, icon, member_count, staff_count, is_verified, is_featured, is_hiring, tags');
+
+    if (sortBy === 'featured') {
+      query = query.order('is_featured', { ascending: false }).order('member_count', { ascending: false });
+    } else if (sortBy === 'members') {
+      query = query.order('member_count', { ascending: false });
+    } else if (sortBy === 'newest') {
+      query = query.order('created_at', { ascending: false });
     }
-    if (verifiedOnly && !server.isVerified) return false;
-    if (activeCategory && server.category !== activeCategory) return false;
-    return true;
+
+    const { data, error } = await query.limit(50);
+
+    if (!error && data) {
+      setServers(data);
+    }
+    setLoading(false);
+  };
+
+  const filteredServers = servers.filter(server => {
+    const matchesSearch = !searchQuery || 
+      server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      server.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesHiring = !filterHiring || server.is_hiring;
+    
+    return matchesSearch && matchesHiring;
   });
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <section className="py-10 md:py-14">
+      <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Building2 className="h-7 w-7 text-primary" />
+          {/* Header */}
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+              <Server className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Server Directory</h1>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Discover verified ERLC communities looking for staff
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Server Directory</h1>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Discover ERLC roleplay servers looking for staff
             </p>
           </div>
-          
-          {/* Search */}
-          <div className="max-w-xl mx-auto mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search servers..."
-                className="pl-10 h-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+
+          {/* Search & Filters */}
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search servers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="featured">Featured First</SelectItem>
+                  <SelectItem value="members">Most Members</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                </SelectContent>
+              </Select>
+              {user && (
+                <Button className="gap-2 w-full md:w-auto">
+                  <Plus className="h-4 w-4" />
+                  Add Server
+                </Button>
+              )}
+            </div>
+
+            {/* Quick filters */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Badge
+                variant={!filterHiring ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilterHiring(false)}
+              >
+                All Servers
+              </Badge>
+              <Badge
+                variant={filterHiring ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilterHiring(true)}
+              >
+                🟢 Hiring Now
+              </Badge>
             </div>
           </div>
-          
-          {/* Filters */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-            <Button
-              variant={activeCategory === null ? 'secondary' : 'ghost'}
-              size="sm"
-              className="text-xs"
-              onClick={() => setActiveCategory(null)}
-            >
-              All
-            </Button>
-            {categories.map((cat) => (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? 'secondary' : 'ghost'}
-                size="sm"
-                className="text-xs"
-                onClick={() => setActiveCategory(cat)}
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
-          
-          <div className="flex justify-center mb-8">
-            <Button
-              variant={verifiedOnly ? 'default' : 'outline'}
-              size="sm"
-              className="gap-1.5 text-xs"
-              onClick={() => setVerifiedOnly(!verifiedOnly)}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Verified Only
-            </Button>
-          </div>
-        </div>
-      </section>
 
-      {/* Results */}
-      <section className="pb-12">
-        <div className="container mx-auto px-4">
-          <p className="text-xs text-muted-foreground mb-4">
-            Showing {filteredServers.length} server{filteredServers.length !== 1 ? 's' : ''}
-          </p>
-          
-          {filteredServers.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
+          {/* Results */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="h-48 animate-pulse bg-muted" />
+              ))}
+            </div>
+          ) : filteredServers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredServers.map((server) => (
                 <ServerCard key={server.id} server={server} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <Building2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-              <h3 className="font-semibold mb-1">No servers found</h3>
-              <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
-            </div>
+            <Card className="border-dashed max-w-2xl mx-auto">
+              <CardContent className="p-12 text-center">
+                <Server className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
+                <h3 className="text-xl font-semibold mb-2">No Servers Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Be the first to list your ERLC server and find talented staff.
+                </p>
+                <Link to={user ? "#" : "/auth"}>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {user ? 'Add Your Server' : 'Sign In to Add Server'}
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           )}
         </div>
       </section>
