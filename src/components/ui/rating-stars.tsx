@@ -15,24 +15,29 @@ const RatingStars = ({ rating, count, showCount = true, className, size = 'md' }
   const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
   
   const sizeClasses = {
-    sm: 'h-3 w-3',
+    sm: 'h-3.5 w-3.5',
     md: 'h-4 w-4',
   };
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
-      <div className="flex items-center">
+      <div className="flex items-center gap-0.5">
         {Array.from({ length: fullStars }).map((_, i) => (
           <Star key={`full-${i}`} className={cn(sizeClasses[size], 'text-rating fill-rating')} />
         ))}
         {hasHalfStar && (
-          <Star className={cn(sizeClasses[size], 'text-rating fill-rating/50')} />
+          <div className="relative">
+            <Star className={cn(sizeClasses[size], 'text-muted-foreground/30')} />
+            <div className="absolute inset-0 overflow-hidden w-1/2">
+              <Star className={cn(sizeClasses[size], 'text-rating fill-rating')} />
+            </div>
+          </div>
         )}
         {Array.from({ length: emptyStars }).map((_, i) => (
-          <Star key={`empty-${i}`} className={cn(sizeClasses[size], 'text-muted-foreground')} />
+          <Star key={`empty-${i}`} className={cn(sizeClasses[size], 'text-muted-foreground/30')} />
         ))}
       </div>
-      <span className={cn('text-foreground font-medium', size === 'sm' ? 'text-xs' : 'text-sm')}>
+      <span className={cn('text-foreground font-semibold', size === 'sm' ? 'text-xs' : 'text-sm')}>
         {rating.toFixed(1)}
       </span>
       {showCount && count !== undefined && (
