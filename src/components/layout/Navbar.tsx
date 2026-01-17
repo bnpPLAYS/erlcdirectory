@@ -26,10 +26,7 @@ const Navbar = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center overflow-hidden group-hover:border-primary/40 transition-colors">
               <img src={logo} alt="ERLC Directory" className="w-6 h-6 object-contain" />
             </div>
-            <div className="hidden sm:block">
-              <span className="font-bold text-lg">Staff Directory</span>
-              <span className="text-[10px] text-muted-foreground block -mt-1">Powered by Central</span>
-            </div>
+            <span className="font-bold text-lg hidden sm:block">erlc.directory</span>
           </Link>
 
           {/* Desktop Navigation */}
