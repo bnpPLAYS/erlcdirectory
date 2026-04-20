@@ -212,8 +212,11 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
+          discord_access_token: string | null
           discord_avatar: string | null
           discord_id: string | null
+          discord_refresh_token: string | null
+          discord_token_expires_at: string | null
           discord_username: string | null
           display_name: string | null
           id: string
@@ -231,8 +234,11 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
+          discord_access_token?: string | null
           discord_avatar?: string | null
           discord_id?: string | null
+          discord_refresh_token?: string | null
+          discord_token_expires_at?: string | null
           discord_username?: string | null
           display_name?: string | null
           id?: string
@@ -250,8 +256,11 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
+          discord_access_token?: string | null
           discord_avatar?: string | null
           discord_id?: string | null
+          discord_refresh_token?: string | null
+          discord_token_expires_at?: string | null
           discord_username?: string | null
           display_name?: string | null
           id?: string
