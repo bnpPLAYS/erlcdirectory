@@ -135,7 +135,7 @@ const Connections = () => {
                           {connection.is_verified && <VerifiedBadge size="sm" />}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
-                          {connection.bio || 'No bio'}
+                          {connection.bio || 'No details added yet'}
                         </p>
                       </div>
                       <Link to={`/messages?user=${connection.id}`}>

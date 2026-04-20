@@ -33,7 +33,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-semibold text-lg text-foreground truncate group-hover:text-primary transition-colors">
-                  {profile.display_name || 'Unknown User'}
+                  {profile.display_name || 'Discord member'}
                 </h3>
                 {profile.is_featured && (
                   <Crown className="h-4 w-4 text-featured flex-shrink-0" />
@@ -81,7 +81,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
 
           {/* Bio */}
           <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
-            {profile.bio || 'No bio provided yet.'}
+            {profile.bio || 'This member has not added details yet.'}
           </p>
         </CardContent>
       </Card>
