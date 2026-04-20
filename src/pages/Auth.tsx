@@ -18,10 +18,10 @@ const Auth = () => {
   }, [user, loading, navigate]);
 
   const features = [
-    { icon: Shield, title: 'Verified Identity', description: 'Discord authentication ensures real identities' },
-    { icon: Users, title: 'Build Your Profile', description: 'Showcase your ERLC experience and skills' },
-    { icon: MessageSquare, title: 'Direct Messaging', description: 'Connect with other professionals privately' },
-    { icon: Star, title: 'Get Discovered', description: 'Be found by servers looking for staff' },
+    { icon: Shield, title: 'Discord-linked account', description: 'Your profile starts from your Discord account.' },
+    { icon: Users, title: 'Show your experience', description: 'Add departments, staff history, skills, and availability.' },
+    { icon: MessageSquare, title: 'Private messages', description: 'Talk with applicants, staff, and server owners in one place.' },
+    { icon: Star, title: 'Find a better fit', description: 'Help active servers understand what you bring before they reach out.' },
   ];
 
   return (
@@ -41,9 +41,9 @@ const Auth = () => {
             {/* Left side - Benefits */}
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-bold mb-3">Join ERLC Directory</h1>
+                <h1 className="text-3xl font-bold mb-3">Sign in to ERLC Directory</h1>
                 <p className="text-muted-foreground text-lg">
-                  The professional network for ERLC roleplay staff and servers.
+                  Use Discord to create a profile, list experience, and contact ER:LC servers.
                 </p>
               </div>
               
@@ -68,9 +68,9 @@ const Auth = () => {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-2xl">E</span>
                 </div>
-                <CardTitle>Get Started</CardTitle>
+                <CardTitle>Continue with Discord</CardTitle>
                 <CardDescription>
-                  Sign in with Discord to create or access your profile
+                  Create an account or reconnect an existing profile.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">

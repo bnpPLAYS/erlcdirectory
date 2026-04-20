@@ -57,7 +57,7 @@ const Connections = () => {
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-3">Connections</h1>
               <p className="text-muted-foreground max-w-xl mx-auto">
-                Connect and message other ERLC professionals
+                Keep track of ER:LC members you want to work with.
               </p>
             </div>
             
@@ -65,9 +65,9 @@ const Connections = () => {
               <Card className="border-dashed">
                 <CardContent className="p-12 text-center">
                   <Users className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                  <h3 className="text-xl font-semibold mb-2">Sign In to Connect</h3>
+                  <h3 className="text-xl font-semibold mb-2">Sign in to save connections</h3>
                   <p className="text-muted-foreground mb-6">
-                    Create an account to start connecting with other professionals.
+                    Use Discord sign-in to save people, message them, and come back later.
                   </p>
                   <Link to="/auth">
                     <Button className="gap-2">
@@ -101,7 +101,7 @@ const Connections = () => {
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Your Connections</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              People you've connected with on ERLC Directory
+              Members you have saved or messaged.
             </p>
           </div>
 
@@ -110,7 +110,7 @@ const Connections = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search connections..."
+                placeholder="Search saved members..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -152,14 +152,14 @@ const Connections = () => {
             <Card className="border-dashed max-w-2xl mx-auto">
               <CardContent className="p-12 text-center">
                 <Users className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No Connections Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No saved members yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Browse profiles and connect with other ERLC professionals.
+                  Browse the directory and save members you may want to contact.
                 </p>
                 <Link to="/browse">
                   <Button className="gap-2">
                     <Search className="h-4 w-4" />
-                    Browse Profiles
+                    Browse Members
                   </Button>
                 </Link>
               </CardContent>

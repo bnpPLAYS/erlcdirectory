@@ -74,7 +74,7 @@ const Messages = () => {
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-3">Messages</h1>
               <p className="text-muted-foreground max-w-xl mx-auto">
-                Send private messages to other ERLC professionals
+                Message ER:LC members and server teams directly.
               </p>
             </div>
             
@@ -82,9 +82,9 @@ const Messages = () => {
               <Card className="border-dashed">
                 <CardContent className="p-12 text-center">
                   <MessageSquare className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                  <h3 className="text-xl font-semibold mb-2">Sign In to Message</h3>
+                  <h3 className="text-xl font-semibold mb-2">Sign in to message</h3>
                   <p className="text-muted-foreground mb-6">
-                    Create an account to start messaging other professionals.
+                    Connect Discord to start private conversations with members.
                   </p>
                   <Link to="/auth">
                     <Button className="gap-2">
@@ -114,7 +114,7 @@ const Messages = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search conversations..."
+                  placeholder="Search messages..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -126,8 +126,8 @@ const Messages = () => {
               {conversations.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm">No conversations yet</p>
-                  <p className="text-xs mt-1">Start a conversation by visiting someone's profile</p>
+                  <p className="text-sm">No messages yet</p>
+                  <p className="text-xs mt-1">Open a profile and send the first message.</p>
                 </div>
               ) : (
                 conversations.map((conv) => (
@@ -176,14 +176,14 @@ const Messages = () => {
                   </Avatar>
                   <div>
                     <h3 className="font-semibold">{selectedConversation.participant.display_name}</h3>
-                    <p className="text-xs text-muted-foreground">Click to view profile</p>
+                    <p className="text-xs text-muted-foreground">View profile</p>
                   </div>
                 </div>
                 
                 <ScrollArea className="flex-1 p-4">
                   {messages.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-muted-foreground">
-                      <p className="text-sm">Start the conversation</p>
+                      <p className="text-sm">Send the first message</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -228,7 +228,7 @@ const Messages = () => {
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Select a conversation to start messaging</p>
+                  <p>Choose a message thread</p>
                 </div>
               </div>
             )}
