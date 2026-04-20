@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const DiscordCallback = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Connecting your Discord account...');
 
@@ -17,12 +17,6 @@ const DiscordCallback = () => {
     if (loading) return;
 
     const connectDiscord = async () => {
-      if (!user) {
-        setStatus('error');
-        setMessage('Sign in first, then connect Discord from your profile.');
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const state = params.get('state');
@@ -34,10 +28,11 @@ const DiscordCallback = () => {
         return;
       }
 
-      const { error } = await supabase.functions.invoke('discord-oauth', {
+      const { data, error } = await supabase.functions.invoke('discord-oauth', {
         body: {
           code,
           redirectUri: `${window.location.origin}/discord/callback`,
+          appRedirectTo: window.location.origin,
         },
       });
 
@@ -50,12 +45,16 @@ const DiscordCallback = () => {
       }
 
       setStatus('success');
-      setMessage('Discord is connected to your account.');
+      setMessage('Discord is connected. Signing you in...');
+      if (data?.actionLink) {
+        window.location.href = data.actionLink;
+        return;
+      }
       setTimeout(() => navigate('/'), 1200);
     };
 
     connectDiscord();
-  }, [loading, navigate, user]);
+  }, [loading, navigate]);
 
   const Icon = status === 'loading' ? Loader2 : status === 'success' ? CheckCircle2 : XCircle;
 
