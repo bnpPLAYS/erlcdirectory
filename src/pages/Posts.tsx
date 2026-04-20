@@ -172,7 +172,7 @@ const Posts = () => {
                             {post.content}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{post.profiles?.display_name || 'Unknown'}</span>
+                            <span>{post.profiles?.display_name || 'Discord member'}</span>
                             <span>• {post.view_count} views</span>
                             {post.application_count > 0 && (
                               <span>• {post.application_count} applications</span>
