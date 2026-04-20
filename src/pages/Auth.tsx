@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Auth = () => {
   const { user, loading, signInWithDiscord } = useAuth();
   const navigate = useNavigate();
+  const discordRedirectUrl = `${window.location.origin}/discord/callback`;
 
   useEffect(() => {
     if (user && !loading) {
@@ -74,7 +75,7 @@ const Auth = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <Button 
-                  className="w-full gap-3 h-12 bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                  className="w-full gap-3 h-12 bg-discord hover:bg-discord/90 text-primary-foreground"
                   onClick={signInWithDiscord}
                   disabled={loading}
                 >
@@ -86,10 +87,15 @@ const Auth = () => {
                 
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">
-                    We only access your Discord username, avatar, and server list.
+                    We only access your Discord username, avatar, email, and server list.
                     <br />
                     We never post on your behalf.
                   </p>
+                </div>
+                
+                <div className="rounded-md border border-border bg-muted/40 p-3">
+                  <p className="mb-1 text-xs font-medium">Discord redirect URL</p>
+                  <code className="block break-all text-xs text-muted-foreground">{discordRedirectUrl}</code>
                 </div>
               </CardContent>
             </Card>
