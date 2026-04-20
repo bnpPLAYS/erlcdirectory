@@ -29,7 +29,7 @@ interface Post {
 
 const postTypeConfig: Record<string, { label: string; icon: typeof Briefcase; color: string }> = {
   hiring: { label: 'Hiring', icon: Briefcase, color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  looking: { label: 'Looking', icon: User, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  looking: { label: 'Looking for work', icon: User, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   announcement: { label: 'Announcement', icon: Megaphone, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
   discussion: { label: 'Discussion', icon: MessageCircle, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
 };
@@ -83,9 +83,9 @@ const Posts = () => {
             <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
               <FileText className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Posts & Applications</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Openings & Updates</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Job postings, applications, and community announcements
+              Hiring posts, staff searches, and server updates from the ER:LC community.
             </p>
           </div>
 
@@ -95,7 +95,7 @@ const Posts = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search posts..."
+                  placeholder="Search openings and updates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -104,7 +104,7 @@ const Posts = () => {
               {user && (
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Create Post
+                  New Post
                 </Button>
               )}
             </div>
@@ -116,7 +116,7 @@ const Posts = () => {
                 className="cursor-pointer"
                 onClick={() => setActiveFilter(null)}
               >
-                All Posts
+                All
               </Badge>
               {Object.entries(postTypeConfig).map(([type, config]) => (
                 <Badge
@@ -172,7 +172,7 @@ const Posts = () => {
                             {post.content}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{post.profiles?.display_name || 'Unknown'}</span>
+                            <span>{post.profiles?.display_name || 'Discord member'}</span>
                             <span>• {post.view_count} views</span>
                             {post.application_count > 0 && (
                               <span>• {post.application_count} applications</span>
@@ -189,14 +189,14 @@ const Posts = () => {
             <Card className="border-dashed max-w-2xl mx-auto">
               <CardContent className="p-12 text-center">
                 <FileText className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No Posts Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Be the first to post a job listing or share an announcement.
+                  Start the board with a hiring post, application, or community update.
                 </p>
                 <Link to={user ? "#" : "/auth"}>
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />
-                    {user ? 'Create First Post' : 'Sign In to Post'}
+                    {user ? 'Create the first post' : 'Sign in to post'}
                   </Button>
                 </Link>
               </CardContent>

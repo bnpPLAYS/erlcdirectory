@@ -85,9 +85,9 @@ const Servers = () => {
             <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
               <Server className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Server Directory</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">ER:LC Servers</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Discover ERLC roleplay servers looking for staff
+              Browse active communities, hiring status, and Discord links in one place.
             </p>
           </div>
 
@@ -97,7 +97,7 @@ const Servers = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search servers..."
+                  placeholder="Search by server name or description..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -109,8 +109,8 @@ const Servers = () => {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="featured">Featured First</SelectItem>
-                  <SelectItem value="members">Most Members</SelectItem>
+                  <SelectItem value="featured">Featured</SelectItem>
+                  <SelectItem value="members">Largest</SelectItem>
                   <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
@@ -129,14 +129,14 @@ const Servers = () => {
                 className="cursor-pointer"
                 onClick={() => setFilterHiring(false)}
               >
-                All Servers
+                All
               </Badge>
               <Badge
                 variant={filterHiring ? 'default' : 'outline'}
                 className="cursor-pointer"
                 onClick={() => setFilterHiring(true)}
               >
-                🟢 Hiring Now
+                Hiring now
               </Badge>
             </div>
           </div>
@@ -158,14 +158,14 @@ const Servers = () => {
             <Card className="border-dashed max-w-2xl mx-auto">
               <CardContent className="p-12 text-center">
                 <Server className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No Servers Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No servers listed yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Be the first to list your ERLC server and find talented staff.
+                  List your server so applicants can see what you offer and how to join.
                 </p>
                 <Link to={user ? "#" : "/auth"}>
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />
-                    {user ? 'Add Your Server' : 'Sign In to Add Server'}
+                    {user ? 'List Your Server' : 'Sign in to list a server'}
                   </Button>
                 </Link>
               </CardContent>

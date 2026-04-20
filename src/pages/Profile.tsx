@@ -120,7 +120,7 @@ const Profile = () => {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h1 className="text-lg font-bold truncate">{profile.display_name || 'Unknown'}</h1>
+                      <h1 className="text-lg font-bold truncate">{profile.display_name || 'Discord member'}</h1>
                       {profile.is_verified && (
                         <Badge className="badge-verified text-[10px] px-1.5 py-0">Verified</Badge>
                       )}
@@ -135,7 +135,7 @@ const Profile = () => {
                 )}
                 
                 <p className="text-sm text-muted-foreground mb-4">
-                  {profile.bio || 'No bio provided.'}
+                  {profile.bio || 'This member has not added profile details yet.'}
                 </p>
                 
                 {profile.skills?.length > 0 && (
@@ -180,7 +180,7 @@ const Profile = () => {
                       <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                       <h3 className="font-semibold mb-1">No experiences yet</h3>
                       <p className="text-sm text-muted-foreground">
-                        This user hasn't added any experiences.
+                        This member has not added experience yet.
                       </p>
                     </CardContent>
                   </Card>

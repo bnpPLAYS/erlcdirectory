@@ -95,8 +95,8 @@ const Index = () => {
               ERLC Directory
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-in stagger-2">
-              The professional networking platform for the ER:LC community. 
-              Discover verified staff, connect with communities, and build your reputation.
+              A clean directory for ER:LC staff, server owners, and applicants.
+              Find real people, active servers, and opportunities without the clutter.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-in stagger-3">
@@ -105,7 +105,7 @@ const Index = () => {
                   <Link to="/browse">
                     <Button size="lg" className="gap-2 px-6 h-11">
                       <Users className="h-4 w-4" />
-                      Browse Professionals
+                      Browse Members
                     </Button>
                   </Link>
                   <Link to="/servers">
@@ -143,9 +143,9 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { icon: Users, value: stats.profiles || '0', label: 'Professionals' },
+              { icon: Users, value: stats.profiles || '0', label: 'Members' },
               { icon: Building2, value: stats.servers || '0', label: 'Servers' },
-              { icon: Shield, value: '100%', label: 'Discord Verified' },
+              { icon: Shield, value: '100%', label: 'Discord Linked' },
               { icon: MessageSquare, value: 'Direct', label: 'Messaging' },
             ].map((stat, i) => (
               <div key={i} className="text-center">
@@ -158,14 +158,14 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Professionals */}
+      {/* Featured Members */}
       {featuredProfiles.length > 0 && (
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold mb-1">Featured Professionals</h2>
-                <p className="text-sm text-muted-foreground">Top-rated members in the community</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-1">Featured Members</h2>
+                <p className="text-sm text-muted-foreground">Members with complete profiles and recent activity</p>
               </div>
               <Link to="/browse">
                 <Button variant="ghost" size="sm" className="gap-1">
@@ -184,14 +184,14 @@ const Index = () => {
         </section>
       )}
 
-      {/* Top Servers */}
+      {/* Active Servers */}
       {topServers.length > 0 && (
         <section className="py-12 md:py-16 bg-secondary/10 border-y border-border/30">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold mb-1">Top Servers</h2>
-                <p className="text-sm text-muted-foreground">Verified communities looking for staff</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-1">Active Servers</h2>
+                <p className="text-sm text-muted-foreground">Communities sharing openings and server details</p>
               </div>
               <Link to="/servers">
                 <Button variant="ghost" size="sm" className="gap-1">
@@ -214,15 +214,15 @@ const Index = () => {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
-            <h2 className="text-xl md:text-2xl font-bold mb-2">Why ERLC Directory?</h2>
-            <p className="text-sm text-muted-foreground">Build your professional presence</p>
+            <h2 className="text-xl md:text-2xl font-bold mb-2">Built for ER:LC hiring</h2>
+            <p className="text-sm text-muted-foreground">Keep staff searches organized and easy to trust</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { icon: Shield, title: 'Verified Experiences', desc: 'All experiences verified by server staff.' },
-              { icon: Star, title: 'Reputation System', desc: 'Ratings and reviews from the community.' },
-              { icon: Zap, title: 'Quick Connections', desc: 'Message and connect with professionals.' },
+              { icon: Shield, title: 'Clear Experience', desc: 'List roles, departments, and current positions in one place.' },
+              { icon: Star, title: 'Useful Profiles', desc: 'Skills, history, and Discord details help owners make faster decisions.' },
+              { icon: Zap, title: 'Direct Contact', desc: 'Reach out to staff candidates and server teams from their profile.' },
             ].map((f, i) => (
               <Card key={i} className="card-elevated">
                 <CardContent className="p-5 text-center">
@@ -242,13 +242,13 @@ const Index = () => {
       <section className="py-12 md:py-16 bg-secondary/20 border-t border-border/30">
         <div className="container mx-auto px-4">
           <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-xl md:text-2xl font-bold mb-3">Ready to Get Started?</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-3">Ready to build your listing?</h2>
             <p className="text-muted-foreground mb-6">
-              Create your profile, verify your experience, and connect with the ERLC community.
+              Add your Discord-linked profile and start finding the right server or staff fit.
             </p>
             <Link to={user ? "/browse" : "/auth"}>
               <Button size="lg" className="gap-2">
-                {user ? 'Browse Profiles' : 'Create Your Profile'}
+                {user ? 'Browse Members' : 'Create Profile'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
