@@ -260,7 +260,40 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                 <Input value={form.display_name} maxLength={60} onChange={(e) => update('display_name', e.target.value)} placeholder="How others see you" />
               </Field>
               <Field label="Pronouns">
-                <Input value={form.pronouns} maxLength={30} onChange={(e) => update('pronouns', e.target.value)} placeholder="they/them" />
+                {(() => {
+                  const isPreset = PRONOUN_PRESETS.includes(form.pronouns);
+                  const selectValue = !form.pronouns ? '__none' : isPreset ? form.pronouns : '__custom';
+                  return (
+                    <div className="space-y-2">
+                      <Select
+                        value={selectValue}
+                        onValueChange={(v) => {
+                          if (v === '__none') update('pronouns', '');
+                          else if (v === '__custom') update('pronouns', form.pronouns && !isPreset ? form.pronouns : ' ');
+                          else update('pronouns', v);
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select pronouns" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">Prefer not to say</SelectItem>
+                          {PRONOUN_PRESETS.map((p) => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                          <SelectItem value="__custom">Other (custom)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {selectValue === '__custom' && (
+                        <Input
+                          value={form.pronouns.trim()}
+                          maxLength={30}
+                          autoFocus
+                          onChange={(e) => update('pronouns', e.target.value)}
+                          placeholder="Enter custom pronouns"
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
               </Field>
               <Field label="What's on your mind" className="md:col-span-2">
                 <div className="flex flex-wrap gap-1.5 mb-2">
