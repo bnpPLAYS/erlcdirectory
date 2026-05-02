@@ -373,6 +373,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
             </div>
           </>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
