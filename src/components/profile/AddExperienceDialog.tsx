@@ -118,7 +118,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-screen h-[100dvh] max-w-none sm:rounded-none p-0 border-0 glass overflow-y-auto">
+      <DialogContent fullscreen className="glass p-0 overflow-y-auto">
         <div className="mx-auto max-w-5xl w-full px-4 sm:px-8 py-8 sm:py-12 space-y-6">
         {step === 'pick' && (
           <>
