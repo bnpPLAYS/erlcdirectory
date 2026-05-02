@@ -123,47 +123,52 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
         {step === 'pick' && (
           <>
             <DialogHeader className="text-center items-center">
-              <DialogTitle className="text-2xl">Add new experience</DialogTitle>
-              <DialogDescription>Share your work and build your reputation.</DialogDescription>
+              <div className="h-12 w-12 rounded-2xl bg-white/10 grid place-items-center mb-2">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <DialogTitle className="text-3xl sm:text-4xl font-semibold tracking-tight">Add new experience</DialogTitle>
+              <DialogDescription className="text-base">
+                Share your work and build your reputation.
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid md:grid-cols-2 gap-4 mt-2">
+            <div className="grid md:grid-cols-2 gap-5 mt-6">
               <button
                 onClick={() => setStep('server')}
-                className="text-left rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] p-5 transition"
+                className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
-                    <ServerIcon className="h-5 w-5" />
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-12 w-12 rounded-xl bg-white/10 group-hover:bg-white/15 flex items-center justify-center transition-colors">
+                    <ServerIcon className="h-6 w-6" />
                   </div>
                   <div>
-                    <div className="font-semibold">Server experience</div>
-                    <div className="text-xs text-muted-foreground">Showcase work from a Discord server</div>
+                    <div className="font-semibold text-lg">Server experience</div>
+                    <div className="text-sm text-muted-foreground">Showcase work from a Discord server</div>
                   </div>
                 </div>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Verified by server admins</li>
-                  <li className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Auto-filled server details</li>
-                  <li className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Higher credibility rating</li>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2"><Shield className="h-4 w-4" /> Verified by server admins</li>
+                  <li className="flex items-center gap-2"><Users className="h-4 w-4" /> Auto-filled server details</li>
+                  <li className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Higher credibility rating</li>
                 </ul>
               </button>
 
               <button
                 onClick={() => setStep('direct')}
-                className="text-left rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] p-5 transition"
+                className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
-                    <UserCheck className="h-5 w-5" />
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-12 w-12 rounded-xl bg-white/10 group-hover:bg-white/15 flex items-center justify-center transition-colors">
+                    <UserCheck className="h-6 w-6" />
                   </div>
                   <div>
-                    <div className="font-semibold">Direct experience</div>
-                    <div className="text-xs text-muted-foreground">One-on-one work and collaborations</div>
+                    <div className="font-semibold text-lg">Direct experience</div>
+                    <div className="text-sm text-muted-foreground">One-on-one work and collaborations</div>
                   </div>
                 </div>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><UserCheck className="h-3.5 w-3.5" /> Client-side verification</li>
-                  <li className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Flexible project types</li>
-                  <li className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Public verification link</li>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2"><UserCheck className="h-4 w-4" /> Client-side verification</li>
+                  <li className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Flexible project types</li>
+                  <li className="flex items-center gap-2"><Globe className="h-4 w-4" /> Public verification link</li>
                 </ul>
               </button>
             </div>
