@@ -245,7 +245,8 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
         </div>
       </Card>
 
-      <Tabs defaultValue="general" className="w-full">
+      <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
+      <Tabs defaultValue="general" className="w-full min-w-0">
         <TabsList className="glass">
           <TabsTrigger value="general" className="gap-2"><UserIcon className="h-4 w-4" />General</TabsTrigger>
           <TabsTrigger value="customize" className="gap-2"><Palette className="h-4 w-4" />Customize</TabsTrigger>
