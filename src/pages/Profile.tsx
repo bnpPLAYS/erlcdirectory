@@ -50,9 +50,10 @@ interface Experience {
 }
 
 const Profile = () => {
-  const { id } = useParams();
+  const { id: rawId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile: meProfile } = useAuth();
+  const id = rawId === 'me' ? meProfile?.id : rawId;
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +70,6 @@ const Profile = () => {
       setEditMode(true);
     }
   }, [isOwner, searchParams]);
-
-  useEffect(() => {
-    if (id) fetchProfile();
-  }, [id]);
 
   const fetchProfile = async () => {
     setLoading(true);
