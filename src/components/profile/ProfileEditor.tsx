@@ -496,6 +496,27 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
         </TabsContent>
       </Tabs>
 
+      <aside className="hidden lg:block sticky top-20">
+        <ProfilePreviewCard
+          discord_avatar={profile.discord_avatar ?? null}
+          discord_username={profile.discord_username ?? null}
+          is_verified={(profile as any).is_verified}
+          display_name={form.display_name}
+          bio={form.bio}
+          location={form.location}
+          timezone={form.timezone}
+          pronouns={form.pronouns.trim()}
+          status={form.status}
+          availability={form.availability}
+          website={form.website}
+          banner_url={form.banner_url}
+          accent_color={form.accent_color}
+          skills={skills}
+          social_links={socials}
+        />
+      </aside>
+      </div>
+
       {verifyTarget && (
         <VerifyExperienceDialog
           open={!!verifyTarget}
