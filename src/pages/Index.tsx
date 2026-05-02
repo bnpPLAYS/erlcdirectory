@@ -86,16 +86,16 @@ const Index = () => {
 
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl glass flex items-center justify-center overflow-hidden animate-in">
-              <img src={logo} alt="ERLC Directory" className="w-full h-full object-cover" />
+            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center animate-in">
+              <img src={logo} alt="ERLC Directory" className="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]" width={96} height={96} />
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 tracking-tight animate-in stagger-1 text-gradient">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-5 tracking-tight animate-in stagger-1 text-gradient">
               ERLC Directory
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-in stagger-2">
-              A clean directory for ER:LC staff, server owners, and applicants.
-              Find real people, active servers, and opportunities without the clutter.
+              The home for Emergency Response: Liberty County staff, server owners, and applicants.
+              Real profiles. Verified experience. Direct contact.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-in stagger-3">
