@@ -414,6 +414,13 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           }}
         />
       )}
+
+      <AddExperienceDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        profileId={profile.id}
+        onCreated={refreshExperiences}
+      />
     </div>
   );
 };
