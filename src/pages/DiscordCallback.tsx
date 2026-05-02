@@ -32,7 +32,9 @@ const DiscordCallback = () => {
         body: {
           code,
           redirectUri: `${window.location.origin}/discord/callback`,
-          appRedirectTo: window.location.origin,
+          appRedirectTo: data?.isNewProfile
+            ? `${window.location.origin}/profile/me?edit=1&setup=1`
+            : window.location.origin,
         },
       });
 
@@ -45,12 +47,19 @@ const DiscordCallback = () => {
       }
 
       setStatus('success');
-      setMessage('Discord is connected. Signing you in...');
+      setMessage(data?.isNewProfile ? 'Welcome! Setting up your profile...' : 'Discord is connected. Signing you in...');
       if (data?.actionLink) {
-        window.location.href = data.actionLink;
+        // If new profile, override redirect to setup
+        if (data.isNewProfile) {
+          const url = new URL(data.actionLink);
+          url.searchParams.set('redirect_to', `${window.location.origin}/profile/me?edit=1&setup=1`);
+          window.location.href = url.toString();
+        } else {
+          window.location.href = data.actionLink;
+        }
         return;
       }
-      setTimeout(() => navigate('/'), 1200);
+      setTimeout(() => navigate(data?.isNewProfile ? '/profile/me?edit=1&setup=1' : '/'), 1200);
     };
 
     connectDiscord();
