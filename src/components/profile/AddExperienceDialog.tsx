@@ -118,7 +118,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl glass border-white/10">
+      <DialogContent className="w-screen h-[100dvh] max-w-none sm:rounded-none p-0 border-0 glass overflow-y-auto">
+        <div className="mx-auto max-w-5xl w-full px-4 sm:px-8 py-8 sm:py-12 space-y-6">
         {step === 'pick' && (
           <>
             <DialogHeader className="text-center items-center">
