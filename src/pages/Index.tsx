@@ -82,16 +82,15 @@ const Index = () => {
       
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-        
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(0_0%_100%_/_0.06),_transparent_60%)]" />
+
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-card border border-border/50 flex items-center justify-center shadow-2xl shadow-primary/10 animate-in overflow-hidden">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl glass flex items-center justify-center overflow-hidden animate-in">
               <img src={logo} alt="ERLC Directory" className="w-full h-full object-cover" />
             </div>
-            
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 tracking-tight animate-in stagger-1">
+
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 tracking-tight animate-in stagger-1 text-gradient">
               ERLC Directory
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-in stagger-2">
