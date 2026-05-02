@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck } from 'lucide-react';
+import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +39,8 @@ interface ProfileLike {
   banner_url?: string | null;
   accent_color?: string | null;
   theme_preset?: string | null;
+  discord_username?: string | null;
+  discord_avatar?: string | null;
   skills: string[];
   social_links: Record<string, string> | null;
 }
@@ -189,22 +191,55 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Edit profile</h2>
-          <p className="text-sm text-muted-foreground">Make it yours. Changes save when you hit Save.</p>
+      {/* Header card: banner + avatar + inline name */}
+      <Card className="card-elevated liquid-edge overflow-hidden">
+        <div className="relative">
+          <div className="h-36 sm:h-44 w-full bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent">
+            {form.banner_url ? (
+              <img src={form.banner_url} alt="banner" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">
+                <span className="flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Add a banner in Customize</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent" />
+          </div>
+          <div className="px-5 pb-5 -mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10 shrink-0">
+              {profile.discord_avatar ? (
+                <img src={profile.discord_avatar} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full grid place-items-center text-2xl font-semibold">
+                  {(form.display_name || profile.discord_username || '?').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={form.display_name}
+                  maxLength={60}
+                  onChange={(e) => update('display_name', e.target.value)}
+                  placeholder="Your display name"
+                  className="text-lg font-semibold bg-transparent border-white/10 focus-visible:ring-1 focus-visible:ring-white/30 h-10"
+                />
+                <Pencil className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+              </div>
+              {profile.discord_username && (
+                <p className="text-xs text-muted-foreground mt-1">@{profile.discord_username}</p>
+              )}
+            </div>
+            <div className="flex gap-2 sm:self-center">
+              <Button variant="ghost" size="sm" onClick={onCancel} className="gap-2">
+                <X className="h-4 w-4" /> Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
+                <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel} className="gap-2">
-            <X className="h-4 w-4" />
-            Cancel
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      </div>
+      </Card>
 
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="glass">
