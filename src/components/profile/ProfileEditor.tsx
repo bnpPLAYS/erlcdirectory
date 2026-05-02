@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ProfilePreviewCard from './ProfilePreviewCard';
 
 const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { z } from 'zod';
@@ -244,7 +245,8 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
         </div>
       </Card>
 
-      <Tabs defaultValue="general" className="w-full">
+      <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
+      <Tabs defaultValue="general" className="w-full min-w-0">
         <TabsList className="glass">
           <TabsTrigger value="general" className="gap-2"><UserIcon className="h-4 w-4" />General</TabsTrigger>
           <TabsTrigger value="customize" className="gap-2"><Palette className="h-4 w-4" />Customize</TabsTrigger>
@@ -493,6 +495,27 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <aside className="hidden lg:block sticky top-20">
+        <ProfilePreviewCard
+          discord_avatar={profile.discord_avatar ?? null}
+          discord_username={profile.discord_username ?? null}
+          is_verified={(profile as any).is_verified}
+          display_name={form.display_name}
+          bio={form.bio}
+          location={form.location}
+          timezone={form.timezone}
+          pronouns={form.pronouns.trim()}
+          status={form.status}
+          availability={form.availability}
+          website={form.website}
+          banner_url={form.banner_url}
+          accent_color={form.accent_color}
+          skills={skills}
+          social_links={socials}
+        />
+      </aside>
+      </div>
 
       {verifyTarget && (
         <VerifyExperienceDialog
