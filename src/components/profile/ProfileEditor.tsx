@@ -412,6 +412,19 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {verifyTarget && (
+        <VerifyExperienceDialog
+          open={!!verifyTarget}
+          onOpenChange={(o) => !o && setVerifyTarget(null)}
+          experienceId={verifyTarget.id}
+          profileId={profile.id}
+          serverNameHint={verifyTarget.server_name}
+          onVerified={() => {
+            setExps((prev) => prev.map((x) => (x.id === verifyTarget.id ? { ...x, is_verified: true } : x)));
+          }}
+        />
+      )}
     </div>
   );
 };
