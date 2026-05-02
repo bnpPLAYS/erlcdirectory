@@ -74,7 +74,7 @@ const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
           <Plus className="h-4 w-4" /> List a server
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass-strong border-0 p-0 gap-0 left-0 top-0 translate-x-0 translate-y-0 w-screen max-w-none h-[100dvh] max-h-none rounded-none overflow-hidden flex flex-col data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0 data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 sm:rounded-none">
+      <DialogContent fullscreen className="glass-strong p-0 gap-0 overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
           <div>
             <h2 className="text-lg font-semibold">List your server</h2>
