@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
+import AddExperienceDialog from './AddExperienceDialog';
 
 interface Experience {
   id: string;
@@ -97,6 +98,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -110,23 +112,13 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
   const setSocial = (k: string, v: string) => setSocials((p) => ({ ...p, [k]: v }));
 
-  const addExperience = () => {
-    const id = `new-${crypto.randomUUID()}`;
-    setExps([
-      {
-        id,
-        role: '',
-        server_name: '',
-        server_icon: null,
-        department: '',
-        start_date: new Date().toISOString().slice(0, 10),
-        end_date: null,
-        is_current: true,
-        is_verified: false,
-      },
-      ...exps,
-    ]);
-    setNewExpKeys((s) => new Set(s).add(id));
+  const refreshExperiences = async () => {
+    const { data } = await supabase
+      .from('experiences')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .order('start_date', { ascending: false });
+    if (data) setExps(data as Experience[]);
   };
 
   const updateExp = (id: string, patch: Partial<Experience>) =>
