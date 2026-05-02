@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
