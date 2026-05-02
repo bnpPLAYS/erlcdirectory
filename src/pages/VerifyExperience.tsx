@@ -102,17 +102,6 @@ const VerifyExperience = () => {
   };
 
   const submitDecision = async (action: 'approve' | 'reject', code: string) => {
-    setSubmitting(true);
-    setError(null);
-    const { data, error } = await supabase.functions.invoke('experience-verify', {
-      body: { token, code, redirectUri },
-      method: 'POST',
-      // edge function reads ?action= from query, but we'll pass it through body too
-    });
-    // The function expects ?action=. Re-invoke via fetch since invoke doesn't add query.
-    setSubmitting(false);
-    void data; void error;
-    // Actually do the proper call:
     finalizeDecision(action, code);
   };
 
