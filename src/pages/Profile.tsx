@@ -160,8 +160,21 @@ const Profile = () => {
           <ProfileEditor
             profile={profile as any}
             experiences={experiences}
-            onSaved={() => { setEditMode(false); fetchProfile(); }}
-            onCancel={() => setEditMode(false)}
+            onSaved={() => {
+              setEditMode(false);
+              if (searchParams.get('edit')) {
+                searchParams.delete('edit');
+                setSearchParams(searchParams, { replace: true });
+              }
+              fetchProfile();
+            }}
+            onCancel={() => {
+              setEditMode(false);
+              if (searchParams.get('edit')) {
+                searchParams.delete('edit');
+                setSearchParams(searchParams, { replace: true });
+              }
+            }}
           />
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
