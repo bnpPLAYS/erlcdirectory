@@ -1,5 +1,19 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Search, Menu, X, Users, Building2, FileText, MessageSquare, LogOut, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Search,
+  Menu,
+  X,
+  Users,
+  Building2,
+  FileText,
+  MessageSquare,
+  LogOut,
+  User as UserIcon,
+  Settings,
+  Pencil,
+  Plus,
+  ChevronDown,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -12,132 +26,185 @@ import {
 import { useState } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
 
   const navLinks = [
-    { path: '/browse', label: 'Members', icon: Search },
+    { path: '/browse', label: 'Members', icon: Users },
     { path: '/servers', label: 'Servers', icon: Building2 },
     { path: '/posts', label: 'Openings', icon: FileText },
-    { path: '/connections', label: 'Connections', icon: Users },
+    { path: '/messages', label: 'Messages', icon: MessageSquare, auth: true },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+  const visibleLinks = navLinks.filter((l) => !l.auth || user);
 
   return (
-    <nav className="sticky top-0 z-50 glass border-b border-border/30">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center overflow-hidden group-hover:border-primary/40 transition-colors">
-              <img src={logo} alt="ERLC Directory" className="w-6 h-6 object-contain" />
-            </div>
-            <span className="font-bold text-lg hidden sm:block">erlc.directory</span>
-          </Link>
+    <>
+      {/* Top spacer so floating bar doesn't overlap content */}
+      <div className="h-24" aria-hidden />
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 bg-secondary/50 rounded-full p-1">
-            {navLinks.map(({ path, label, icon: Icon }) => (
-              <Link key={path} to={path}>
-                <Button
-                  variant={isActive(path) ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className={`gap-2 rounded-full px-4 ${isActive(path) ? 'bg-background shadow-sm' : ''}`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Button>
+      <header className="fixed top-4 inset-x-0 z-50 px-4 pointer-events-none">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          {/* Centered floating pill */}
+          <div className="flex-1 flex justify-center">
+            <nav className="pointer-events-auto glass-strong liquid-edge rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
+              <Link to="/" className="flex items-center gap-2 pl-3 pr-3 py-1 rounded-full hover:bg-white/5 transition-colors">
+                <img src={logo} alt="ERLC Directory logo" className="w-6 h-6 object-contain" width={24} height={24} />
+                <div className="hidden sm:flex flex-col leading-none">
+                  <span className="text-sm font-bold tracking-tight">ERLC Directory</span>
+                  <span className="text-[9px] text-muted-foreground tracking-widest uppercase">Liberty County</span>
+                </div>
               </Link>
-            ))}
+
+              <div className="hidden md:flex items-center gap-0.5 ml-1">
+                {visibleLinks.map(({ path, label, icon: Icon }) => (
+                  <Link key={path} to={path}>
+                    <button
+                      className={cn(
+                        'h-9 px-3 rounded-full inline-flex items-center justify-center gap-1.5 text-sm transition-all',
+                        isActive(path)
+                          ? 'bg-white/12 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                      )}
+                      aria-label={label}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="hidden lg:inline">{label}</span>
+                    </button>
+                  </Link>
+                ))}
+              </div>
+
+              {user && (
+                <Link to="/posts" className="hidden md:block">
+                  <button
+                    className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white text-black hover:bg-white/90 transition-colors ml-1"
+                    aria-label="Create"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </Link>
+              )}
+
+              <button
+                className="md:hidden h-9 w-9 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
+            </nav>
           </div>
 
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
+          {/* Right floating profile pill */}
+          <div className="pointer-events-auto">
             {user ? (
-              <>
-                <Link to="/messages" className="hidden md:block">
-                  <Button variant="ghost" size="icon">
-                    <MessageSquare className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={profile?.discord_avatar || undefined} />
-                        <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="flex items-center gap-2 p-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={profile?.discord_avatar || undefined} />
-                        <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{profile?.display_name || 'User'}</span>
-                        <span className="text-xs text-muted-foreground">View Profile</span>
-                      </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="glass-strong liquid-edge rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2 hover:bg-white/5 transition-colors shadow-2xl">
+                    <Avatar className="h-8 w-8 ring-1 ring-white/15">
+                      <AvatarImage src={profile?.discord_avatar || undefined} />
+                      <AvatarFallback className="text-xs bg-secondary">
+                        {profile?.display_name?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="hidden sm:flex flex-col items-start leading-none">
+                      <span className="text-xs font-semibold truncate max-w-[100px]">
+                        {profile?.display_name || 'Member'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                        @{profile?.discord_username || 'user'}
+                      </span>
                     </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to={`/profile/${profile?.id}`} className="cursor-pointer">
-                        <User className="h-4 w-4 mr-2" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/messages" className="cursor-pointer">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Messages
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={signOut} className="text-red-500 cursor-pointer">
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
+                  <div className="flex items-center gap-3 p-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={profile?.discord_avatar || undefined} />
+                      <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold truncate">{profile?.display_name || 'Member'}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        @{profile?.discord_username || 'user'}
+                      </span>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
+                    <Link to={`/profile/${profile?.id}`}>
+                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm">My Profile</span>
+                        <span className="text-[11px] text-muted-foreground">View your public profile</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-3 py-2.5 cursor-pointer"
+                    onClick={() => navigate(`/profile/${profile?.id}?edit=1`)}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Edit Profile</span>
+                      <span className="text-[11px] text-muted-foreground">Update your information</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
+                    <Link to="/messages">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm">Messages</span>
+                        <span className="text-[11px] text-muted-foreground">Contact other members</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
+                    <Link to="/connections">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm">Connections</span>
+                        <span className="text-[11px] text-muted-foreground">Manage your network</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem
+                    onClick={signOut}
+                    className="gap-3 py-2.5 text-destructive focus:text-destructive cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">Sign Out</span>
+                      <span className="text-[11px] text-muted-foreground">End your session</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button size="sm" className="hidden sm:flex bg-discord hover:bg-discord/90 text-white gap-2">
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                  </svg>
-                  Sign In
-                </Button>
+                <button className="glass-strong liquid-edge rounded-full px-4 py-2 text-sm font-medium hover:bg-white/10 transition-colors shadow-2xl">
+                  Sign in
+                </button>
               </Link>
             )}
-            
-            {/* Mobile Menu Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border/30 animate-in">
+          <div className="md:hidden mt-3 mx-auto max-w-sm pointer-events-auto glass-strong rounded-2xl p-3 animate-in shadow-2xl">
             <div className="flex flex-col gap-1">
-              {navLinks.map(({ path, label, icon: Icon }) => (
-                <Link 
-                  key={path} 
-                  to={path}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
+              {visibleLinks.map(({ path, label, icon: Icon }) => (
+                <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}>
                   <Button
                     variant={isActive(path) ? 'secondary' : 'ghost'}
                     className="w-full justify-start gap-3"
@@ -147,42 +214,16 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ))}
-              {user && (
-                <Link to="/messages" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start gap-3">
-                    <MessageSquare className="h-4 w-4" />
-                    Messages
-                  </Button>
-                </Link>
-              )}
-              <div className="h-px bg-border my-2" />
-              {user ? (
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-3 text-red-500"
-                  onClick={() => {
-                    signOut();
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </Button>
-              ) : (
+              {!user && (
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-discord hover:bg-discord/90 text-white gap-2">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                    </svg>
-                    Continue with Discord
-                  </Button>
+                  <Button className="w-full mt-2">Sign in</Button>
                 </Link>
               )}
             </div>
           </div>
         )}
-      </div>
-    </nav>
+      </header>
+    </>
   );
 };
 
