@@ -141,11 +141,11 @@ const Profile = () => {
             }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}80, transparent)` }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${accent}80, transparent)` }} />
       </div>
 
-      <div className="container mx-auto px-4 -mt-20 md:-mt-24 relative">
+      <div className="container mx-auto px-4 -mt-20 md:-mt-24 relative z-10">
         <div className="flex items-center justify-between mb-4">
           <Link to="/browse">
             <Button variant="ghost" size="sm" className="gap-2 backdrop-blur-sm bg-background/40">
