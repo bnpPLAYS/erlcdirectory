@@ -51,6 +51,7 @@ interface Experience {
 
 const Profile = () => {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile: meProfile } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -58,6 +59,16 @@ const Profile = () => {
   const [editMode, setEditMode] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+
+  useEffect(() => {
+    if (id) fetchProfile();
+  }, [id]);
+
+  useEffect(() => {
+    if (isOwner && searchParams.get('edit') === '1') {
+      setEditMode(true);
+    }
+  }, [isOwner, searchParams]);
 
   useEffect(() => {
     if (id) fetchProfile();
