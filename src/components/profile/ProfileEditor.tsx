@@ -56,7 +56,7 @@ const profileSchema = z.object({
   location: z.string().trim().max(80).optional(),
   timezone: z.string().trim().max(40).optional(),
   pronouns: z.string().trim().max(30).optional(),
-  status: z.string().trim().max(80).optional(),
+  status: z.string().trim().max(140).optional(),
   availability: z.string().trim().max(40).optional(),
   website: z.string().trim().max(200).optional().refine(
     (v) => !v || /^https?:\/\//i.test(v),
@@ -224,8 +224,29 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
               <Field label="Pronouns">
                 <Input value={form.pronouns} maxLength={30} onChange={(e) => update('pronouns', e.target.value)} placeholder="they/them" />
               </Field>
-              <Field label="Status">
-                <Input value={form.status} maxLength={80} onChange={(e) => update('status', e.target.value)} placeholder="Looking for a dispatch role" />
+              <Field label="What's on your mind" className="md:col-span-2">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['💭', '🚓', '🚑', '🚒', '🎧', '☕', '🛠️', '🌙', '🔥', '✅'].map((emo) => (
+                    <button
+                      key={emo}
+                      type="button"
+                      onClick={() => update('status', `${emo} ${form.status.replace(/^\p{Emoji}\s*/u, '')}`.trim())}
+                      className="h-8 w-8 rounded-md glass glass-hover text-base"
+                      aria-label={`Add ${emo}`}
+                    >
+                      {emo}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  value={form.status}
+                  maxLength={140}
+                  onChange={(e) => update('status', e.target.value)}
+                  placeholder="What are you up to right now?"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Share a vibe — what you're doing, listening to, or looking for. {form.status.length}/140
+                </p>
               </Field>
               <Field label="Availability">
                 <Input value={form.availability} maxLength={40} onChange={(e) => update('availability', e.target.value)} placeholder="Open to work" />
