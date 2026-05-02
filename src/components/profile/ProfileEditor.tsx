@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
+import AddExperienceDialog from './AddExperienceDialog';
 
 interface Experience {
   id: string;
@@ -97,6 +98,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -110,23 +112,13 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
   const setSocial = (k: string, v: string) => setSocials((p) => ({ ...p, [k]: v }));
 
-  const addExperience = () => {
-    const id = `new-${crypto.randomUUID()}`;
-    setExps([
-      {
-        id,
-        role: '',
-        server_name: '',
-        server_icon: null,
-        department: '',
-        start_date: new Date().toISOString().slice(0, 10),
-        end_date: null,
-        is_current: true,
-        is_verified: false,
-      },
-      ...exps,
-    ]);
-    setNewExpKeys((s) => new Set(s).add(id));
+  const refreshExperiences = async () => {
+    const { data } = await supabase
+      .from('experiences')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .order('start_date', { ascending: false });
+    if (data) setExps(data as Experience[]);
   };
 
   const updateExp = (id: string, patch: Partial<Experience>) =>
@@ -173,22 +165,17 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
       for (const id of removedExpIds) {
         await supabase.from('experiences').delete().eq('id', id);
       }
+      // Update existing experiences (new ones are added via the AddExperienceDialog)
       for (const e of exps) {
+        if (newExpKeys.has(e.id)) continue;
         if (!e.role.trim() || !e.server_name.trim()) continue;
         const payload = {
-          profile_id: profile.id,
           role: e.role.trim().slice(0, 80),
-          server_name: e.server_name.trim().slice(0, 80),
-          department: e.department?.trim().slice(0, 60) || null,
           start_date: e.start_date,
           end_date: e.is_current ? null : e.end_date,
           is_current: e.is_current,
         };
-        if (newExpKeys.has(e.id)) {
-          await supabase.from('experiences').insert(payload);
-        } else {
-          await supabase.from('experiences').update(payload).eq('id', e.id);
-        }
+        await supabase.from('experiences').update(payload).eq('id', e.id);
       }
 
       toast.success('Profile saved');
@@ -330,7 +317,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
         {/* EXPERIENCE */}
         <TabsContent value="experience" className="mt-4">
           <div className="flex justify-end mb-3">
-            <Button size="sm" variant="secondary" onClick={addExperience} className="gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" /> Add experience
             </Button>
           </div>
@@ -341,14 +328,21 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
             {exps.map((e) => (
               <Card key={e.id} className="card-elevated liquid-edge">
                 <CardContent className="p-4 grid md:grid-cols-2 gap-3">
-                  <Field label="Role">
-                    <Input value={e.role} maxLength={80} onChange={(ev) => updateExp(e.id, { role: ev.target.value })} placeholder="Patrol Officer" />
-                  </Field>
-                  <Field label="Server">
-                    <Input value={e.server_name} maxLength={80} onChange={(ev) => updateExp(e.id, { server_name: ev.target.value })} placeholder="Server name" />
-                  </Field>
-                  <Field label="Department">
-                    <Input value={e.department || ''} maxLength={60} onChange={(ev) => updateExp(e.id, { department: ev.target.value })} placeholder="LEO / Fire / EMS" />
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    {e.server_icon ? (
+                      <img src={e.server_icon} alt="" className="h-10 w-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold">
+                        {(e.server_name || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{e.server_name || 'Untitled'}</div>
+                      <div className="text-[11px] text-muted-foreground">Server / project (locked)</div>
+                    </div>
+                  </div>
+                  <Field label="Position">
+                    <Input value={e.role} maxLength={80} onChange={(ev) => updateExp(e.id, { role: ev.target.value })} placeholder="e.g. Patrol Officer, Staff" />
                   </Field>
                   <Field label="Start date">
                     <Input type="date" value={e.start_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })} />
@@ -369,19 +363,14 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                       {e.is_verified ? (
                         <Badge className="badge-verified gap-1"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
                       ) : (
-                        !newExpKeys.has(e.id) && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setVerifyTarget(e)}
-                            className="gap-2"
-                          >
-                            <Shield className="h-4 w-4" /> Verify with admin
-                          </Button>
-                        )
-                      )}
-                      {newExpKeys.has(e.id) && (
-                        <span className="text-xs text-muted-foreground">Save first to request verification.</span>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setVerifyTarget(e)}
+                          className="gap-2"
+                        >
+                          <Shield className="h-4 w-4" /> Verify with admin
+                        </Button>
                       )}
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => deleteExp(e.id)} className="gap-2 text-destructive hover:text-destructive">
@@ -425,6 +414,13 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           }}
         />
       )}
+
+      <AddExperienceDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        profileId={profile.id}
+        onCreated={refreshExperiences}
+      />
     </div>
   );
 };
