@@ -1,1 +1,4 @@
 project_id = "bputdulihizrolqjplah"
+
+[functions.experience-verify]
+verify_jwt = false
