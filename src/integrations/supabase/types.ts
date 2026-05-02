@@ -210,6 +210,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accent_color: string | null
+          availability: string | null
+          banner_url: string | null
           bio: string | null
           created_at: string
           discord_access_token: string | null
@@ -223,15 +226,22 @@ export type Database = {
           is_featured: boolean | null
           is_verified: boolean | null
           location: string | null
+          pronouns: string | null
           rating: number | null
           review_count: number | null
           skills: string[] | null
           social_links: Json | null
+          status: string | null
+          theme_preset: string | null
           timezone: string | null
           updated_at: string
           user_id: string
+          website: string | null
         }
         Insert: {
+          accent_color?: string | null
+          availability?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           discord_access_token?: string | null
@@ -245,15 +255,22 @@ export type Database = {
           is_featured?: boolean | null
           is_verified?: boolean | null
           location?: string | null
+          pronouns?: string | null
           rating?: number | null
           review_count?: number | null
           skills?: string[] | null
           social_links?: Json | null
+          status?: string | null
+          theme_preset?: string | null
           timezone?: string | null
           updated_at?: string
           user_id: string
+          website?: string | null
         }
         Update: {
+          accent_color?: string | null
+          availability?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           discord_access_token?: string | null
@@ -267,13 +284,17 @@ export type Database = {
           is_featured?: boolean | null
           is_verified?: boolean | null
           location?: string | null
+          pronouns?: string | null
           rating?: number | null
           review_count?: number | null
           skills?: string[] | null
           social_links?: Json | null
+          status?: string | null
+          theme_preset?: string | null
           timezone?: string | null
           updated_at?: string
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
