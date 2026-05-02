@@ -12,6 +12,7 @@ import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
 import ProfileEditor from '@/components/profile/ProfileEditor';
 import ReviewsSection from '@/components/profile/ReviewsSection';
+import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -253,11 +254,11 @@ const Profile = () => {
                       </div>
                     )}
                     {!isOwner && (
-                      <Link to={`/messages?user=${profile.id}`} className="md:w-full">
-                        <Button className="gap-2 md:w-full" size="sm">
-                          <MessageSquare className="h-4 w-4" /> Message
-                        </Button>
-                      </Link>
+                      <ConnectButton
+                        targetProfileId={profile.id}
+                        targetName={profile.display_name}
+                        className="md:w-full"
+                      />
                     )}
                   </div>
                 </div>
