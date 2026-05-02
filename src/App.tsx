@@ -13,6 +13,7 @@ import Connections from "./pages/Connections";
 import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import DiscordCallback from "./pages/DiscordCallback";
+import VerifyExperience from "./pages/VerifyExperience";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/messages" element={<Messages />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/discord/callback" element={<DiscordCallback />} />
+            <Route path="/verify/:token" element={<VerifyExperience />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
