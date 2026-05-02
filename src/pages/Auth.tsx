@@ -9,7 +9,24 @@ import { useAuth } from '@/hooks/useAuth';
 const Auth = () => {
   const { user, loading, signInWithDiscord } = useAuth();
   const navigate = useNavigate();
-  const discordRedirectUrl = `${window.location.origin}/discord/callback`;
+
+  const handleDevLogin = async () => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('dev-login', {
+        body: { appRedirectTo: window.location.origin },
+      });
+      if (error || !data?.actionLink) {
+        console.error('Dev login failed', error, data);
+        alert('Dev login failed. Check console.');
+        return;
+      }
+      window.location.href = data.actionLink;
+    } catch (e) {
+      console.error(e);
+      alert('Dev login error.');
+    }
+  };
 
   useEffect(() => {
     if (user && !loading) {
@@ -93,10 +110,15 @@ const Auth = () => {
                   </p>
                 </div>
                 
-                <div className="rounded-md border border-border bg-muted/40 p-3">
-                  <p className="mb-1 text-xs font-medium">Discord redirect URL</p>
-                  <code className="block break-all text-xs text-muted-foreground">{discordRedirectUrl}</code>
-                </div>
+                {/* TEMP: dev-only login — remove before launch */}
+                <Button
+                  variant="outline"
+                  className="w-full h-11"
+                  onClick={handleDevLogin}
+                  disabled={loading}
+                >
+                  Dev login (temporary)
+                </Button>
               </CardContent>
             </Card>
           </div>
