@@ -27,6 +27,13 @@ interface Profile {
   review_count: number;
   skills: string[];
   social_links: Record<string, string>;
+  banner_url: string | null;
+  accent_color: string | null;
+  pronouns: string | null;
+  status: string | null;
+  availability: string | null;
+  website: string | null;
+  theme_preset: string | null;
   created_at: string;
   updated_at: string;
 }
