@@ -271,6 +271,12 @@ const Profile = () => {
                   <TabsTrigger value="experience" className="gap-1.5 text-sm">
                     <Briefcase className="h-4 w-4" /> Experience
                   </TabsTrigger>
+                  <TabsTrigger value="reviews" className="gap-1.5 text-sm">
+                    <Star className="h-4 w-4" /> Reviews
+                    {profile.review_count > 0 && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">({profile.review_count})</span>
+                    )}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="experience" className="space-y-3">
@@ -291,6 +297,10 @@ const Profile = () => {
                       </CardContent>
                     </Card>
                   )}
+                </TabsContent>
+
+                <TabsContent value="reviews">
+                  <ReviewsSection profileId={profile.id} />
                 </TabsContent>
               </Tabs>
             </div>
