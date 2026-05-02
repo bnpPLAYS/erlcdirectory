@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
+import CreateServerDialog from '@/components/server/CreateServerDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -114,12 +115,7 @@ const Servers = () => {
                   <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
-              {user && (
-                <Button className="gap-2 w-full md:w-auto">
-                  <Plus className="h-4 w-4" />
-                  Add Server
-                </Button>
-              )}
+              {user && <CreateServerDialog onCreated={fetchServers} />}
             </div>
 
             {/* Quick filters */}
@@ -155,19 +151,20 @@ const Servers = () => {
               ))}
             </div>
           ) : (
-            <Card className="border-dashed max-w-2xl mx-auto">
+            <Card className="border-dashed max-w-2xl mx-auto card-elevated">
               <CardContent className="p-12 text-center">
                 <Server className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
                 <h3 className="text-xl font-semibold mb-2">No servers listed yet</h3>
                 <p className="text-muted-foreground mb-6">
                   List your server so applicants can see what you offer and how to join.
                 </p>
-                <Link to={user ? "#" : "/auth"}>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    {user ? 'List Your Server' : 'Sign in to list a server'}
-                  </Button>
-                </Link>
+                {user ? (
+                  <CreateServerDialog onCreated={fetchServers} />
+                ) : (
+                  <Link to="/auth">
+                    <Button className="gap-2">Sign in to list a server</Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Navbar from '@/components/layout/Navbar';
+import CreatePostDialog from '@/components/posts/CreatePostDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatTimeAgo } from '@/lib/mockData';
@@ -101,12 +102,7 @@ const Posts = () => {
                   className="pl-10"
                 />
               </div>
-              {user && (
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Post
-                </Button>
-              )}
+              {user && <CreatePostDialog onCreated={fetchPosts} />}
             </div>
 
             {/* Type filters */}
@@ -186,19 +182,20 @@ const Posts = () => {
               })}
             </div>
           ) : (
-            <Card className="border-dashed max-w-2xl mx-auto">
+            <Card className="border-dashed max-w-2xl mx-auto card-elevated">
               <CardContent className="p-12 text-center">
                 <FileText className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No openings yet</h3>
                 <p className="text-muted-foreground mb-6">
                   Start the board with a hiring post, application, or community update.
                 </p>
-                <Link to={user ? "#" : "/auth"}>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    {user ? 'Create the first post' : 'Sign in to post'}
-                  </Button>
-                </Link>
+                {user ? (
+                  <CreatePostDialog onCreated={fetchPosts} />
+                ) : (
+                  <Link to="/auth">
+                    <Button className="gap-2">Sign in to post</Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
