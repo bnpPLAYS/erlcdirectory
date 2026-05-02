@@ -44,13 +44,22 @@ const DiscordCallback = () => {
         return;
       }
 
+      const setupUrl = `${window.location.origin}/profile/me?edit=1&setup=1`;
+      const isNew = !!data?.isNewProfile;
+
       setStatus('success');
-      setMessage('Discord is connected. Signing you in...');
+      setMessage(isNew ? 'Welcome! Setting up your profile...' : 'Discord is connected. Signing you in...');
       if (data?.actionLink) {
-        window.location.href = data.actionLink;
+        if (isNew) {
+          const url = new URL(data.actionLink);
+          url.searchParams.set('redirect_to', setupUrl);
+          window.location.href = url.toString();
+        } else {
+          window.location.href = data.actionLink;
+        }
         return;
       }
-      setTimeout(() => navigate('/'), 1200);
+      setTimeout(() => navigate(isNew ? '/profile/me?edit=1&setup=1' : '/'), 1200);
     };
 
     connectDiscord();

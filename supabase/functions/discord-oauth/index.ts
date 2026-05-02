@@ -110,10 +110,16 @@ Deno.serve(async (req) => {
     const avatarUrl = discordUser.avatar
       ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256`
       : null
+    const bannerUrl = discordUser.banner
+      ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.${discordUser.banner.startsWith('a_') ? 'gif' : 'png'}?size=600`
+      : null
     const expiresAt = new Date(Date.now() + Number(tokenData.expires_in ?? 0) * 1000).toISOString()
     const displayName = safeName(discordUser.global_name) ?? safeName(discordUser.username) ?? 'Discord User'
 
-    const profilePatch = {
+    const { data: existingProfile } = await admin.from('profiles').select('id, banner_url').eq('user_id', userId).maybeSingle()
+    const isNewProfile = !existingProfile?.id
+
+    const profilePatch: Record<string, unknown> = {
       user_id: userId,
       discord_id: discordUser.id,
       discord_username: discordUser.username,
@@ -124,11 +130,14 @@ Deno.serve(async (req) => {
       discord_token_expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     }
+    // Only set banner if Discord provides one and user hasn't customized theirs
+    if (bannerUrl && (isNewProfile || !existingProfile?.banner_url)) {
+      profilePatch.banner_url = bannerUrl
+    }
 
-    const { data: existingProfile } = await admin.from('profiles').select('id').eq('user_id', userId).maybeSingle()
-    const { error: profileError } = existingProfile?.id
-      ? await admin.from('profiles').update(profilePatch).eq('id', existingProfile.id)
-      : await admin.from('profiles').insert(profilePatch)
+    const { error: profileError } = isNewProfile
+      ? await admin.from('profiles').insert(profilePatch)
+      : await admin.from('profiles').update(profilePatch).eq('id', existingProfile!.id)
 
     if (profileError) return json({ error: 'Could not save Discord to your profile.' }, 500)
 
@@ -140,7 +149,7 @@ Deno.serve(async (req) => {
 
     if (linkError || !magicLink?.properties?.action_link) return json({ error: 'Could not finish sign in.' }, 500)
 
-    return json({ success: true, actionLink: magicLink.properties.action_link })
+    return json({ success: true, actionLink: magicLink.properties.action_link, isNewProfile })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return json({ error: message }, 500)
