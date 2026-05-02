@@ -116,7 +116,8 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="glass-strong border-white/10 p-0 gap-0 w-screen max-w-none h-[100dvh] sm:h-[100dvh] sm:max-h-none rounded-none overflow-hidden flex flex-col"
+        fullscreen
+        className="glass-strong p-0 gap-0 overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
