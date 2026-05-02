@@ -119,30 +119,35 @@ const Profile = () => {
   }
 
   const accent = profile.accent_color || '#ffffff';
+  const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
+  const socialEntries = profile.social_links
+    ? Object.entries(profile.social_links).filter(([, v]) => v)
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Banner */}
-      <div className="relative h-48 md:h-60 w-full overflow-hidden border-b border-white/10">
+      {/* Banner — taller, accent-aware */}
+      <div className="relative h-56 md:h-72 w-full overflow-hidden border-b border-white/10">
         {profile.banner_url ? (
           <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full"
             style={{
-              background: `radial-gradient(900px 300px at 20% 0%, ${accent}22, transparent 60%), radial-gradient(700px 250px at 90% 100%, ${accent}1a, transparent 60%), linear-gradient(180deg, hsl(0 0% 8%), hsl(0 0% 4%))`,
+              background: `radial-gradient(900px 320px at 18% 0%, ${accent}33, transparent 60%), radial-gradient(700px 260px at 92% 100%, ${accent}22, transparent 60%), linear-gradient(180deg, hsl(0 0% 9%), hsl(0 0% 4%))`,
             }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}80, transparent)` }} />
       </div>
 
-      <div className="container mx-auto px-4 -mt-16 relative">
+      <div className="container mx-auto px-4 -mt-20 md:-mt-24 relative">
         <div className="flex items-center justify-between mb-4">
           <Link to="/browse">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className="gap-2 backdrop-blur-sm bg-background/40">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           </Link>
@@ -174,134 +179,184 @@ const Profile = () => {
             }}
           />
         ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <Card className="card-elevated liquid-edge sticky top-20">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4 mb-4">
-                    <Avatar className="h-20 w-20 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}55` }}>
+          <>
+            {/* HERO — Identity */}
+            <Card className="card-elevated liquid-edge overflow-hidden mb-6">
+              <CardContent className="p-5 md:p-7">
+                <div className="flex flex-col md:flex-row md:items-end gap-5">
+                  <div className="relative shrink-0">
+                    <div
+                      className="absolute -inset-1.5 rounded-full blur-xl opacity-60"
+                      style={{ background: `radial-gradient(circle, ${accent}55, transparent 70%)` }}
+                      aria-hidden
+                    />
+                    <Avatar
+                      className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
+                      style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
+                    >
                       <AvatarImage src={profile.discord_avatar || undefined} />
-                      <AvatarFallback className="text-xl bg-secondary">
-                        {profile.display_name?.[0] || 'U'}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0 pt-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-lg font-bold truncate">{profile.display_name || 'Discord member'}</h1>
-                        {profile.is_verified && (
-                          <Badge className="badge-verified text-[10px] px-1.5 py-0">Verified</Badge>
-                        )}
-                      </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">
+                        {profile.display_name || 'Discord member'}
+                      </h1>
+                      {profile.is_verified && (
+                        <Badge className="badge-verified text-[10px] px-2 py-0.5">Verified</Badge>
+                      )}
+                      {profile.is_featured && (
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5" style={{ background: `${accent}22`, color: accent, borderColor: `${accent}55` }}>
+                          Featured
+                        </Badge>
+                      )}
                       {profile.pronouns && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
+                        <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full glass">
+                          {profile.pronouns}
+                        </span>
                       )}
-                      {profile.status && (
-                        <p className="text-sm mt-1.5" style={{ color: accent }}>{profile.status}</p>
+                    </div>
+
+                    {profile.status && (
+                      <p className="text-base md:text-lg italic mt-1.5 leading-snug" style={{ color: accent }}>
+                        “{profile.status}”
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
+                      {profile.availability && (
+                        <Badge variant="outline" className="border-white/20 gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+                          {profile.availability}
+                        </Badge>
                       )}
-                    </div>
-                  </div>
-
-                  {profile.availability && (
-                    <Badge variant="outline" className="mb-3 border-white/20">
-                      {profile.availability}
-                    </Badge>
-                  )}
-
-                  {profile.rating > 0 && (
-                    <div className="flex justify-end mb-4">
-                      <RatingStars rating={profile.rating} count={profile.review_count} size="sm" />
-                    </div>
-                  )}
-
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {profile.bio || 'This member has not added profile details yet.'}
-                  </p>
-
-                  <div className="space-y-1.5 text-sm text-muted-foreground mb-4">
-                    {profile.location && (
-                      <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5" /> {profile.location}</div>
-                    )}
-                    {profile.timezone && (
-                      <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</div>
-                    )}
-                    {profile.website && (
-                      <a href={profile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-foreground transition-colors">
-                        <Globe className="h-3.5 w-3.5" /> {profile.website.replace(/^https?:\/\//, '')}
-                      </a>
-                    )}
-                  </div>
-
-                  {profile.skills?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {profile.skills.map((skill) => (
-                        <SkillBadge key={skill} skill={skill} />
-                      ))}
-                    </div>
-                  )}
-
-                  {profile.social_links && Object.keys(profile.social_links).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {Object.entries(profile.social_links).map(([k, v]) => (
-                        <a key={k} href={v} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md glass glass-hover capitalize">
-                          {k.replace('_', ' ')}
+                      {profile.location && (
+                        <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {profile.location}</span>
+                      )}
+                      {profile.timezone && (
+                        <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</span>
+                      )}
+                      {profile.website && (
+                        <a href={profile.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                          <Globe className="h-3.5 w-3.5" /> {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                         </a>
-                      ))}
+                      )}
                     </div>
-                  )}
+                  </div>
 
-                  {!isOwner && (
-                    <div className="flex gap-2 pt-4 border-t border-white/10">
-                      <Link to="/messages" className="flex-1">
-                        <Button className="w-full gap-2" size="sm">
+                  <div className="flex md:flex-col md:items-end gap-3 md:min-w-[180px]">
+                    {profile.rating > 0 && (
+                      <div className="md:text-right">
+                        <RatingStars rating={profile.rating} count={profile.review_count} size="sm" />
+                      </div>
+                    )}
+                    {!isOwner && (
+                      <Link to={`/messages?user=${profile.id}`} className="md:w-full">
+                        <Button className="gap-2 md:w-full" size="sm">
                           <MessageSquare className="h-4 w-4" /> Message
                         </Button>
                       </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-2">
-              <Tabs defaultValue="experience" className="w-full">
-                <TabsList className="glass mb-4">
-                  <TabsTrigger value="experience" className="gap-1.5 text-sm">
-                    <Briefcase className="h-4 w-4" /> Experience
-                  </TabsTrigger>
-                  <TabsTrigger value="reviews" className="gap-1.5 text-sm">
-                    <Star className="h-4 w-4" /> Reviews
-                    {profile.review_count > 0 && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">({profile.review_count})</span>
                     )}
-                  </TabsTrigger>
-                </TabsList>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                <TabsContent value="experience" className="space-y-3">
-                  {experiences.length > 0 ? (
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {experiences.map((exp) => (
-                        <ExperienceCard key={exp.id} experience={exp} />
-                      ))}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <aside className="lg:col-span-1 space-y-4">
+                <Card className="card-elevated liquid-edge">
+                  <CardContent className="p-5 space-y-4">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">About</h3>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {profile.bio || (
+                          <span className="text-muted-foreground italic">
+                            {isOwner ? 'Add a bio in Edit profile.' : 'This member has not added a bio yet.'}
+                          </span>
+                        )}
+                      </p>
                     </div>
-                  ) : (
-                    <Card className="card-elevated">
-                      <CardContent className="p-8 text-center">
-                        <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                        <h3 className="font-semibold mb-1">No experience yet</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {isOwner ? 'Hit Edit profile to add your first role.' : 'This member has not added experience yet.'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
 
-                <TabsContent value="reviews">
-                  <ReviewsSection profileId={profile.id} />
-                </TabsContent>
-              </Tabs>
+                    {profile.skills?.length > 0 && (
+                      <div className="pt-4 border-t border-white/10">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Skills</h3>
+                        <div className="flex flex-wrap gap-1.5">
+                          {profile.skills.map((skill) => (
+                            <SkillBadge key={skill} skill={skill} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {socialEntries.length > 0 && (
+                      <div className="pt-4 border-t border-white/10">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Connect</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {socialEntries.map(([k, v]) => (
+                            <a
+                              key={k}
+                              href={v}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs px-2.5 py-1.5 rounded-md glass glass-hover capitalize flex items-center gap-1.5"
+                              style={{ borderLeft: `2px solid ${accent}80` }}
+                            >
+                              {k.replace('_', ' ')}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </aside>
+
+              <div className="lg:col-span-2">
+                <Tabs defaultValue="experience" className="w-full">
+                  <TabsList className="glass mb-4">
+                    <TabsTrigger value="experience" className="gap-1.5 text-sm">
+                      <Briefcase className="h-4 w-4" /> Experience
+                      {experiences.length > 0 && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">({experiences.length})</span>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="reviews" className="gap-1.5 text-sm">
+                      <Star className="h-4 w-4" /> Reviews
+                      {profile.review_count > 0 && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">({profile.review_count})</span>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="experience" className="space-y-3">
+                    {experiences.length > 0 ? (
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {experiences.map((exp) => (
+                          <ExperienceCard key={exp.id} experience={exp} />
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="card-elevated">
+                        <CardContent className="p-10 text-center">
+                          <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                          <h3 className="font-semibold mb-1">No experience yet</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {isOwner ? 'Hit Edit profile to add your first role.' : 'This member has not added experience yet.'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="reviews">
+                    <ReviewsSection profileId={profile.id} />
+                  </TabsContent>
+                </Tabs>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
