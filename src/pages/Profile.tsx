@@ -12,6 +12,7 @@ import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
 import ProfileEditor from '@/components/profile/ProfileEditor';
 import ReviewsSection from '@/components/profile/ReviewsSection';
+import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
