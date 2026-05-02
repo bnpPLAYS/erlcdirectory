@@ -39,6 +39,8 @@ interface ProfileLike {
   banner_url?: string | null;
   accent_color?: string | null;
   theme_preset?: string | null;
+  discord_username?: string | null;
+  discord_avatar?: string | null;
   skills: string[];
   social_links: Record<string, string> | null;
 }
