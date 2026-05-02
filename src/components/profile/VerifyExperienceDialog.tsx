@@ -157,147 +157,155 @@ const VerifyExperienceDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" /> Verify experience
-          </DialogTitle>
-          <DialogDescription>
-            Pick the Discord server this experience is from. We'll generate a one-time link you can send to
-            a server admin. They sign in with Discord, we confirm their Administrator permission, and they
-            approve.
-            {serverNameHint && (
-              <span className="block mt-1 text-foreground/70">For: <strong>{serverNameHint}</strong></span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Active request panel */}
-        {active && (
-          <div className="glass rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className={cn(
-                  'border-white/20',
-                  active.status === 'approved' && 'border-emerald-500/40 text-emerald-300',
-                  active.status === 'rejected' && 'border-red-500/40 text-red-300',
-                  active.status === 'expired' && 'border-amber-500/40 text-amber-300',
-                )}
-              >
-                {active.status}
-              </Badge>
-              <span className="text-sm text-muted-foreground truncate">
-                Server: {active.guild_name || active.guild_id}
-              </span>
+      <DialogContent className="glass-strong border-white/10 p-0 gap-0 w-screen max-w-none h-[100dvh] sm:max-h-none rounded-none overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
+              <Shield className="h-5 w-5 text-primary" />
             </div>
-
-            {active.status === 'pending' && (
-              <>
-                <div className="flex gap-2">
-                  <Input value={link} readOnly className="font-mono text-xs" />
-                  <Button size="sm" variant="secondary" onClick={copy} className="gap-1.5 shrink-0">
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copied ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  One-time use. Expires {new Date(active.expires_at).toLocaleString()}.
-                </p>
-                <div className="flex justify-between items-center pt-1">
-                  <Button size="sm" variant="ghost" onClick={fetchExisting} className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" /> Check status
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={revoke} className="gap-1.5 text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" /> Revoke
-                  </Button>
-                </div>
-              </>
-            )}
-            {active.status === 'approved' && (
-              <p className="text-sm text-emerald-300 flex items-center gap-2">
-                <Check className="h-4 w-4" />
-                Verified by @{active.approver_discord_username || 'admin'}.
+            <div>
+              <h2 className="text-lg font-semibold">Verify experience</h2>
+              <p className="text-xs text-muted-foreground">
+                Pick the Discord server this experience is from. We'll generate a one-time link for an admin to approve.
+                {serverNameHint && <span className="block mt-0.5">For: <strong>{serverNameHint}</strong></span>}
               </p>
-            )}
-            {active.status === 'rejected' && (
-              <div className="space-y-2">
-                <p className="text-sm text-red-300 flex items-center gap-2">
-                  <X className="h-4 w-4" />
-                  Rejected by @{active.approver_discord_username || 'admin'}.
-                </p>
-                <Button size="sm" variant="secondary" onClick={revoke}>Clear and try a new server</Button>
-              </div>
-            )}
-            {(active.status === 'expired' || active.status === 'revoked') && (
-              <Button size="sm" variant="secondary" onClick={revoke}>Generate a new link</Button>
-            )}
-          </div>
-        )}
-
-        {/* Guild picker (only when there's no pending request) */}
-        {(!active || active.status !== 'pending') && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search your Discord servers…"
-              />
-              <Button size="sm" variant="secondary" onClick={fetchGuilds} className="gap-1.5">
-                <RefreshCw className={cn('h-3.5 w-3.5', loadingGuilds && 'animate-spin')} /> Refresh
-              </Button>
             </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="Close">
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-            {errorMsg && (
-              <div className="glass rounded-lg p-3 text-sm flex items-start gap-2 text-amber-300">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {loadingGuilds && (
-              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading your Discord servers…
-              </div>
-            )}
-
-            {!loadingGuilds && guilds && (
-              <>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Servers you can verify in</p>
-                {adminGuilds.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    You don't have Administrator in any of your servers. Pick one below; an admin from that server can still approve once you send them the link.
-                  </p>
-                ) : null}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                  {[...adminGuilds, ...otherGuilds].map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => generateLink(g)}
-                      disabled={generating}
-                      className="glass glass-hover rounded-lg p-3 flex items-center gap-3 text-left disabled:opacity-50"
-                    >
-                      {g.icon ? (
-                        <img src={g.icon} alt="" className="w-8 h-8 rounded-md" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center text-xs">
-                          {g.name[0]}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{g.name}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {g.owner ? 'Owner' : g.is_admin ? 'Administrator' : 'Member'}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+            {/* Active request panel */}
+            {active && (
+              <div className="glass rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'border-white/20',
+                      active.status === 'approved' && 'border-emerald-500/40 text-emerald-300',
+                      active.status === 'rejected' && 'border-red-500/40 text-red-300',
+                      active.status === 'expired' && 'border-amber-500/40 text-amber-300',
+                    )}
+                  >
+                    {active.status}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground truncate">
+                    Server: {active.guild_name || active.guild_id}
+                  </span>
                 </div>
-              </>
+
+                {active.status === 'pending' && (
+                  <>
+                    <div className="flex gap-2">
+                      <Input value={link} readOnly className="font-mono text-xs" />
+                      <Button size="sm" variant="secondary" onClick={copy} className="gap-1.5 shrink-0">
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copied ? 'Copied' : 'Copy'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      One-time use. Expires {new Date(active.expires_at).toLocaleString()}.
+                    </p>
+                    <div className="flex justify-between items-center pt-1">
+                      <Button size="sm" variant="ghost" onClick={fetchExisting} className="gap-1.5">
+                        <RefreshCw className="h-3.5 w-3.5" /> Check status
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={revoke} className="gap-1.5 text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" /> Revoke
+                      </Button>
+                    </div>
+                  </>
+                )}
+                {active.status === 'approved' && (
+                  <p className="text-sm text-emerald-300 flex items-center gap-2">
+                    <Check className="h-4 w-4" />
+                    Verified by @{active.approver_discord_username || 'admin'}.
+                  </p>
+                )}
+                {active.status === 'rejected' && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-red-300 flex items-center gap-2">
+                      <X className="h-4 w-4" />
+                      Rejected by @{active.approver_discord_username || 'admin'}.
+                    </p>
+                    <Button size="sm" variant="secondary" onClick={revoke}>Clear and try a new server</Button>
+                  </div>
+                )}
+                {(active.status === 'expired' || active.status === 'revoked') && (
+                  <Button size="sm" variant="secondary" onClick={revoke}>Generate a new link</Button>
+                )}
+              </div>
+            )}
+
+            {/* Guild picker (only when there's no pending request) */}
+            {(!active || active.status !== 'pending') && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search your Discord servers…"
+                  />
+                  <Button size="sm" variant="secondary" onClick={fetchGuilds} className="gap-1.5">
+                    <RefreshCw className={cn('h-3.5 w-3.5', loadingGuilds && 'animate-spin')} /> Refresh
+                  </Button>
+                </div>
+
+                {errorMsg && (
+                  <div className="glass rounded-lg p-3 text-sm flex items-start gap-2 text-amber-300">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {loadingGuilds && (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading your Discord servers…
+                  </div>
+                )}
+
+                {!loadingGuilds && guilds && (
+                  <>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Servers you can verify in</p>
+                    {adminGuilds.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        You don't have Administrator in any of your servers. Pick one below; an admin from that server can still approve once you send them the link.
+                      </p>
+                    ) : null}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[...adminGuilds, ...otherGuilds].map((g) => (
+                        <button
+                          key={g.id}
+                          onClick={() => generateLink(g)}
+                          disabled={generating}
+                          className="glass glass-hover rounded-lg p-3 flex items-center gap-3 text-left disabled:opacity-50"
+                        >
+                          {g.icon ? (
+                            <img src={g.icon} alt="" className="w-8 h-8 rounded-md" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center text-xs">
+                              {g.name[0]}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{g.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {g.owner ? 'Owner' : g.is_admin ? 'Administrator' : 'Member'}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
