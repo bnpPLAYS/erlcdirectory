@@ -53,12 +53,69 @@ export type Database = {
           },
         ]
       }
+      experience_verification_requests: {
+        Row: {
+          approver_discord_id: string | null
+          approver_discord_username: string | null
+          created_at: string
+          decided_at: string | null
+          experience_id: string
+          expires_at: string
+          guild_icon: string | null
+          guild_id: string
+          guild_name: string | null
+          id: string
+          profile_id: string
+          status: string
+          token: string
+        }
+        Insert: {
+          approver_discord_id?: string | null
+          approver_discord_username?: string | null
+          created_at?: string
+          decided_at?: string | null
+          experience_id: string
+          expires_at: string
+          guild_icon?: string | null
+          guild_id: string
+          guild_name?: string | null
+          id?: string
+          profile_id: string
+          status?: string
+          token: string
+        }
+        Update: {
+          approver_discord_id?: string | null
+          approver_discord_username?: string | null
+          created_at?: string
+          decided_at?: string | null
+          experience_id?: string
+          expires_at?: string
+          guild_icon?: string | null
+          guild_id?: string
+          guild_name?: string | null
+          id?: string
+          profile_id?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_verification_requests_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiences: {
         Row: {
           created_at: string
           department: string | null
           description: string | null
           end_date: string | null
+          guild_id: string | null
           id: string
           is_current: boolean | null
           is_verified: boolean | null
@@ -67,12 +124,16 @@ export type Database = {
           server_icon: string | null
           server_name: string
           start_date: string
+          verified_at: string | null
+          verified_by_discord_id: string | null
+          verified_by_discord_username: string | null
         }
         Insert: {
           created_at?: string
           department?: string | null
           description?: string | null
           end_date?: string | null
+          guild_id?: string | null
           id?: string
           is_current?: boolean | null
           is_verified?: boolean | null
@@ -81,12 +142,16 @@ export type Database = {
           server_icon?: string | null
           server_name: string
           start_date: string
+          verified_at?: string | null
+          verified_by_discord_id?: string | null
+          verified_by_discord_username?: string | null
         }
         Update: {
           created_at?: string
           department?: string | null
           description?: string | null
           end_date?: string | null
+          guild_id?: string | null
           id?: string
           is_current?: boolean | null
           is_verified?: boolean | null
@@ -95,6 +160,9 @@ export type Database = {
           server_icon?: string | null
           server_name?: string
           start_date?: string
+          verified_at?: string | null
+          verified_by_discord_id?: string | null
+          verified_by_discord_username?: string | null
         }
         Relationships: [
           {
