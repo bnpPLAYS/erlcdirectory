@@ -254,11 +254,11 @@ const Profile = () => {
                       </div>
                     )}
                     {!isOwner && (
-                      <Link to={`/messages?user=${profile.id}`} className="md:w-full">
-                        <Button className="gap-2 md:w-full" size="sm">
-                          <MessageSquare className="h-4 w-4" /> Message
-                        </Button>
-                      </Link>
+                      <ConnectButton
+                        targetProfileId={profile.id}
+                        targetName={profile.display_name}
+                        className="md:w-full"
+                      />
                     )}
                   </div>
                 </div>
