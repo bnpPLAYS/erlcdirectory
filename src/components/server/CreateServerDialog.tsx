@@ -74,60 +74,67 @@ const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
           <Plus className="h-4 w-4" /> List a server
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass-strong border-white/10 max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>List your server</DialogTitle>
-          <DialogDescription>Share what your community is about so the right people can find you.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Server name *</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Liberty State RP" maxLength={80} />
+      <DialogContent className="glass-strong border-white/10 p-0 gap-0 w-screen max-w-none h-[100dvh] sm:max-h-none rounded-none overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold">List your server</h2>
+            <p className="text-xs text-muted-foreground">Share what your community is about so the right people can find you.</p>
           </div>
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What makes your server unique?"
-              rows={4}
-              maxLength={500}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close">
+            <span aria-hidden>×</span>
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-5">
             <div className="space-y-2">
-              <Label>Icon URL</Label>
-              <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="https://…" />
+              <Label>Server name *</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Liberty State RP" maxLength={80} />
             </div>
             <div className="space-y-2">
-              <Label>Tags (comma-separated)</Label>
-              <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="serious, whitelist, EMS" />
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What makes your server unique?"
+                rows={5}
+                maxLength={500}
+              />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Discord invite</Label>
-              <Input value={discordInvite} onChange={(e) => setDiscordInvite(e.target.value)} placeholder="discord.gg/…" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Icon URL</Label>
+                <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="https://…" />
+              </div>
+              <div className="space-y-2">
+                <Label>Tags (comma-separated)</Label>
+                <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="serious, whitelist, EMS" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Roblox link</Label>
-              <Input value={robloxLink} onChange={(e) => setRobloxLink(e.target.value)} placeholder="roblox.com/…" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Discord invite</Label>
+                <Input value={discordInvite} onChange={(e) => setDiscordInvite(e.target.value)} placeholder="discord.gg/…" />
+              </div>
+              <div className="space-y-2">
+                <Label>Roblox link</Label>
+                <Input value={robloxLink} onChange={(e) => setRobloxLink(e.target.value)} placeholder="roblox.com/…" />
+              </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between glass rounded-lg p-3">
-            <div>
-              <p className="text-sm font-medium">Currently hiring</p>
-              <p className="text-xs text-muted-foreground">Show a hiring badge on your listing.</p>
+            <div className="flex items-center justify-between glass rounded-lg p-3">
+              <div>
+                <p className="text-sm font-medium">Currently hiring</p>
+                <p className="text-xs text-muted-foreground">Show a hiring badge on your listing.</p>
+              </div>
+              <Switch checked={isHiring} onCheckedChange={setIsHiring} />
             </div>
-            <Switch checked={isHiring} onCheckedChange={setIsHiring} />
           </div>
         </div>
-        <DialogFooter>
+        <div className="border-t border-white/10 px-6 py-4 flex justify-end gap-2 bg-background/60 backdrop-blur shrink-0">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={submit} disabled={submitting}>
             {submitting ? 'Listing…' : 'List server'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
