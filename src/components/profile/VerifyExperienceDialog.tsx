@@ -157,7 +157,7 @@ const VerifyExperienceDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 p-0 gap-0 w-screen max-w-none h-[100dvh] sm:max-h-none rounded-none overflow-hidden flex flex-col">
+      <DialogContent fullscreen className="glass-strong p-0 gap-0 overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
