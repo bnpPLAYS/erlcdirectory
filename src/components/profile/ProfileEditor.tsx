@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2 } from 'lucide-react';
+import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import VerifyExperienceDialog from './VerifyExperienceDialog';
 
 interface Experience {
   id: string;
@@ -95,6 +96,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   const [newExpKeys, setNewExpKeys] = useState<Set<string>>(new Set());
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -362,7 +364,26 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                       </Field>
                     )}
                   </div>
-                  <div className="md:col-span-2 flex justify-end">
+                  <div className="md:col-span-2 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      {e.is_verified ? (
+                        <Badge className="badge-verified gap-1"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
+                      ) : (
+                        !newExpKeys.has(e.id) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setVerifyTarget(e)}
+                            className="gap-2"
+                          >
+                            <Shield className="h-4 w-4" /> Verify with admin
+                          </Button>
+                        )
+                      )}
+                      {newExpKeys.has(e.id) && (
+                        <span className="text-xs text-muted-foreground">Save first to request verification.</span>
+                      )}
+                    </div>
                     <Button size="sm" variant="ghost" onClick={() => deleteExp(e.id)} className="gap-2 text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" /> Remove
                     </Button>
@@ -391,6 +412,19 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {verifyTarget && (
+        <VerifyExperienceDialog
+          open={!!verifyTarget}
+          onOpenChange={(o) => !o && setVerifyTarget(null)}
+          experienceId={verifyTarget.id}
+          profileId={profile.id}
+          serverNameHint={verifyTarget.server_name}
+          onVerified={() => {
+            setExps((prev) => prev.map((x) => (x.id === verifyTarget.id ? { ...x, is_verified: true } : x)));
+          }}
+        />
+      )}
     </div>
   );
 };
