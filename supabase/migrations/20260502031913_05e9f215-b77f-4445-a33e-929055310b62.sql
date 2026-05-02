@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.recompute_profile_rating() FROM PUBLIC, anon, authenticated;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import RatingStars from '@/components/ui/rating-stars';
 import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
 import ProfileEditor from '@/components/profile/ProfileEditor';
+import ReviewsSection from '@/components/profile/ReviewsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -50,6 +51,7 @@ interface Experience {
 
 const Profile = () => {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile: meProfile } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -57,6 +59,16 @@ const Profile = () => {
   const [editMode, setEditMode] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+
+  useEffect(() => {
+    if (id) fetchProfile();
+  }, [id]);
+
+  useEffect(() => {
+    if (isOwner && searchParams.get('edit') === '1') {
+      setEditMode(true);
+    }
+  }, [isOwner, searchParams]);
 
   useEffect(() => {
     if (id) fetchProfile();
@@ -148,8 +160,21 @@ const Profile = () => {
           <ProfileEditor
             profile={profile as any}
             experiences={experiences}
-            onSaved={() => { setEditMode(false); fetchProfile(); }}
-            onCancel={() => setEditMode(false)}
+            onSaved={() => {
+              setEditMode(false);
+              if (searchParams.get('edit')) {
+                searchParams.delete('edit');
+                setSearchParams(searchParams, { replace: true });
+              }
+              fetchProfile();
+            }}
+            onCancel={() => {
+              setEditMode(false);
+              if (searchParams.get('edit')) {
+                searchParams.delete('edit');
+                setSearchParams(searchParams, { replace: true });
+              }
+            }}
           />
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
@@ -246,6 +271,12 @@ const Profile = () => {
                   <TabsTrigger value="experience" className="gap-1.5 text-sm">
                     <Briefcase className="h-4 w-4" /> Experience
                   </TabsTrigger>
+                  <TabsTrigger value="reviews" className="gap-1.5 text-sm">
+                    <Star className="h-4 w-4" /> Reviews
+                    {profile.review_count > 0 && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">({profile.review_count})</span>
+                    )}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="experience" className="space-y-3">
@@ -266,6 +297,10 @@ const Profile = () => {
                       </CardContent>
                     </Card>
                   )}
+                </TabsContent>
+
+                <TabsContent value="reviews">
+                  <ReviewsSection profileId={profile.id} />
                 </TabsContent>
               </Tabs>
             </div>
