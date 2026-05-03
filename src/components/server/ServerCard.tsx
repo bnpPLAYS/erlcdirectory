@@ -18,6 +18,7 @@ interface ServerCardProps {
     is_featured: boolean;
     is_hiring: boolean;
     tags: string[];
+    discord_invite?: string | null;
   };
 }
 
