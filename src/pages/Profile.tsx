@@ -186,11 +186,37 @@ const Profile = () => {
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           </Link>
-          {isOwner && !editMode && (
-            <Button size="sm" onClick={() => setEditMode(true)} className="gap-2">
-              <Pencil className="h-4 w-4" /> Edit profile
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {isAdmin && !isOwner && profile && (
+              <>
+                <Button
+                  size="sm"
+                  variant={profile.is_verified ? 'default' : 'outline'}
+                  onClick={() => toggleAdminFlag('is_verified')}
+                  className="gap-2"
+                  title="Admin: toggle verified badge"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {profile.is_verified ? 'Remove verified' : 'Grant verified'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={profile.is_featured ? 'default' : 'outline'}
+                  onClick={() => toggleAdminFlag('is_featured')}
+                  className="gap-2"
+                  title="Admin: toggle featured"
+                >
+                  <Crown className="h-4 w-4" />
+                  {profile.is_featured ? 'Unfeature' : 'Feature'}
+                </Button>
+              </>
+            )}
+            {isOwner && !editMode && (
+              <Button size="sm" onClick={() => setEditMode(true)} className="gap-2">
+                <Pencil className="h-4 w-4" /> Edit profile
+              </Button>
+            )}
+          </div>
         </div>
 
         {editMode && isOwner ? (
