@@ -63,8 +63,38 @@ const Profile = () => {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!meProfile?.user_id) return setIsAdmin(false);
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', meProfile.user_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [meProfile?.user_id]);
+
+  const toggleAdminFlag = async (field: 'is_verified' | 'is_featured') => {
+    if (!profile) return;
+    const newVal = !profile[field];
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: newVal })
+      .eq('id', profile.id);
+    if (error) {
+      toast.error('Failed: ' + error.message);
+      return;
+    }
+    toast.success(`${field === 'is_verified' ? 'Verified' : 'Featured'} ${newVal ? 'granted' : 'removed'}`);
+    setProfile({ ...profile, [field]: newVal });
+  };
 
   useEffect(() => {
     if (id) fetchProfile();
