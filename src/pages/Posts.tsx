@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Search, Plus, Briefcase, User, Megaphone, MessageCircle, Clock } from 'lucide-react';
+import { FileText, Search, Plus, Briefcase, User, Megaphone, MessageCircle, Clock, ExternalLink, Server as ServerIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,10 +21,19 @@ interface Post {
   view_count: number;
   application_count: number;
   created_at: string;
+  server_id: string | null;
   profiles: {
+    id: string;
     display_name: string | null;
     discord_avatar: string | null;
+    discord_id: string | null;
     is_verified: boolean;
+  } | null;
+  servers: {
+    id: string;
+    name: string;
+    icon: string | null;
+    discord_invite: string | null;
   } | null;
 }
 
@@ -51,8 +60,9 @@ const Posts = () => {
     const { data, error } = await supabase
       .from('posts')
       .select(`
-        id, type, title, content, is_open, view_count, application_count, created_at,
-        profiles!author_id(display_name, discord_avatar, is_verified)
+        id, type, title, content, is_open, view_count, application_count, created_at, server_id,
+        profiles!author_id(id, display_name, discord_avatar, discord_id, is_verified),
+        servers(id, name, icon, discord_invite)
       `)
       .order('created_at', { ascending: false })
       .limit(50);
