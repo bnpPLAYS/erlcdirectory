@@ -26,6 +26,16 @@ interface Profile {
   rating: number;
   review_count: number;
   skills: string[];
+  experiences?: Array<{
+    id: string;
+    role: string;
+    server_name: string;
+    server_icon: string | null;
+    is_verified: boolean;
+    guild_id: string | null;
+    member_count?: number | null;
+  }>;
+  total_members?: number;
 }
 
 const Browse = () => {
