@@ -247,6 +247,17 @@ const Profile = () => {
                           <Globe className="h-3.5 w-3.5" /> {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                         </a>
                       )}
+                      {profile.discord_id && (
+                        <a
+                          href={`https://discord.com/users/${profile.discord_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                          title="Open in Discord"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> @{profile.discord_username || 'discord'}
+                        </a>
+                      )}
                     </div>
                   </div>
 
