@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star } from 'lucide-react';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,6 +20,8 @@ interface ProfileData {
   id: string;
   display_name: string | null;
   discord_avatar: string | null;
+  discord_id: string | null;
+  discord_username: string | null;
   bio: string | null;
   is_verified: boolean;
   is_featured: boolean;
@@ -48,6 +50,7 @@ interface Experience {
   end_date: string | null;
   is_current: boolean;
   is_verified: boolean;
+  guild_id: string | null;
 }
 
 const Profile = () => {
