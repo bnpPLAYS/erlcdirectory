@@ -66,7 +66,44 @@ const Browse = () => {
     const { data, error } = await query.limit(50);
 
     if (!error && data) {
-      setProfiles(data);
+      // Fetch experiences for these profiles
+      const ids = data.map((p) => p.id);
+      const { data: exps } = await supabase
+        .from('experiences')
+        .select('id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date')
+        .in('profile_id', ids)
+        .order('is_verified', { ascending: false })
+        .order('start_date', { ascending: false });
+
+      // Fetch server member counts by guild_id
+      const guildIds = [...new Set((exps || []).map((e) => e.guild_id).filter(Boolean) as string[])];
+      const { data: serverRows } = guildIds.length
+        ? await supabase.from('servers').select('guild_id, member_count').in('guild_id', guildIds)
+        : { data: [] as any[] };
+      const memberByGuild = new Map<string, number>();
+      (serverRows || []).forEach((s: any) => s.guild_id && memberByGuild.set(s.guild_id, s.member_count || 0));
+
+      const enriched = data.map((p: any) => {
+        const userExps = (exps || []).filter((e) => e.profile_id === p.id);
+        const total = userExps.reduce(
+          (sum, e) => sum + (e.guild_id ? memberByGuild.get(e.guild_id) || 0 : 0),
+          0
+        );
+        return {
+          ...p,
+          experiences: userExps.map((e) => ({
+            id: e.id,
+            role: e.role,
+            server_name: e.server_name,
+            server_icon: e.server_icon,
+            is_verified: e.is_verified,
+            member_count: e.guild_id ? memberByGuild.get(e.guild_id) || 0 : 0,
+          })),
+          total_members: total,
+        };
+      });
+
+      setProfiles(enriched);
     }
     setLoading(false);
   };
