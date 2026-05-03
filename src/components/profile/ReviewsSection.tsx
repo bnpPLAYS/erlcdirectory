@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Star, MessageSquareText } from 'lucide-react';
+import { Star, MessageSquareText, Server as ServerIcon, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ReviewRow {
   id: string;
@@ -16,12 +23,21 @@ interface ReviewRow {
   content: string | null;
   created_at: string;
   reviewer_id: string;
+  server_id: string | null;
+  reviewee_id: string | null;
   reviewer?: {
     id: string;
     display_name: string | null;
     discord_avatar: string | null;
     discord_username: string | null;
   } | null;
+  server?: { id: string; name: string; icon: string | null } | null;
+}
+
+interface MemberServer {
+  id: string;
+  name: string;
+  icon: string | null;
 }
 
 const Stars = ({ value, onChange, size = 16 }: { value: number; onChange?: (v: number) => void; size?: number }) => (
@@ -44,68 +60,149 @@ const Stars = ({ value, onChange, size = 16 }: { value: number; onChange?: (v: n
   </div>
 );
 
-const ReviewsSection = ({ profileId }: { profileId: string }) => {
+interface Props {
+  profileId?: string;
+  serverId?: string;
+  serverName?: string;
+}
+
+const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
   const { profile: me } = useAuth();
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // For profile reviews: optional server tag
+  const [tagServerId, setTagServerId] = useState<string>('none');
+  const [memberServers, setMemberServers] = useState<MemberServer[]>([]);
 
-  const isOwn = me?.id === profileId;
-  const myReview = reviews.find((r) => r.reviewer_id === me?.id);
+  const isOwn = !!profileId && me?.id === profileId;
 
   useEffect(() => {
     fetchReviews();
-  }, [profileId]);
+  }, [profileId, serverId]);
 
+  // Load servers the reviewee works in (for profile reviews)
   useEffect(() => {
-    if (myReview) {
-      setRating(myReview.rating);
-      setContent(myReview.content || '');
-    }
-  }, [myReview?.id]);
+    if (!profileId) return;
+    (async () => {
+      const { data: exps } = await supabase
+        .from('experiences')
+        .select('guild_id')
+        .eq('profile_id', profileId)
+        .not('guild_id', 'is', null);
+      const guildIds = [...new Set((exps || []).map((e) => e.guild_id))].filter(Boolean) as string[];
+      if (!guildIds.length) {
+        setMemberServers([]);
+        return;
+      }
+      const { data: servers } = await supabase
+        .from('servers')
+        .select('id, name, icon, guild_id')
+        .in('guild_id', guildIds);
+      setMemberServers((servers || []) as any);
+    })();
+  }, [profileId]);
 
   const fetchReviews = async () => {
     setLoading(true);
-    const { data } = await supabase
+    let query = supabase
       .from('reviews')
-      .select('id, rating, content, created_at, reviewer_id')
-      .eq('reviewee_id', profileId)
+      .select('id, rating, content, created_at, reviewer_id, server_id, reviewee_id')
       .order('created_at', { ascending: false });
+    if (serverId) query = query.eq('server_id', serverId);
+    else if (profileId) query = query.eq('reviewee_id', profileId);
 
+    const { data } = await query;
     if (data && data.length) {
-      const ids = [...new Set(data.map((r) => r.reviewer_id))];
-      const { data: reviewers } = await supabase
-        .from('profiles')
-        .select('id, display_name, discord_avatar, discord_username')
-        .in('id', ids);
-      const map = new Map(reviewers?.map((r) => [r.id, r]) || []);
-      setReviews(data.map((r) => ({ ...r, reviewer: map.get(r.reviewer_id) || null })));
+      const reviewerIds = [...new Set(data.map((r) => r.reviewer_id))];
+      const serverIds = [...new Set(data.map((r) => r.server_id).filter(Boolean) as string[])];
+      const [{ data: reviewers }, serversRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, display_name, discord_avatar, discord_username')
+          .in('id', reviewerIds),
+        serverIds.length
+          ? supabase.from('servers').select('id, name, icon').in('id', serverIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const rmap = new Map((reviewers || []).map((r) => [r.id, r]));
+      const smap = new Map(((serversRes as any).data || []).map((s: any) => [s.id, s]));
+      setReviews(
+        data.map((r) => ({
+          ...r,
+          reviewer: rmap.get(r.reviewer_id) || null,
+          server: r.server_id ? (smap.get(r.server_id) as any) || null : null,
+        }))
+      );
     } else {
       setReviews([]);
     }
     setLoading(false);
   };
 
+  const myReview = reviews.find(
+    (r) =>
+      r.reviewer_id === me?.id &&
+      (serverId
+        ? r.server_id === serverId && !r.reviewee_id
+        : profileId
+        ? r.reviewee_id === profileId &&
+          ((tagServerId === 'none' && !r.server_id) || r.server_id === tagServerId)
+        : false)
+  );
+
+  useEffect(() => {
+    if (myReview) {
+      setRating(myReview.rating);
+      setContent(myReview.content || '');
+    } else {
+      setContent('');
+      setRating(5);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myReview?.id, tagServerId]);
+
   const submit = async () => {
     if (!me) return;
     setSubmitting(true);
-    const { error } = await supabase.from('reviews').upsert(
-      {
-        reviewee_id: profileId,
-        reviewer_id: me.id,
-        rating,
-        content: content.trim() || null,
-      },
-      { onConflict: 'reviewee_id,reviewer_id' }
+    const payload: any = {
+      reviewer_id: me.id,
+      rating,
+      content: content.trim() || null,
+    };
+    if (serverId) {
+      payload.server_id = serverId;
+      payload.reviewee_id = null;
+    } else if (profileId) {
+      payload.reviewee_id = profileId;
+      payload.server_id = tagServerId !== 'none' ? tagServerId : null;
+    }
+
+    // Find existing match to update, otherwise insert
+    const existing = reviews.find(
+      (r) =>
+        r.reviewer_id === me.id &&
+        (r.reviewee_id || null) === (payload.reviewee_id || null) &&
+        (r.server_id || null) === (payload.server_id || null)
     );
+
+    let error;
+    if (existing) {
+      ({ error } = await supabase
+        .from('reviews')
+        .update({ rating: payload.rating, content: payload.content })
+        .eq('id', existing.id));
+    } else {
+      ({ error } = await supabase.from('reviews').insert(payload));
+    }
     setSubmitting(false);
     if (error) {
       toast({ title: 'Could not save review', description: error.message, variant: 'destructive' });
       return;
     }
-    toast({ title: myReview ? 'Review updated' : 'Review posted' });
+    toast({ title: existing ? 'Review updated' : 'Review posted' });
     fetchReviews();
   };
 
@@ -121,6 +218,10 @@ const ReviewsSection = ({ profileId }: { profileId: string }) => {
     fetchReviews();
   };
 
+  const composerLabel = serverId
+    ? `Review ${serverName || 'this server'}`
+    : 'Your review';
+
   return (
     <Card className="card-elevated">
       <CardContent className="p-5">
@@ -131,17 +232,42 @@ const ReviewsSection = ({ profileId }: { profileId: string }) => {
         </div>
 
         {me && !isOwn && (
-          <div className="glass rounded-xl p-4 mb-5">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs text-muted-foreground">Your rating</span>
+          <div className="glass rounded-xl p-4 mb-5 space-y-3">
+            <p className="text-xs text-muted-foreground">{composerLabel}</p>
+
+            {profileId && memberServers.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Context</p>
+                <Select value={tagServerId} onValueChange={setTagServerId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">General feedback</SelectItem>
+                    {memberServers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        Working at {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Rating</span>
               <Stars value={rating} onChange={setRating} size={18} />
             </div>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Share your honest experience working with this member…"
+              placeholder={
+                serverId
+                  ? 'What is it like to work / be in this server?'
+                  : 'Share your honest experience with this member…'
+              }
               rows={3}
-              className="bg-background/40 border-white/10 mb-3"
+              className="bg-background/40 border-white/10"
               maxLength={500}
             />
             <div className="flex items-center justify-between">
@@ -149,7 +275,7 @@ const ReviewsSection = ({ profileId }: { profileId: string }) => {
               <div className="flex gap-2">
                 {myReview && (
                   <Button variant="ghost" size="sm" onClick={remove}>
-                    Delete
+                    <X className="h-3 w-3 mr-1" /> Delete
                   </Button>
                 )}
                 <Button size="sm" onClick={submit} disabled={submitting}>
@@ -192,6 +318,19 @@ const ReviewsSection = ({ profileId }: { profileId: string }) => {
                         {r.reviewer?.display_name || 'Member'}
                       </Link>
                       <Stars value={r.rating} size={12} />
+                      {r.server && profileId && (
+                        <Link
+                          to={`/server/${r.server.id}`}
+                          className="text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10"
+                        >
+                          {r.server.icon ? (
+                            <img src={r.server.icon} alt="" className="h-3 w-3 rounded-sm" />
+                          ) : (
+                            <ServerIcon className="h-3 w-3" />
+                          )}
+                          {r.server.name}
+                        </Link>
+                      )}
                     </div>
                     {r.content && (
                       <p className="text-sm text-muted-foreground/90 mt-1 whitespace-pre-wrap">{r.content}</p>
