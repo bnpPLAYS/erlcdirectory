@@ -174,11 +174,48 @@ const Posts = () => {
                             </span>
                           </div>
                           <h3 className="font-semibold mb-1">{post.title}</h3>
+                          {post.servers && (
+                            <Link
+                              to={`/server/${post.servers.id}`}
+                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-2 px-2 py-1 rounded bg-white/5"
+                            >
+                              {post.servers.icon ? (
+                                <img src={post.servers.icon} alt="" className="h-3.5 w-3.5 rounded-sm" />
+                              ) : (
+                                <ServerIcon className="h-3 w-3" />
+                              )}
+                              {post.servers.name}
+                            </Link>
+                          )}
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                             {post.content}
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{post.profiles?.display_name || 'Discord member'}</span>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <Link to={`/profile/${post.profiles?.id}`} className="hover:text-foreground">
+                              {post.profiles?.display_name || 'Discord member'}
+                            </Link>
+                            {post.profiles?.discord_id && (
+                              <a
+                                href={`https://discord.com/users/${post.profiles.discord_id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:text-foreground inline-flex items-center gap-1"
+                                title="Open author in Discord"
+                              >
+                                <ExternalLink className="h-3 w-3" /> Discord
+                              </a>
+                            )}
+                            {post.servers?.discord_invite && (
+                              <a
+                                href={post.servers.discord_invite}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:text-foreground inline-flex items-center gap-1"
+                                title="Open server invite"
+                              >
+                                <ExternalLink className="h-3 w-3" /> Server invite
+                              </a>
+                            )}
                             <span>• {post.view_count} views</span>
                             {post.application_count > 0 && (
                               <span>• {post.application_count} applications</span>
