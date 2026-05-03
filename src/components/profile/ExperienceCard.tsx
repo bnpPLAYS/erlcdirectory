@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Users } from 'lucide-react';
-import { formatNumber } from '@/lib/mockData';
+import { Calendar, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Experience {
   id: string;
@@ -13,22 +15,48 @@ interface Experience {
   end_date?: string | null;
   is_current: boolean;
   is_verified: boolean;
+  guild_id?: string | null;
 }
 
-interface ExperienceCardProps {
-  experience: Experience;
-}
+const ExperienceCard = ({ experience }: { experience: Experience }) => {
+  const [serverId, setServerId] = useState<string | null>(null);
 
-const ExperienceCard = ({ experience }: ExperienceCardProps) => {
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
+  useEffect(() => {
+    if (!experience.guild_id) return;
+    supabase
+      .from('servers')
+      .select('id')
+      .eq('guild_id', experience.guild_id)
+      .maybeSingle()
+      .then(({ data }) => setServerId(data?.id || null));
+  }, [experience.guild_id]);
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+  const ServerHeader = (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+      {experience.server_icon ? (
+        <img
+          src={experience.server_icon}
+          alt=""
+          className="w-6 h-6 rounded object-cover ring-1 ring-white/10"
+        />
+      ) : (
+        <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-[10px] font-semibold">
+          {experience.server_name[0]}
+        </div>
+      )}
+      <span className="truncate">{experience.server_name}</span>
+      {serverId && <ExternalLink className="h-3 w-3 opacity-50" />}
+    </div>
+  );
 
   return (
     <Card className="card-interactive">
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold text-foreground">{experience.role}</h4>
               {experience.department && (
@@ -37,12 +65,13 @@ const ExperienceCard = ({ experience }: ExperienceCardProps) => {
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="w-5 h-5 rounded bg-secondary flex items-center justify-center text-[10px] font-semibold">
-                {experience.server_name[0]}
-              </div>
-              <span className="truncate">{experience.server_name}</span>
-            </div>
+            {serverId ? (
+              <Link to={`/server/${serverId}`} className="hover:text-foreground transition-colors block">
+                {ServerHeader}
+              </Link>
+            ) : (
+              ServerHeader
+            )}
           </div>
         </div>
 
