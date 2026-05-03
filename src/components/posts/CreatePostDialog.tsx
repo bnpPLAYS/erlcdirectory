@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Briefcase, Search, AlertCircle, Server as ServerIcon } from 'lucide-react';
+import { Plus, X, Briefcase, Search, Server as ServerIcon, RefreshCw, Shield } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,20 +13,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
 
 const TYPES = [
-  { value: 'hiring', label: 'Hiring', desc: 'Recruit staff for a server you own', requiresServer: true },
-  { value: 'looking', label: 'Looking for work', desc: 'Tell servers what role you want', requiresServer: false },
-  { value: 'announcement', label: 'Announcement', desc: 'Community update or news', requiresServer: false },
-  { value: 'discussion', label: 'Discussion', desc: 'Start a conversation', requiresServer: false },
+  { value: 'hiring', label: 'Hiring', desc: 'Recruit staff for a server' },
+  { value: 'looking', label: 'Looking for work', desc: 'Tell servers what role you want' },
+  { value: 'announcement', label: 'Announcement', desc: 'Community update or news' },
+  { value: 'discussion', label: 'Discussion', desc: 'Start a conversation' },
 ];
 
-interface OwnedServer {
+interface Guild {
   id: string;
   name: string;
   icon: string | null;
-  is_hiring: boolean;
+  owner: boolean;
+  is_admin: boolean;
 }
 
 const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
@@ -35,46 +35,69 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
   const [type, setType] = useState('hiring');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [serverId, setServerId] = useState<string | null>(null);
-  const [serverSearch, setServerSearch] = useState('');
+  const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
+  const [guildSearch, setGuildSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [servers, setServers] = useState<OwnedServer[] | null>(null);
-  const [loadingServers, setLoadingServers] = useState(false);
-
-  const typeMeta = TYPES.find((t) => t.value === type)!;
-  const needsServer = typeMeta.requiresServer;
+  const [guilds, setGuilds] = useState<Guild[]>([]);
+  const [loadingGuilds, setLoadingGuilds] = useState(false);
 
   const reset = () => {
     setTitle('');
     setContent('');
     setType('hiring');
-    setServerId(null);
-    setServerSearch('');
+    setSelectedGuild(null);
+    setGuildSearch('');
+  };
+
+  const loadGuilds = async () => {
+    setLoadingGuilds(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-guilds');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setGuilds((data?.guilds || []) as Guild[]);
+    } catch (e: any) {
+      toast({ title: 'Could not load Discord servers', description: e?.message, variant: 'destructive' });
+    } finally {
+      setLoadingGuilds(false);
+    }
   };
 
   useEffect(() => {
-    if (!open || !profile) return;
-    setLoadingServers(true);
-    supabase
-      .from('servers')
-      .select('id, name, icon, is_hiring')
-      .eq('owner_id', profile.id)
-      .order('name')
-      .then(({ data }) => {
-        setServers((data || []) as OwnedServer[]);
-        setLoadingServers(false);
-      });
-  }, [open, profile]);
+    if (open && guilds.length === 0) loadGuilds();
+  }, [open]);
 
-  // Clear server selection when switching to a type that doesn't need one
-  useEffect(() => {
-    if (!needsServer) setServerId(null);
-  }, [needsServer]);
+  const ensureServerRow = async (g: Guild): Promise<string | null> => {
+    // Look up existing server by guild_id
+    const { data: existing } = await supabase
+      .from('servers')
+      .select('id')
+      .eq('guild_id', g.id)
+      .maybeSingle();
+    if (existing) return existing.id;
+    // Create stub
+    const { data: created, error } = await supabase
+      .from('servers')
+      .insert({
+        name: g.name,
+        icon: g.icon,
+        guild_id: g.id,
+        owner_id: g.is_admin ? profile?.id : null,
+        is_hiring: type === 'hiring',
+      })
+      .select('id')
+      .single();
+    if (error) {
+      toast({ title: 'Could not link server', description: error.message, variant: 'destructive' });
+      return null;
+    }
+    return created.id;
+  };
 
   const submit = async () => {
     if (!profile) return;
-    if (needsServer && !serverId) {
-      toast({ title: 'Pick a server', description: 'Choose which of your servers this hiring post is for.', variant: 'destructive' });
+    if (!selectedGuild) {
+      toast({ title: 'Pick a Discord server', description: 'Every opening must be linked to a server you belong to.', variant: 'destructive' });
       return;
     }
     if (title.trim().length < 3) {
@@ -86,6 +109,11 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       return;
     }
     setSubmitting(true);
+    const serverId = await ensureServerRow(selectedGuild);
+    if (!serverId) {
+      setSubmitting(false);
+      return;
+    }
     const { error } = await supabase.from('posts').insert({
       author_id: profile.id,
       type,
@@ -104,8 +132,8 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     onCreated?.();
   };
 
-  const filteredServers = (servers || []).filter((s) =>
-    s.name.toLowerCase().includes(serverSearch.toLowerCase())
+  const filteredGuilds = guilds.filter((g) =>
+    g.name.toLowerCase().includes(guildSearch.toLowerCase())
   );
 
   return (
@@ -127,7 +155,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Create an opening</h2>
-              <p className="text-xs text-muted-foreground">Share a hiring post, an application, or a community update.</p>
+              <p className="text-xs text-muted-foreground">Linked to a Discord server you belong to.</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close">
@@ -159,83 +187,75 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
               </div>
             </section>
 
-            {/* Server picker — only for hiring */}
-            {needsServer && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Server you're hiring for *</Label>
-                  {servers && servers.length > 0 && (
-                    <span className="text-[11px] text-muted-foreground">{servers.length} server{servers.length === 1 ? '' : 's'}</span>
-                  )}
-                </div>
+            {/* Discord server picker */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Shield className="h-3 w-3" /> Discord server *
+                </Label>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={loadGuilds} disabled={loadingGuilds}>
+                  <RefreshCw className={cn('h-3.5 w-3.5', loadingGuilds && 'animate-spin')} />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                Verifies you actually belong to the server. We'll auto-list it if it's new.
+              </p>
 
-                {loadingServers ? (
-                  <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your servers…</div>
-                ) : !servers || servers.length === 0 ? (
-                  <div className="glass rounded-xl p-6 text-center space-y-3">
-                    <AlertCircle className="h-6 w-6 text-amber-300 mx-auto" />
-                    <div>
-                      <p className="font-medium text-sm">You don't own any listed servers yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        List a server first so you can post hiring openings for it.
-                      </p>
+              {loadingGuilds ? (
+                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your Discord servers…</div>
+              ) : guilds.length === 0 ? (
+                <div className="glass rounded-xl p-6 text-center text-sm text-muted-foreground">
+                  No Discord servers found. Re-link your Discord account if this is wrong.
+                </div>
+              ) : (
+                <>
+                  {guilds.length > 4 && (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={guildSearch}
+                        onChange={(e) => setGuildSearch(e.target.value)}
+                        placeholder="Search your servers…"
+                        className="pl-9"
+                      />
                     </div>
-                    <Link to="/servers" onClick={() => setOpen(false)}>
-                      <Button size="sm" variant="secondary" className="gap-2">
-                        <ServerIcon className="h-4 w-4" /> Go to my servers
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <>
-                    {servers.length > 4 && (
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          value={serverSearch}
-                          onChange={(e) => setServerSearch(e.target.value)}
-                          placeholder="Search your servers…"
-                          className="pl-9"
-                        />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-                      {filteredServers.map((s) => {
-                        const selected = serverId === s.id;
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setServerId(s.id)}
-                            className={cn(
-                              'glass glass-hover rounded-lg p-3 flex items-center gap-3 text-left border transition-colors',
-                              selected ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10'
-                            )}
-                          >
-                            {s.icon ? (
-                              <img src={s.icon} alt="" className="w-9 h-9 rounded-md object-cover" />
-                            ) : (
-                              <div className="w-9 h-9 rounded-md bg-secondary grid place-items-center text-sm font-semibold">
-                                {s.name[0]?.toUpperCase()}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{s.name}</p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {s.is_hiring ? 'Already marked hiring' : 'Owner'}
-                              </p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+                    {filteredGuilds.map((g) => {
+                      const selected = selectedGuild?.id === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setSelectedGuild(g)}
+                          className={cn(
+                            'glass glass-hover rounded-lg p-3 flex items-center gap-3 text-left border transition-colors',
+                            selected ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10'
+                          )}
+                        >
+                          {g.icon ? (
+                            <img src={g.icon} alt="" className="w-9 h-9 rounded-md object-cover" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-md bg-secondary grid place-items-center text-sm font-semibold">
+                              <ServerIcon className="h-4 w-4" />
                             </div>
-                          </button>
-                        );
-                      })}
-                      {filteredServers.length === 0 && (
-                        <p className="col-span-full text-sm text-muted-foreground text-center py-4">No servers match.</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </section>
-            )}
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{g.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {g.owner ? 'Owner' : g.is_admin ? 'Admin' : 'Member'}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {filteredGuilds.length === 0 && (
+                      <p className="col-span-full text-sm text-muted-foreground text-center py-4">No servers match.</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
 
             {/* Title */}
             <section className="space-y-2">
@@ -269,7 +289,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           <Button
             onClick={submit}
-            disabled={submitting || (needsServer && !serverId)}
+            disabled={submitting || !selectedGuild}
             className="gap-2"
           >
             {submitting ? 'Posting…' : 'Post opening'}

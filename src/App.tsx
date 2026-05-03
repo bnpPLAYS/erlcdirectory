@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
 import Servers from "./pages/Servers";
+import ServerDetail from "./pages/ServerDetail";
 import Posts from "./pages/Posts";
 import Connections from "./pages/Connections";
 import Messages from "./pages/Messages";
@@ -30,7 +31,7 @@ const App = () => (
             <Route path="/browse" element={<Browse />} />
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/servers" element={<Servers />} />
-            <Route path="/server/:id" element={<Servers />} />
+            <Route path="/server/:id" element={<ServerDetail />} />
             <Route path="/posts" element={<Posts />} />
             <Route path="/connections" element={<Connections />} />
             <Route path="/messages" element={<Messages />} />

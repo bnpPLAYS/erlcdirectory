@@ -402,8 +402,9 @@ export type Database = {
           created_at: string
           id: string
           rating: number
-          reviewee_id: string
+          reviewee_id: string | null
           reviewer_id: string
+          server_id: string | null
           updated_at: string
         }
         Insert: {
@@ -411,8 +412,9 @@ export type Database = {
           created_at?: string
           id?: string
           rating: number
-          reviewee_id: string
+          reviewee_id?: string | null
           reviewer_id: string
+          server_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -420,8 +422,9 @@ export type Database = {
           created_at?: string
           id?: string
           rating?: number
-          reviewee_id?: string
+          reviewee_id?: string | null
           reviewer_id?: string
+          server_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -432,6 +435,7 @@ export type Database = {
           created_at: string
           description: string | null
           discord_invite: string | null
+          guild_id: string | null
           icon: string | null
           id: string
           is_featured: boolean | null
@@ -450,6 +454,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           discord_invite?: string | null
+          guild_id?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null
@@ -468,6 +473,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           discord_invite?: string | null
+          guild_id?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null

@@ -157,6 +157,22 @@ Deno.serve(async (req) => {
         })
         .eq('id', vr.experience_id)
 
+      // Auto-create / refresh server stub keyed by guild_id
+      const { data: existingServer } = await admin
+        .from('servers')
+        .select('id')
+        .eq('guild_id', vr.guild_id)
+        .maybeSingle()
+
+      if (!existingServer) {
+        await admin.from('servers').insert({
+          name: vr.guild_name ?? target.name ?? 'Discord server',
+          icon: vr.guild_icon ?? null,
+          guild_id: vr.guild_id,
+          description: null,
+        })
+      }
+
       return json({ ok: true, status: 'approved', approver: me.username })
     } else {
       await admin

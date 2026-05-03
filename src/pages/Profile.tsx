@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star } from 'lucide-react';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,6 +20,8 @@ interface ProfileData {
   id: string;
   display_name: string | null;
   discord_avatar: string | null;
+  discord_id: string | null;
+  discord_username: string | null;
   bio: string | null;
   is_verified: boolean;
   is_featured: boolean;
@@ -48,6 +50,7 @@ interface Experience {
   end_date: string | null;
   is_current: boolean;
   is_verified: boolean;
+  guild_id: string | null;
 }
 
 const Profile = () => {
@@ -242,6 +245,17 @@ const Profile = () => {
                       {profile.website && (
                         <a href={profile.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-foreground transition-colors">
                           <Globe className="h-3.5 w-3.5" /> {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                        </a>
+                      )}
+                      {profile.discord_id && (
+                        <a
+                          href={`https://discord.com/users/${profile.discord_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                          title="Open in Discord"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> @{profile.discord_username || 'discord'}
                         </a>
                       )}
                     </div>

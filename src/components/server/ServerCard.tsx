@@ -18,6 +18,7 @@ interface ServerCardProps {
     is_featured: boolean;
     is_hiring: boolean;
     tags: string[];
+    discord_invite?: string | null;
   };
 }
 
@@ -73,12 +74,21 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 </span>
               </div>
               
-              <Link to={`/server/${server.id}`}>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                  View
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </Link>
+              <div className="flex items-center gap-1">
+                {server.discord_invite && (
+                  <a href={server.discord_invite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                      Discord
+                    </Button>
+                  </a>
+                )}
+                <Link to={`/server/${server.id}`}>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                    View
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
