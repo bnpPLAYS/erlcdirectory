@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star, ExternalLink, Shield, ShieldCheck, Crown } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -62,8 +63,38 @@ const Profile = () => {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!meProfile?.user_id) return setIsAdmin(false);
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', meProfile.user_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [meProfile?.user_id]);
+
+  const toggleAdminFlag = async (field: 'is_verified' | 'is_featured') => {
+    if (!profile) return;
+    const newVal = !profile[field];
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: newVal })
+      .eq('id', profile.id);
+    if (error) {
+      toast.error('Failed: ' + error.message);
+      return;
+    }
+    toast.success(`${field === 'is_verified' ? 'Verified' : 'Featured'} ${newVal ? 'granted' : 'removed'}`);
+    setProfile({ ...profile, [field]: newVal });
+  };
 
   useEffect(() => {
     if (id) fetchProfile();
@@ -155,11 +186,37 @@ const Profile = () => {
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           </Link>
-          {isOwner && !editMode && (
-            <Button size="sm" onClick={() => setEditMode(true)} className="gap-2">
-              <Pencil className="h-4 w-4" /> Edit profile
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {isAdmin && !isOwner && profile && (
+              <>
+                <Button
+                  size="sm"
+                  variant={profile.is_verified ? 'default' : 'outline'}
+                  onClick={() => toggleAdminFlag('is_verified')}
+                  className="gap-2"
+                  title="Admin: toggle verified badge"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {profile.is_verified ? 'Remove verified' : 'Grant verified'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={profile.is_featured ? 'default' : 'outline'}
+                  onClick={() => toggleAdminFlag('is_featured')}
+                  className="gap-2"
+                  title="Admin: toggle featured"
+                >
+                  <Crown className="h-4 w-4" />
+                  {profile.is_featured ? 'Unfeature' : 'Feature'}
+                </Button>
+              </>
+            )}
+            {isOwner && !editMode && (
+              <Button size="sm" onClick={() => setEditMode(true)} className="gap-2">
+                <Pencil className="h-4 w-4" /> Edit profile
+              </Button>
+            )}
+          </div>
         </div>
 
         {editMode && isOwner ? (
