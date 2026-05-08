@@ -136,9 +136,6 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                       )}
                     </div>
                   </div>
-                  {exp.is_verified && (
-                    <Badge className="badge-verified text-[9px] px-1.5 py-0 h-5">verified</Badge>
-                  )}
                 </div>
               ))}
               {remainingExp > 0 && (
