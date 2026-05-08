@@ -215,10 +215,10 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
               </p>
 
               {loadingGuilds ? (
-                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your Discord servers…</div>
+                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your verified servers…</div>
               ) : guilds.length === 0 ? (
                 <div className="glass rounded-xl p-6 text-center text-sm text-muted-foreground">
-                  No Discord servers found. Re-link your Discord account if this is wrong.
+                  You can only post openings for servers where your experience has been verified by a Discord admin. Add and verify an experience first.
                 </div>
               ) : (
                 <>
