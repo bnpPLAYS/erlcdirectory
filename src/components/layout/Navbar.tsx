@@ -23,16 +23,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { Shield } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
+
 
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
@@ -177,6 +187,17 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
+                  {isAdmin && (
+                    <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
+                      <Link to="/staff">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <div className="flex flex-col">
+                          <span className="text-sm">Staff Panel</span>
+                          <span className="text-[11px] text-muted-foreground">Manage members, servers, and openings</span>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={signOut}
                     className="gap-3 py-2.5 text-destructive focus:text-destructive cursor-pointer"

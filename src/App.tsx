@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import DiscordCallback from "./pages/DiscordCallback";
 import VerifyExperience from "./pages/VerifyExperience";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/discord/callback" element={<DiscordCallback />} />
             <Route path="/verify/:token" element={<VerifyExperience />} />
+            <Route path="/staff" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

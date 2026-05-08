@@ -47,8 +47,8 @@ const ServerCard = ({ server }: ServerCardProps) => {
             
             <div className="flex items-center gap-2 mb-2">
               {server.is_hiring && (
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] px-1.5 py-0">
-                  🟢 Hiring
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-300 bg-emerald-500/5">
+                  Hiring
                 </Badge>
               )}
               {server.tags?.slice(0, 2).map((tag, i) => (
@@ -74,18 +74,17 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 </span>
               </div>
               
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {server.discord_invite && (
                   <a href={server.discord_invite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                      Discord
+                    <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
+                      <ExternalLink className="h-3 w-3" /> Discord
                     </Button>
                   </a>
                 )}
                 <Link to={`/server/${server.id}`}>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
                     View
-                    <ExternalLink className="h-3 w-3" />
                   </Button>
                 </Link>
               </div>

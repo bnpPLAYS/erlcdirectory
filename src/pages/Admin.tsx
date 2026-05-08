@@ -1,0 +1,242 @@
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X } from 'lucide-react';
+import Navbar from '@/components/layout/Navbar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+
+const Admin = () => {
+  const { user, profile, loading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [servers, setServers] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [q, setQ] = useState('');
+  const [newStaffQuery, setNewStaffQuery] = useState('');
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    })();
+  }, [user]);
+
+  const refresh = async () => {
+    const [p, s, po, st] = await Promise.all([
+      supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured').order('created_at', { ascending: false }).limit(200),
+      supabase.from('servers').select('id, name, icon, member_count, guild_id').order('created_at', { ascending: false }).limit(200),
+      supabase.from('posts').select('id, title, type, author_id, created_at').order('created_at', { ascending: false }).limit(200),
+      supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
+    ]);
+    setProfiles(p.data || []);
+    setServers(s.data || []);
+    setPosts(po.data || []);
+    // Hydrate staff with profile names
+    const ids = (st.data || []).map((r) => r.user_id);
+    if (ids.length) {
+      const { data: sp } = await supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar').in('user_id', ids);
+      setStaff((st.data || []).map((r) => ({ ...r, profile: sp?.find((x) => x.user_id === r.user_id) })));
+    } else setStaff([]);
+  };
+
+  useEffect(() => { if (isAdmin) refresh(); }, [isAdmin]);
+
+  if (loading || isAdmin === null) {
+    return <div className="min-h-screen bg-background"><Navbar /><div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div></div>;
+  }
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-16 max-w-md text-center">
+          <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Staff only</h1>
+          <p className="text-muted-foreground">You don't have access to this area.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const toggleVerified = async (p: any) => {
+    const { error } = await supabase.from('profiles').update({ is_verified: !p.is_verified }).eq('id', p.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setProfiles((prev) => prev.map((x) => x.id === p.id ? { ...x, is_verified: !p.is_verified } : x));
+  };
+  const toggleFeatured = async (p: any) => {
+    const { error } = await supabase.from('profiles').update({ is_featured: !p.is_featured }).eq('id', p.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setProfiles((prev) => prev.map((x) => x.id === p.id ? { ...x, is_featured: !p.is_featured } : x));
+  };
+  const removeProfile = async (p: any) => {
+    if (!confirm(`Delete account ${p.display_name}? This cannot be undone.`)) return;
+    const { error } = await supabase.from('profiles').delete().eq('id', p.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setProfiles((prev) => prev.filter((x) => x.id !== p.id));
+  };
+  const removeServer = async (s: any) => {
+    if (!confirm(`Delete server ${s.name}?`)) return;
+    const { error } = await supabase.from('servers').delete().eq('id', s.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setServers((prev) => prev.filter((x) => x.id !== s.id));
+  };
+  const removePost = async (p: any) => {
+    if (!confirm(`Delete opening "${p.title}"?`)) return;
+    const { error } = await supabase.from('posts').delete().eq('id', p.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setPosts((prev) => prev.filter((x) => x.id !== p.id));
+  };
+  const addStaff = async (target: any) => {
+    const { error } = await supabase.from('user_roles').insert({ user_id: target.user_id, role: 'admin' });
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    toast({ title: `${target.display_name} is now staff` });
+    setNewStaffQuery('');
+    refresh();
+  };
+  const removeStaff = async (row: any) => {
+    if (row.user_id === user.id) return toast({ title: "You can't remove yourself.", variant: 'destructive' });
+    if (!confirm(`Remove staff access from ${row.profile?.display_name || 'this user'}?`)) return;
+    const { error } = await supabase.from('user_roles').delete().eq('id', row.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    refresh();
+  };
+
+  const filter = (list: any[], keys: string[]) =>
+    !q ? list : list.filter((x) => keys.some((k) => (x[k] || '').toString().toLowerCase().includes(q.toLowerCase())));
+
+  const newStaffMatches = newStaffQuery.length >= 2
+    ? profiles.filter((p) =>
+        !staff.some((s) => s.user_id === p.user_id) &&
+        ((p.display_name || '').toLowerCase().includes(newStaffQuery.toLowerCase()) ||
+         (p.discord_username || '').toLowerCase().includes(newStaffQuery.toLowerCase()))
+      ).slice(0, 6)
+    : [];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-10 rounded-xl bg-primary/15 grid place-items-center"><Shield className="h-5 w-5 text-primary" /></div>
+          <div>
+            <h1 className="text-2xl font-bold">Staff panel</h1>
+            <p className="text-sm text-muted-foreground">Restricted to authorized staff.</p>
+          </div>
+        </div>
+
+        <Tabs defaultValue="members">
+          <TabsList className="mb-4">
+            <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="servers">Servers</TabsTrigger>
+            <TabsTrigger value="openings">Openings</TabsTrigger>
+            <TabsTrigger value="staff">Staff</TabsTrigger>
+          </TabsList>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9" />
+          </div>
+
+          <TabsContent value="members" className="space-y-2">
+            {filter(profiles, ['display_name', 'discord_username']).map((p) => (
+              <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
+                <Avatar className="h-9 w-9"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0] || '?'}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate flex items-center gap-1.5">{p.display_name || 'Member'}
+                    {p.is_verified && <CheckCircle2 className="h-3.5 w-3.5 text-verified" />}
+                    {p.is_featured && <Crown className="h-3.5 w-3.5 text-featured" />}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">@{p.discord_username || '—'}</p>
+                </div>
+                <Button size="sm" variant={p.is_verified ? 'default' : 'outline'} onClick={() => toggleVerified(p)} className="gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" />{p.is_verified ? 'Verified' : 'Verify'}
+                </Button>
+                <Button size="sm" variant={p.is_featured ? 'default' : 'outline'} onClick={() => toggleFeatured(p)} className="gap-1">
+                  <Crown className="h-3.5 w-3.5" />{p.is_featured ? 'Pinned' : 'Pin'}
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => removeProfile(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              </CardContent></Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="servers" className="space-y-2">
+            {filter(servers, ['name']).map((s) => (
+              <Card key={s.id}><CardContent className="p-3 flex items-center gap-3">
+                <Avatar className="h-9 w-9 rounded-md"><AvatarImage src={s.icon || undefined} /><AvatarFallback className="rounded-md">{s.name?.[0]}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">{s.member_count || 0} members</p>
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => removeServer(s)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              </CardContent></Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="openings" className="space-y-2">
+            {filter(posts, ['title']).map((p) => (
+              <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
+                <Badge variant="outline" className="capitalize">{p.type}</Badge>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</p>
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => removePost(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              </CardContent></Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="staff" className="space-y-3">
+            <Card><CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add a staff member</p>
+              <Input value={newStaffQuery} onChange={(e) => setNewStaffQuery(e.target.value)} placeholder="Search by name or Discord username…" />
+              {newStaffMatches.length > 0 && (
+                <div className="space-y-1">
+                  {newStaffMatches.map((p) => (
+                    <button key={p.id} onClick={() => addStaff(p)} className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 text-left">
+                      <Avatar className="h-8 w-8"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0]}</AvatarFallback></Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{p.display_name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">@{p.discord_username}</p>
+                      </div>
+                      <Badge variant="outline">Add</Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent></Card>
+
+            <p className="text-xs uppercase tracking-wide text-muted-foreground pt-2">Current staff</p>
+            {staff.map((row) => (
+              <Card key={row.id}><CardContent className="p-3 flex items-center gap-3">
+                <Avatar className="h-9 w-9"><AvatarImage src={row.profile?.discord_avatar || undefined} /><AvatarFallback>{row.profile?.display_name?.[0] || '?'}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{row.profile?.display_name || row.user_id}</p>
+                  <p className="text-xs text-muted-foreground truncate">@{row.profile?.discord_username || '—'}</p>
+                </div>
+                <Badge>admin</Badge>
+                <Button size="icon" variant="ghost" onClick={() => removeStaff(row)} className="text-destructive"><X className="h-4 w-4" /></Button>
+              </CardContent></Card>
+            ))}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default Admin;
