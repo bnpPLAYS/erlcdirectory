@@ -74,18 +74,17 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 </span>
               </div>
               
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {server.discord_invite && (
                   <a href={server.discord_invite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                      Discord
+                    <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
+                      <ExternalLink className="h-3 w-3" /> Discord
                     </Button>
                   </a>
                 )}
                 <Link to={`/server/${server.id}`}>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
                     View
-                    <ExternalLink className="h-3 w-3" />
                   </Button>
                 </Link>
               </div>
