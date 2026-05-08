@@ -115,7 +115,7 @@ const Servers = () => {
                   <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
-              {user && <CreateServerDialog onCreated={fetchServers} />}
+              
             </div>
 
             {/* Quick filters */}
