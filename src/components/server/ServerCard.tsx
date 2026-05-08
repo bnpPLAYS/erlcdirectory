@@ -47,8 +47,8 @@ const ServerCard = ({ server }: ServerCardProps) => {
             
             <div className="flex items-center gap-2 mb-2">
               {server.is_hiring && (
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] px-1.5 py-0">
-                  🟢 Hiring
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-300 bg-emerald-500/5">
+                  Hiring
                 </Badge>
               )}
               {server.tags?.slice(0, 2).map((tag, i) => (
