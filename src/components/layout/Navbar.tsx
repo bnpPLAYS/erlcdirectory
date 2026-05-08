@@ -187,7 +187,17 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem
+                  {isAdmin && (
+                    <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
+                      <Link to="/staff">
+                        <Shield className="h-4 w-4 text-primary" />
+                        <div className="flex flex-col">
+                          <span className="text-sm">Staff Panel</span>
+                          <span className="text-[11px] text-muted-foreground">Manage members, servers, and openings</span>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                     onClick={signOut}
                     className="gap-3 py-2.5 text-destructive focus:text-destructive cursor-pointer"
                   >
