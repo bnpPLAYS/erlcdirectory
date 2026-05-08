@@ -256,7 +256,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{g.name}</p>
                             <p className="text-[11px] text-muted-foreground">
-                              {g.owner ? 'Owner' : g.is_admin ? 'Admin' : 'Member'}
+                              Verified member
                             </p>
                           </div>
                         </button>
