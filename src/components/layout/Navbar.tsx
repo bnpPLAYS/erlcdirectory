@@ -198,6 +198,7 @@ const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem
                     onClick={signOut}
                     className="gap-3 py-2.5 text-destructive focus:text-destructive cursor-pointer"
                   >
