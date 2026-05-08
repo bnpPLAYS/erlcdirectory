@@ -136,7 +136,7 @@ const ServerDetail = () => {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{server.name}</h1>
                   {server.is_verified && <CheckCircle2 className="h-5 w-5 text-verified" />}
-                  {server.is_hiring && <Badge className="bg-green-500/20 text-green-400 border-green-500/30">🟢 Hiring</Badge>}
+                  {server.is_hiring && <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/5">Hiring</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
