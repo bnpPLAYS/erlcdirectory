@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
-import CreateServerDialog from '@/components/server/CreateServerDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
