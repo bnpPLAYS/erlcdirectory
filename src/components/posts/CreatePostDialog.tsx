@@ -50,14 +50,27 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
   };
 
   const loadGuilds = async () => {
+    if (!profile) return;
     setLoadingGuilds(true);
     try {
-      const { data, error } = await supabase.functions.invoke('discord-guilds');
+      // Only servers the user has a VERIFIED experience in
+      const { data, error } = await supabase
+        .from('experiences')
+        .select('guild_id, server_name, server_icon')
+        .eq('profile_id', profile.id)
+        .eq('is_verified', true)
+        .not('guild_id', 'is', null);
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setGuilds((data?.guilds || []) as Guild[]);
+      const seen = new Set<string>();
+      const list: Guild[] = [];
+      for (const r of (data || []) as any[]) {
+        if (!r.guild_id || seen.has(r.guild_id)) continue;
+        seen.add(r.guild_id);
+        list.push({ id: r.guild_id, name: r.server_name, icon: r.server_icon, owner: false, is_admin: false });
+      }
+      setGuilds(list);
     } catch (e: any) {
-      toast({ title: 'Could not load Discord servers', description: e?.message, variant: 'destructive' });
+      toast({ title: 'Could not load your verified servers', description: e?.message, variant: 'destructive' });
     } finally {
       setLoadingGuilds(false);
     }
@@ -202,10 +215,10 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
               </p>
 
               {loadingGuilds ? (
-                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your Discord servers…</div>
+                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your verified servers…</div>
               ) : guilds.length === 0 ? (
                 <div className="glass rounded-xl p-6 text-center text-sm text-muted-foreground">
-                  No Discord servers found. Re-link your Discord account if this is wrong.
+                  You can only post openings for servers where your experience has been verified by a Discord admin. Add and verify an experience first.
                 </div>
               ) : (
                 <>
@@ -243,7 +256,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{g.name}</p>
                             <p className="text-[11px] text-muted-foreground">
-                              {g.owner ? 'Owner' : g.is_admin ? 'Admin' : 'Member'}
+                              Verified member
                             </p>
                           </div>
                         </button>

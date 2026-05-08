@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
-import CreateServerDialog from '@/components/server/CreateServerDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -116,7 +115,7 @@ const Servers = () => {
                   <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
-              {user && <CreateServerDialog onCreated={fetchServers} />}
+              
             </div>
 
             {/* Quick filters */}
@@ -156,16 +155,10 @@ const Servers = () => {
               <CardContent className="p-12 text-center">
                 <Server className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
                 <h3 className="text-xl font-semibold mb-2">No servers listed yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  List your server so applicants can see what you offer and how to join.
+                <p className="text-muted-foreground">
+                  Servers appear automatically once a member's experience is verified by a Discord admin.
                 </p>
-                {user ? (
-                  <CreateServerDialog onCreated={fetchServers} />
-                ) : (
-                  <Link to="/auth">
-                    <Button className="gap-2">Sign in to list a server</Button>
-                  </Link>
-                )}
+
               </CardContent>
             </Card>
           )}
