@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/discord/callback" element={<DiscordCallback />} />
             <Route path="/verify/:token" element={<VerifyExperience />} />
+            <Route path="/staff" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
