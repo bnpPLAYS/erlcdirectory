@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import DiscordCallback from "./pages/DiscordCallback";
 import VerifyExperience from "./pages/VerifyExperience";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
