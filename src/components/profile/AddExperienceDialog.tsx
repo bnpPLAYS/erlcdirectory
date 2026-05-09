@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
+import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { cn } from '@/lib/utils';
 
 interface Guild {
@@ -84,31 +85,35 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
 
   const filteredGuilds = guilds.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()));
 
-  const canSubmitServer = !!selectedGuild && role.trim().length > 0 && !!startDate;
+  const canSubmitServer = !!selectedGuild && !!startDate;
   const canSubmitDirect = serverName.trim().length > 0 && role.trim().length > 0 && !!startDate;
 
   const submit = async (kind: 'server' | 'direct') => {
     setSaving(true);
     try {
-      const roleF = filterPlaintext(role.trim());
       const descF = filterPlaintext(description.trim());
       const directNameF = filterPlaintext(serverName.trim());
-      if (roleF.blockedHits || descF.blockedHits || directNameF.blockedHits) {
+      const roleF = filterPlaintext(role.trim());
+      if (kind === 'direct' && (roleF.blockedHits || descF.blockedHits || directNameF.blockedHits)) {
+        toast.info('Some wording was adjusted to meet community guidelines.');
+      }
+      if (kind === 'server' && descF.blockedHits) {
         toast.info('Some wording was adjusted to meet community guidelines.');
       }
       const payload: Record<string, unknown> = {
         profile_id: profileId,
-        role: roleF.text.slice(0, 80),
         description: descF.text.slice(0, 600) || null,
         start_date: startDate,
         end_date: isCurrent ? null : (endDate || null),
         is_current: isCurrent,
       };
       if (kind === 'server' && selectedGuild) {
+        payload.role = PENDING_EXPERIENCE_ROLE;
         payload.server_name = selectedGuild.name.slice(0, 80);
         payload.server_icon = selectedGuild.icon;
         payload.guild_id = selectedGuild.id;
       } else {
+        payload.role = roleF.text.slice(0, 80);
         payload.server_name = directNameF.text.slice(0, 80);
       }
       const { error } = await supabase.from('experiences').insert(payload);
@@ -188,7 +193,9 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               <DialogTitle className="flex items-center gap-2 text-xl">
                 <ServerIcon className="h-5 w-5" /> Server experience
               </DialogTitle>
-              <DialogDescription>Add an experience from a Discord server you're part of.</DialogDescription>
+              <DialogDescription>
+                Pick the server and your dates. An admin will confirm your role when they approve the verification link.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid md:grid-cols-2 gap-5">
@@ -263,16 +270,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                     <span className="font-semibold text-sm">Experience details</span>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Position *</Label>
-                    <Input
-                      value={role}
-                      maxLength={80}
-                      onChange={(e) => setRole(e.target.value)}
-                      placeholder="e.g. Patrol Officer, Staff, Lead Developer"
-                      className="rounded-xl border-white/12 bg-white/[0.04]"
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">Description</Label>
                     <Textarea

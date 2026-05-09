@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Shield, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 
 interface Experience {
   id: string;
@@ -62,7 +63,13 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className="font-semibold text-foreground">{experience.role}</h4>
+              <h4 className="font-semibold text-foreground">
+                {experience.role === PENDING_EXPERIENCE_ROLE ? (
+                  <span className="text-muted-foreground font-medium">Pending verification</span>
+                ) : (
+                  experience.role
+                )}
+              </h4>
               {experience.department && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   {experience.department}

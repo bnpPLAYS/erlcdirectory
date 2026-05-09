@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
+import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 
 const DISCORD_CLIENT_ID = '1495931923237703792';
 const APPROVE_EXTRAS_KEY = (t: string) => `experience-verify-approve:${t}`;
@@ -55,6 +56,7 @@ const VerifyExperience = () => {
     approver: string;
   } | null>(null);
 
+  const [memberRole, setMemberRole] = useState('');
   const [verifierPosition, setVerifierPosition] = useState('');
   const [verifierReviewText, setVerifierReviewText] = useState('');
   const [verifierRating, setVerifierRating] = useState<string>('');
@@ -101,6 +103,15 @@ const VerifyExperience = () => {
   const startDiscord = (action: 'approve' | 'reject') => {
     if (!token) return;
     if (action === 'approve') {
+      const theirRole = memberRole.trim();
+      if (!theirRole) {
+        setError('Enter the member\'s verified role or title (e.g. Patrol Officer, Staff).');
+        return;
+      }
+      if (theirRole.length > 80) {
+        setError('Member role is too long (80 characters max).');
+        return;
+      }
       const pos = verifierPosition.trim();
       if (!pos) {
         setError('Enter your position in this server before approving (e.g. Server Owner, Head Administrator).');
@@ -125,6 +136,7 @@ const VerifyExperience = () => {
       sessionStorage.setItem(
         APPROVE_EXTRAS_KEY(token),
         JSON.stringify({
+          memberRole: theirRole,
           verifierPosition: pos,
           verifierReviewText: verifierReviewText.trim(),
           verifierRating: ratingNum,
@@ -154,6 +166,7 @@ const VerifyExperience = () => {
     if (!token) return;
     setSubmitting(true);
     try {
+      let memberRoleBody = '';
       let verifierPositionBody = '';
       let verifierReviewTextBody = '';
       let verifierRatingBody: number | null = null;
@@ -163,10 +176,12 @@ const VerifyExperience = () => {
         if (raw) {
           try {
             const parsed = JSON.parse(raw) as {
+              memberRole?: string;
               verifierPosition?: string;
               verifierReviewText?: string;
               verifierRating?: number | null;
             };
+            memberRoleBody = (parsed.memberRole ?? '').toString();
             verifierPositionBody = (parsed.verifierPosition ?? '').toString();
             verifierReviewTextBody = (parsed.verifierReviewText ?? '').toString();
             verifierRatingBody =
@@ -190,6 +205,7 @@ const VerifyExperience = () => {
           token,
           code,
           redirectUri,
+          memberRole: memberRoleBody,
           verifierPosition: verifierPositionBody,
           verifierReviewText: verifierReviewTextBody,
           verifierRating: verifierRatingBody,
@@ -232,7 +248,8 @@ const VerifyExperience = () => {
               </div>
               <h1 className="text-2xl font-bold mb-1">Experience verification</h1>
               <p className="text-sm text-muted-foreground">
-                A member asked you to confirm their role. If you approve, we record your position and optional review.
+                Approve only if you can confirm this member&apos;s role. You will set their title and your own staff
+                position, with an optional review.
               </p>
             </div>
 
@@ -267,10 +284,19 @@ const VerifyExperience = () => {
                 {e && (
                   <div className="glass rounded-xl p-4 space-y-2 border border-white/10">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                      <Shield className="h-3.5 w-3.5" /> Claimed role
+                      <Shield className="h-3.5 w-3.5" />{' '}
+                      {e.role === PENDING_EXPERIENCE_ROLE ? 'Role' : 'Previous title'}
                     </div>
                     <div>
-                      <p className="text-lg font-semibold">{e.role}</p>
+                      <p className="text-lg font-semibold">
+                        {e.role === PENDING_EXPERIENCE_ROLE ? (
+                          <span className="text-muted-foreground font-normal text-base">
+                            Not set yet — you will enter their verified role below.
+                          </span>
+                        ) : (
+                          e.role
+                        )}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {e.server_name}
                         {e.department && ` · ${e.department}`}
@@ -321,9 +347,24 @@ const VerifyExperience = () => {
                       <p className="text-sm font-medium text-foreground">Before you approve</p>
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         You must sign in with Discord so we can confirm you have <strong>Administrator</strong> in{' '}
-                        <strong>{r.guild_name || 'this server'}</strong>. Your stated position and optional review are
-                        stored with the verification.
+                        <strong>{r.guild_name || 'this server'}</strong>.
                       </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="member-role" className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Their verified role / title *
+                        </Label>
+                        <Input
+                          id="member-role"
+                          value={memberRole}
+                          onChange={(ev) => setMemberRole(ev.target.value)}
+                          placeholder="e.g. Patrol Officer, Staff, Lead Developer"
+                          maxLength={80}
+                          className="rounded-xl border-white/12 bg-white/[0.04]"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          This becomes their position on the directory after you approve.
+                        </p>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="verifier-position" className="text-xs uppercase tracking-wide text-muted-foreground">
                           Your position in this server *

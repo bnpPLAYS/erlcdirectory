@@ -92,10 +92,12 @@ Deno.serve(async (req) => {
     const redirectUri = (body.redirectUri ?? '').toString()
     if (!code || !redirectUri) return json({ error: 'Missing Discord authorization.' }, 400)
 
+    let memberRole = ''
     let verifierPosition = ''
     let verifierReviewText = ''
     let verifierRating: number | null = null
     if (action === 'approve') {
+      memberRole = (body.memberRole ?? '').toString().trim()
       verifierPosition = (body.verifierPosition ?? '').toString().trim()
       verifierReviewText = (body.verifierReviewText ?? '').toString().trim()
       const rawRating = body.verifierRating
@@ -107,6 +109,9 @@ Deno.serve(async (req) => {
         verifierRating = n
       }
       if (verifierReviewText.length > 2000) return json({ error: 'Review text is too long (2000 max).' }, 400)
+      if (!memberRole || memberRole.length > 80) {
+        return json({ error: 'The member\'s verified role/title is required (1–80 characters).' }, 400)
+      }
       if (!verifierPosition || verifierPosition.length > 160) {
         return json({ error: 'Your position in this Discord server is required (1–160 characters).' }, 400)
       }
@@ -172,6 +177,7 @@ Deno.serve(async (req) => {
       await admin
         .from('experiences')
         .update({
+          role: memberRole,
           is_verified: true,
           guild_id: vr.guild_id,
           verified_by_discord_id: me.id,

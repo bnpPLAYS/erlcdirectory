@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
+import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 
 interface Experience {
   id: string;
@@ -477,7 +478,20 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                     </div>
                   </div>
                   <Field label="Position">
-                    <Input value={e.role} maxLength={80} onChange={(ev) => updateExp(e.id, { role: ev.target.value })} placeholder="e.g. Patrol Officer, Staff" />
+                    {e.guild_id && !e.is_verified ? (
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-muted-foreground">
+                        {e.role === PENDING_EXPERIENCE_ROLE
+                          ? 'An admin sets your title when they approve the verification link.'
+                          : e.role}
+                      </div>
+                    ) : (
+                      <Input
+                        value={e.role}
+                        maxLength={80}
+                        onChange={(ev) => updateExp(e.id, { role: ev.target.value })}
+                        placeholder="e.g. Patrol Officer, Staff"
+                      />
+                    )}
                   </Field>
                   <Field label="Start date">
                     <Input type="date" value={e.start_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })} />
