@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Shield, Copy, Check, RefreshCw, Loader2, AlertCircle, X, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
+import { buildVerifyExperienceUrl } from '@/lib/publicSiteUrl';
 import { cn } from '@/lib/utils';
 
 interface Guild {
@@ -60,6 +61,7 @@ const VerifyExperienceDialog = ({
   const [generating, setGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showGuildPickerFallback, setShowGuildPickerFallback] = useState(false);
+  const autoCopyDoneRef = useRef(false);
 
   const loadExisting = async (): Promise<ExistingRequest | null> => {
     const { data } = await supabase
@@ -103,7 +105,6 @@ const VerifyExperienceDialog = ({
         return false;
       }
       setActive(data as ExistingRequest);
-      toast({ title: 'Verification link ready', description: 'Copy it and send it to a server admin.' });
       return true;
     } finally {
       setGenerating(false);
@@ -147,6 +148,42 @@ const VerifyExperienceDialog = ({
     return () => clearInterval(t);
   }, [open, active?.id, active?.status]);
 
+  useEffect(() => {
+    if (!open) {
+      autoCopyDoneRef.current = false;
+      return;
+    }
+    if (!active?.id) {
+      autoCopyDoneRef.current = false;
+    }
+  }, [open, active?.id]);
+
+  useEffect(() => {
+    if (!open || autoCopyDoneRef.current) return;
+    if (!active || active.status !== 'pending') return;
+    if (new Date(active.expires_at).getTime() < Date.now()) return;
+    const url = buildVerifyExperienceUrl(active.token);
+    autoCopyDoneRef.current = true;
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({
+          title: 'Verification link copied',
+          description: 'Paste it to a server admin with Administrator in that server.',
+        });
+      } catch {
+        autoCopyDoneRef.current = false;
+        toast({
+          title: 'Could not copy automatically',
+          description: 'Use the Copy button next to the link.',
+          variant: 'destructive',
+        });
+      }
+    })();
+  }, [open, active?.id, active?.status, active?.token, active?.expires_at]);
+
   const loadGuilds = async () => {
     setLoadingGuilds(true);
     setErrorMsg(null);
@@ -183,7 +220,7 @@ const VerifyExperienceDialog = ({
     }
   };
 
-  const link = active ? `${window.location.origin}/verify/${active.token}` : '';
+  const link = active ? buildVerifyExperienceUrl(active.token) : '';
 
   const copy = async () => {
     if (!link) return;
