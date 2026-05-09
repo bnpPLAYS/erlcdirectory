@@ -618,6 +618,10 @@ export type Database = {
       }
       site_owner_grant_admin_role: { Args: { p_target_user_id: string }; Returns: undefined }
       site_owner_revoke_admin_role: { Args: { p_target_user_id: string }; Returns: undefined }
+      staff_counts_for_discord_guilds: {
+        Args: { p_guild_ids: string[] }
+        Returns: { guild_id: string; cnt: number }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
