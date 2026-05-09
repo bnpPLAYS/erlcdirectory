@@ -51,7 +51,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
 
   return (
     <Link to={`/profile/${profile.id}`} className="block h-full">
-      <Card className="group h-full overflow-hidden rounded-2xl border border-white/10 bg-[hsl(240_6%_8%/0.85)] shadow-lg transition-all duration-300 hover:border-white/18 hover:bg-[hsl(240_6%_10%/0.9)] hover:shadow-xl">
+      <Card className="group h-full overflow-hidden rounded-2xl border border-white/10 bg-[hsl(240_6%_8%/0.85)] shadow-lg transition-all duration-300 hover:border-white/14 hover:bg-[hsl(240_6%_10%/0.9)] hover:shadow-xl">
         <CardContent className="p-5 sm:p-6 space-y-4">
           {/* Header row */}
           <div className="flex items-start justify-between gap-4">

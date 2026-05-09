@@ -15,6 +15,7 @@ import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 type Section = {
   id: string;
@@ -150,7 +151,7 @@ const Docs = () => {
                 Posting an opening
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Use Openings / Posts to publish hiring threads tied to verified Discord servers you belong to. Titles and descriptions are filtered automatically—focus on responsibilities and requirements.
+                Use Posts to publish hiring threads, looking-for-work listings, announcements, and discussions tied to verified Discord servers when required. Titles and descriptions are filtered automatically—focus on responsibilities and requirements.
               </p>
             </>
           ) : meta.id === 'connections-messages' ? (
@@ -267,7 +268,7 @@ const Docs = () => {
 
           {/* Main */}
           <main className="flex-1 min-w-0 space-y-16">
-            <header className="animate-in fade-in duration-500">
+            <header className={pageHeroEnter}>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-wider text-muted-foreground mb-4">
                 <FileText className="h-3.5 w-3.5" />
                 Documentation

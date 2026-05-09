@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MessageSquare, Search, Send, ArrowLeft, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { toast } from 'sonner';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 interface Conversation {
   id: string;
@@ -34,6 +35,8 @@ interface Message {
 
 const Messages = () => {
   const { user, profile, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const composeWith = searchParams.get('with');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -74,7 +77,7 @@ const Messages = () => {
         <Navbar />
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-10">
+            <div className={`text-center mb-10 ${pageHeroEnter}`}>
               <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
                 <MessageSquare className="h-8 w-8 text-primary-foreground" />
               </div>
@@ -112,6 +115,14 @@ const Messages = () => {
       <Navbar />
       
       <div className="container mx-auto px-4 py-6">
+        {composeWith && (
+          <div className="mb-4 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm text-muted-foreground">
+            Conversation started from a post.{' '}
+            <Link to={`/profile/${composeWith}`} className="text-foreground underline-offset-4 hover:underline">
+              Open their profile
+            </Link>
+          </div>
+        )}
         <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
           {/* Conversations List */}
           <Card className="md:col-span-1 flex flex-col">

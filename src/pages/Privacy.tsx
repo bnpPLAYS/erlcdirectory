@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 const Privacy = () => (
   <div className="min-h-screen bg-background flex flex-col">
     <Navbar />
     <main className="flex-1 container mx-auto px-4 py-10 max-w-3xl">
+      <div className={pageHeroEnter}>
       <h1 className="text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
       <p className="text-sm text-muted-foreground mb-8">Last updated: May 9, 2026 · Site: erlc.directory</p>
+      </div>
 
       <div className="space-y-8 text-sm text-muted-foreground leading-relaxed">
         <section>

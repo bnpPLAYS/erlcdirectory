@@ -12,6 +12,7 @@ import ProfileCard from '@/components/profile/ProfileCard';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 type SortMode = 'newest' | 'top_rated' | 'most_members' | 'most_experience' | 'az';
 
@@ -185,7 +186,7 @@ const Browse = () => {
         <div className="min-h-screen pt-20 lg:pt-32 pb-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             {/* Hero */}
-            <header className="text-center mb-10 lg:mb-12 animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <header className={`text-center mb-10 lg:mb-12 ${pageHeroEnter}`}>
               <img
                 src={logo}
                 alt=""
@@ -196,10 +197,10 @@ const Browse = () => {
                 aria-hidden
               />
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
-                Browse Professionals
+                Member Directory
               </h1>
               <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
-                Discover talented staff, developers, and designers in the ER:LC community.
+                Find ER:LC staff, applicants, and server owners with real profile details.
               </p>
             </header>
 

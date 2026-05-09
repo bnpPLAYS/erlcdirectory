@@ -45,7 +45,7 @@ const Navbar = () => {
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
     { path: '/servers', label: 'Servers', icon: Building2 },
-    { path: '/posts', label: 'Openings', icon: FileText },
+    { path: '/posts', label: 'Posts', icon: FileText },
     { path: '/messages', label: 'Messages', icon: MessageSquare, auth: true },
   ];
 

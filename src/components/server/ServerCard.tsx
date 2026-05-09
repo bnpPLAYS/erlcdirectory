@@ -24,7 +24,7 @@ interface ServerCardProps {
 
 const ServerCard = ({ server }: ServerCardProps) => {
   return (
-    <Card className="group card-interactive h-full">
+    <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-14 w-14 rounded-xl ring-2 ring-border group-hover:ring-primary/50 transition-all flex-shrink-0">
@@ -47,7 +47,10 @@ const ServerCard = ({ server }: ServerCardProps) => {
             
             <div className="flex items-center gap-2 mb-2">
               {server.is_hiring && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-300 bg-emerald-500/5">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 border-violet-400/35 bg-violet-500/12 text-violet-200"
+                >
                   Hiring
                 </Badge>
               )}
