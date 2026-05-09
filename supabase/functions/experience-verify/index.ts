@@ -157,10 +157,11 @@ Deno.serve(async (req) => {
         })
         .eq('id', vr.experience_id)
 
-      // Auto-create / refresh server stub keyed by guild_id
+      // Auto-create / refresh server stub keyed by guild_id, and capture member count from Discord
+      const memberCount = Number(target.approximate_member_count ?? 0) || 0
       const { data: existingServer } = await admin
         .from('servers')
-        .select('id')
+        .select('id, member_count')
         .eq('guild_id', vr.guild_id)
         .maybeSingle()
 
@@ -170,7 +171,13 @@ Deno.serve(async (req) => {
           icon: vr.guild_icon ?? null,
           guild_id: vr.guild_id,
           description: null,
+          member_count: memberCount,
         })
+      } else if (memberCount > 0) {
+        await admin
+          .from('servers')
+          .update({ member_count: memberCount })
+          .eq('id', existingServer.id)
       }
 
       return json({ ok: true, status: 'approved', approver: me.username })
