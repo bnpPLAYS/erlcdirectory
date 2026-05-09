@@ -19,6 +19,7 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
+  /** After redirect from non-canonical host, continue Discord OAuth on the canonical domain. */
   useEffect(() => {
     if (searchParams.get('oauth') !== 'discord') return;
     if (loading) return;

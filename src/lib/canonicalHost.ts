@@ -42,8 +42,9 @@ export function getCanonicalRedirectUrl(): string | null {
 }
 
 /**
- * Do not redirect away from /discord/callback while OAuth params are present — PKCE verifier
- * must stay on the same origin as the callback, or the session is never stored.
+ * Avoid redirecting away from `/discord/callback` while OAuth params are present.
+ * Otherwise PKCE code_verifier (in localStorage) and the callback host can mismatch
+ * (e.g. *.vercel.app → www), and the session is never established.
  */
 export function shouldDeferCanonicalRedirectForOAuthCallback(): boolean {
   if (typeof window === 'undefined') return false;
