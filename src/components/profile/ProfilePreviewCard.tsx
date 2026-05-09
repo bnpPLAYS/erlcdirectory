@@ -1,4 +1,4 @@
-import { MapPin, Globe, Clock, Eye, ImageIcon } from 'lucide-react';
+import { MapPin, Clock, Eye, ImageIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,6 @@ interface PreviewProps {
   pronouns: string;
   status: string;
   availability: string;
-  website: string;
   banner_url: string;
   accent_color: string;
   skills: string[];
@@ -104,12 +103,6 @@ const ProfilePreviewCard = (p: PreviewProps) => {
             )}
             {p.timezone && (
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {p.timezone}</span>
-            )}
-            {p.website && (
-              <span className="flex items-center gap-1 truncate max-w-full">
-                <Globe className="h-3 w-3 shrink-0" />
-                <span className="truncate">{p.website.replace(/^https?:\/\//, '')}</span>
-              </span>
             )}
           </div>
 

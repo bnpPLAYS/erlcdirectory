@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Globe, Pencil, Clock, Star, ExternalLink, Shield, ShieldCheck, Crown } from 'lucide-react';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Pencil, Clock, Star, ExternalLink, Shield, ShieldCheck, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -304,11 +304,6 @@ const Profile = () => {
                       )}
                       {profile.timezone && (
                         <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</span>
-                      )}
-                      {profile.website && (
-                        <a href={profile.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-                          <Globe className="h-3.5 w-3.5" /> {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                        </a>
                       )}
                       {profile.discord_id && (
                         <a
