@@ -51,6 +51,24 @@ function anonHeaders(): Record<string, string> {
 const NOT_DEPLOYED_HINT =
   'The verification endpoint returned 404. In the Supabase dashboard, deploy the Edge Function named experience-verify for this project, then redeploy the site. Also confirm VITE_SUPABASE_URL (or VITE_SUPABASE_PROJECT_ID) in Vercel matches that project.';
 
+/** Supabase returns this JSON when /functions/v1/experience-verify is not deployed. */
+function expandFunctionMissingError(message: string): string {
+  const m = message.trim();
+  if (
+    /requested function was not found/i.test(m) ||
+    /^function not found$/i.test(m) ||
+    /no function named/i.test(m)
+  ) {
+    return [
+      'The experience-verify Edge Function is not deployed on this Supabase project.',
+      'Deploy from your machine (repo root): supabase login && supabase link --project-ref YOUR_REF && supabase functions deploy experience-verify',
+      'In Supabase Dashboard → Edge Functions → Secrets, set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET for approve/reject.',
+      'Vercel env VITE_SUPABASE_URL must match that same project.',
+    ].join(' ');
+  }
+  return message;
+}
+
 function isDefiniteBusinessRejection(message: string): boolean {
   return (
     message.includes('verification link is not valid') ||
@@ -74,7 +92,8 @@ async function parseRes(res: Response): Promise<{ data: unknown; error: string |
       error: `Verification service returned a non-JSON response (${res.status}).`,
     };
   }
-  const err = fnErrorPayload(json) || (!res.ok ? messagePayload(json) : null);
+  const rawErr = fnErrorPayload(json) || (!res.ok ? messagePayload(json) : null);
+  const err = rawErr ? expandFunctionMissingError(rawErr) : null;
   if (!res.ok || err) {
     if (err) return { data: null, error: err };
     if (res.status === 404) return { data: null, error: NOT_DEPLOYED_HINT };
