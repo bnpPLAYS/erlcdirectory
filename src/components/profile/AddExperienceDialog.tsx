@@ -1,21 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Server as ServerIcon,
-  UserCheck,
-  Search,
-  RefreshCw,
-  Shield,
-  Users,
-  Sparkles,
-  Globe,
-  Crown,
-  User,
-  Star,
-} from 'lucide-react';
+import { ArrowLeft, Server as ServerIcon, UserCheck, Search, RefreshCw, Shield, Users, Sparkles, Globe } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import logo from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,7 +29,6 @@ interface Props {
 type Step = 'pick' | 'server' | 'direct';
 
 const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props) => {
-  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('pick');
 
   // Server flow
@@ -135,106 +119,61 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent fullscreen className="glass p-0 overflow-y-auto">
-        {step === 'pick' ? (
-          <div className="flex min-h-[100dvh] flex-col items-center px-4 py-10 sm:py-14 pb-16">
-            <div className="flex w-full max-w-4xl flex-col items-center text-center">
-              <img
-                src={logo}
-                alt=""
-                className="logo-mark mb-8 h-14 w-14 object-contain sm:h-16 sm:w-16"
-                width={64}
-                height={64}
-                aria-hidden
-              />
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Add New Experience
-              </h2>
-              <p className="mt-3 max-w-lg text-base text-muted-foreground">
-                Share your work and build your reputation in the ER:LC community.
-              </p>
-
-              <div className="mt-10 grid w-full gap-5 md:grid-cols-2 md:gap-6">
-                <button
-                  type="button"
-                  onClick={() => setStep('server')}
-                  className="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-7 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:from-white/[0.1]"
-                >
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 transition-colors group-hover:bg-white/[0.14]">
-                      <ServerIcon className="h-6 w-6 text-foreground" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold text-foreground">Server Experience</div>
-                      <div className="text-sm text-muted-foreground">
-                        Showcase your work from Discord servers
-                      </div>
-                    </div>
-                  </div>
-                  <ul className="space-y-2.5 text-sm text-muted-foreground">
-                    <li className="flex items-center gap-2.5">
-                      <Shield className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Verified by server management
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <User className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Automatic server details
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Crown className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Higher credibility rating
-                    </li>
-                  </ul>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('direct')}
-                  className="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-7 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:from-white/[0.1]"
-                >
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 transition-colors group-hover:bg-white/[0.14]">
-                      <UserCheck className="h-6 w-6 text-foreground" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-semibold text-foreground">Direct Experience</div>
-                      <div className="text-sm text-muted-foreground">
-                        One-on-one work and collaborations
-                      </div>
-                    </div>
-                  </div>
-                  <ul className="space-y-2.5 text-sm text-muted-foreground">
-                    <li className="flex items-center gap-2.5">
-                      <UserCheck className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Client verification available
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Star className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Flexible project types
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Globe className="h-4 w-4 shrink-0 text-foreground/80" />
-                      Public verification link
-                    </li>
-                  </ul>
-                </button>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-12 gap-2 rounded-full border-white/20 bg-white/5 px-8 text-foreground hover:bg-white/10"
-                onClick={() => {
-                  onOpenChange(false);
-                  navigate('/browse');
-                }}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Browse
-              </Button>
-            </div>
-          </div>
-        ) : (
         <div className="mx-auto max-w-5xl w-full px-4 sm:px-8 py-8 sm:py-12 space-y-6">
+        {step === 'pick' && (
+          <>
+            <DialogHeader className="text-center items-center">
+              <div className="h-12 w-12 rounded-2xl bg-white/10 grid place-items-center mb-2">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <DialogTitle className="text-3xl sm:text-4xl font-semibold tracking-tight">Add new experience</DialogTitle>
+              <DialogDescription className="text-base">
+                Share your work and build your reputation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid md:grid-cols-2 gap-5 mt-6">
+              <button
+                onClick={() => setStep('server')}
+                className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-12 w-12 rounded-xl bg-white/10 group-hover:bg-white/15 flex items-center justify-center transition-colors">
+                    <ServerIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-lg">Server experience</div>
+                    <div className="text-sm text-muted-foreground">Showcase work from a Discord server</div>
+                  </div>
+                </div>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2"><Shield className="h-4 w-4" /> Verified by server admins</li>
+                  <li className="flex items-center gap-2"><Users className="h-4 w-4" /> Auto-filled server details</li>
+                  <li className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Higher credibility rating</li>
+                </ul>
+              </button>
+
+              <button
+                onClick={() => setStep('direct')}
+                className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-12 w-12 rounded-xl bg-white/10 group-hover:bg-white/15 flex items-center justify-center transition-colors">
+                    <UserCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-lg">Direct experience</div>
+                    <div className="text-sm text-muted-foreground">One-on-one work and collaborations</div>
+                  </div>
+                </div>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2"><UserCheck className="h-4 w-4" /> Client-side verification</li>
+                  <li className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Flexible project types</li>
+                  <li className="flex items-center gap-2"><Globe className="h-4 w-4" /> Public verification link</li>
+                </ul>
+              </button>
+            </div>
+          </>
+        )}
 
         {step === 'server' && (
           <>
@@ -440,7 +379,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
           </>
         )}
         </div>
-        )}
       </DialogContent>
     </Dialog>
   );
