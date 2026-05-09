@@ -91,7 +91,7 @@ const VerifyExperience = () => {
   };
 
   const startDiscord = (action: 'approve' | 'reject') => {
-    const state = btoa(JSON.stringify({ token, action }));
+    const state = btoa(JSON.stringify({ kind: 'verify', token, action }));
     const params = new URLSearchParams({
       client_id: DISCORD_CLIENT_ID,
       redirect_uri: redirectUri,
