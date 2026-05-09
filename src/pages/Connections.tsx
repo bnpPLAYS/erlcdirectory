@@ -266,7 +266,7 @@ const Connections = () => {
                               {c.discord_username ? `@${c.discord_username}` : c.bio || 'No bio yet'}
                             </p>
                           </Link>
-                          <Link to={`/messages?user=${c.id}`}>
+                          <Link to={`/messages?with=${c.id}`}>
                             <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Message">
                               <MessageSquare className="h-4 w-4" />
                             </Button>
