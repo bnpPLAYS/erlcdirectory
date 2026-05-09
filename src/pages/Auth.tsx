@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Shield, MessageSquare, Users, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
@@ -10,12 +10,33 @@ import { pageHeroEnter } from '@/lib/pageHero';
 const Auth = () => {
   const { user, loading, signInWithDiscord } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const oauthKickoff = useRef(false);
 
   useEffect(() => {
     if (user && !loading) {
       navigate('/');
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (searchParams.get('oauth') !== 'discord') return;
+    if (loading) return;
+    if (user) {
+      const p = new URLSearchParams(searchParams);
+      p.delete('oauth');
+      p.delete('next');
+      setSearchParams(p, { replace: true });
+      return;
+    }
+    if (oauthKickoff.current) return;
+    oauthKickoff.current = true;
+    const p = new URLSearchParams(searchParams);
+    p.delete('oauth');
+    p.delete('next');
+    setSearchParams(p, { replace: true });
+    void signInWithDiscord();
+  }, [user, loading, searchParams, setSearchParams, signInWithDiscord]);
 
   const features = [
     { icon: Shield, title: 'Discord-linked account', description: 'Your profile starts from your Discord identity — no extra passwords.' },
@@ -60,8 +81,9 @@ const Auth = () => {
               </p>
 
               <Button
+                type="button"
                 className="mt-8 w-full max-w-md gap-3 h-14 text-base bg-discord hover:bg-discord/90 text-primary-foreground rounded-xl shadow-lg"
-                onClick={signInWithDiscord}
+                onClick={() => void signInWithDiscord()}
                 disabled={loading}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">

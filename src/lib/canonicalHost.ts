@@ -40,3 +40,23 @@ export function getCanonicalRedirectUrl(): string | null {
 
   return null;
 }
+
+/**
+ * Do not redirect away from /discord/callback while OAuth params are present — PKCE verifier
+ * must stay on the same origin as the callback, or the session is never stored.
+ */
+export function shouldDeferCanonicalRedirectForOAuthCallback(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  if (path !== '/discord/callback' && !path.endsWith('/discord/callback')) return false;
+
+  const q = window.location.search;
+  const hash = window.location.hash.length > 1 ? window.location.hash.slice(1) : '';
+  return (
+    q.includes('code=') ||
+    q.includes('error=') ||
+    hash.includes('code=') ||
+    hash.includes('access_token=') ||
+    hash.includes('error=')
+  );
+}

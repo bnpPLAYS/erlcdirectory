@@ -5,7 +5,6 @@ import Navbar from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
 
 function readOAuthParams() {
@@ -21,38 +20,45 @@ function readOAuthParams() {
 
 const DiscordCallback = () => {
   const navigate = useNavigate();
-  const { loading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Connecting your Discord account...');
 
   useEffect(() => {
-    if (loading) return;
+    let cancelled = false;
+    let finished = false;
 
-    const finishWithSession = async () => {
+    const finishWithSession = async (): Promise<boolean> => {
+      if (cancelled || finished) return finished;
       const {
         data: { session },
         error: sessionError,
       } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        setStatus('error');
-        setMessage(sessionError?.message || 'No session after sign-in.');
-        return;
+      if (sessionError || !session?.user) return false;
+
+      finished = true;
+      await supabase.auth.refreshSession().catch(() => {});
+
+      try {
+        const syncResult = await syncDiscordProfileFromSession(session);
+        if (syncResult.error) {
+          console.warn('DiscordCallback profile sync:', syncResult.error.message);
+        }
+      } catch (e) {
+        console.warn('DiscordCallback profile sync threw:', e);
       }
-      const { error: syncError } = await syncDiscordProfileFromSession(session);
-      if (syncError) {
-        setStatus('error');
-        setMessage(syncError.message || 'Could not update your profile.');
-        return;
+
+      if (!cancelled) {
+        setStatus('success');
+        setMessage('Signed in. Redirecting…');
+        // Full navigation so AuthProvider reloads session from storage (fixes stale React state).
+        window.location.replace(`${window.location.origin}/`);
       }
-      setStatus('success');
-      setMessage('Signed in with Discord. Redirecting…');
-      setTimeout(() => navigate('/', { replace: true }), 600);
+      return true;
     };
 
-    const run = async () => {
+    void (async () => {
       const { code, state } = readOAuthParams();
 
-      // Experience verification: direct Discord OAuth with custom state (not Supabase login)
       if (code && state) {
         try {
           const decoded = JSON.parse(atob(state)) as { kind?: string; token?: string };
@@ -62,36 +68,63 @@ const DiscordCallback = () => {
             return;
           }
         } catch {
-          /* Supabase PKCE state — not verify */
+          /* Supabase PKCE state */
         }
       }
 
-      // Supabase often exchanges the code via detectSessionInUrl before this effect runs,
-      // which strips ?code= from the URL — session is already valid; do not require code.
-      const { data: preSession } = await supabase.auth.getSession();
-      if (preSession.session?.user) {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (cancelled || finished) return;
+        if (!session?.user) return;
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          void finishWithSession();
+        }
+      });
+
+      for (let i = 0; i < 100 && !cancelled && !finished; i++) {
+        if (await finishWithSession()) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      if (!finished && !cancelled && code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          const {
+            data: { session: retrySession },
+          } = await supabase.auth.getSession();
+          if (retrySession?.user) {
+            finished = false;
+            await finishWithSession();
+            subscription.unsubscribe();
+            return;
+          }
+          if (!cancelled) {
+            setStatus('error');
+            setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
+          }
+          subscription.unsubscribe();
+          return;
+        }
         await finishWithSession();
-        return;
       }
 
-      if (!code) {
+      if (!finished && !cancelled) {
         setStatus('error');
-        setMessage('Missing authorization code. Try signing in again.');
-        return;
+        setMessage(
+          code
+            ? 'Could not establish a session. Try signing in again from the Auth page.'
+            : 'Missing authorization code. Try signing in again.',
+        );
       }
 
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) {
-        setStatus('error');
-        setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
-        return;
-      }
+      subscription.unsubscribe();
+    })();
 
-      await finishWithSession();
+    return () => {
+      cancelled = true;
     };
-
-    void run();
-  }, [loading, navigate]);
+  }, [navigate]);
 
   const Icon = status === 'loading' ? Loader2 : status === 'success' ? CheckCircle2 : XCircle;
 

@@ -5,7 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
  * Persist Discord identity + tokens on `profiles` after Supabase OAuth (discord-guilds reads tokens from here).
  */
 export async function syncDiscordProfileFromSession(session: Session): Promise<{ error: Error | null }> {
-  const user = session.user;
+  let user = session.user;
+
+  const { data: refreshed, error: refreshErr } = await supabase.auth.getUser();
+  if (!refreshErr && refreshed.user) {
+    user = refreshed.user;
+  }
+
   const discordIdentity = user.identities?.find((i) => i.provider === 'discord');
   const meta = (user.user_metadata || {}) as Record<string, unknown>;
   const custom = (meta.custom_claims || {}) as Record<string, unknown>;
@@ -13,10 +19,12 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
   const discordId =
     discordIdentity?.id ??
     (typeof meta.provider_id === 'string' ? meta.provider_id : null) ??
+    (typeof meta.sub === 'string' && String(meta.sub).match(/^\d+$/) ? meta.sub : null) ??
     (typeof custom.sub === 'string' ? custom.sub : null);
 
   if (!discordId) {
-    return { error: new Error('Discord identity not found on this session.') };
+    console.warn('syncDiscordProfileFromSession: no Discord id in JWT yet; skipping profile patch');
+    return { error: null };
   }
 
   const username =
