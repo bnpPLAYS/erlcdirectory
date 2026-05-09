@@ -51,7 +51,7 @@ const Admin = () => {
   const refresh = async () => {
     const [p, s, po, st] = await Promise.all([
       supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured').order('created_at', { ascending: false }).limit(200),
-      supabase.from('servers').select('id, name, icon, member_count, guild_id').order('created_at', { ascending: false }).limit(200),
+      supabase.from('servers').select('id, name, icon, member_count, guild_id, is_verified').order('created_at', { ascending: false }).limit(200),
       supabase.from('posts').select('id, title, type, author_id, created_at').order('created_at', { ascending: false }).limit(200),
       supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
     ]);
@@ -86,14 +86,55 @@ const Admin = () => {
   }
 
   const toggleVerified = async (p: any) => {
-    const { error } = await supabase.from('profiles').update({ is_verified: !p.is_verified }).eq('id', p.id);
+    let { error } = await supabase.rpc('site_owner_set_profile_flags', {
+      p_profile_id: p.id,
+      p_is_verified: !p.is_verified,
+      p_is_featured: !!p.is_featured,
+    });
+    const msg = error?.message ?? '';
+    const rpcUnavailable =
+      !!error &&
+      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_profile_flags/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('profiles').update({ is_verified: !p.is_verified }).eq('id', p.id));
+    }
     if (error) return toast({ title: error.message, variant: 'destructive' });
-    setProfiles((prev) => prev.map((x) => x.id === p.id ? { ...x, is_verified: !p.is_verified } : x));
+    setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_verified: !p.is_verified } : x)));
   };
   const toggleFeatured = async (p: any) => {
-    const { error } = await supabase.from('profiles').update({ is_featured: !p.is_featured }).eq('id', p.id);
+    let { error } = await supabase.rpc('site_owner_set_profile_flags', {
+      p_profile_id: p.id,
+      p_is_verified: !!p.is_verified,
+      p_is_featured: !p.is_featured,
+    });
+    const msg = error?.message ?? '';
+    const rpcUnavailable =
+      !!error &&
+      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_profile_flags/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('profiles').update({ is_featured: !p.is_featured }).eq('id', p.id));
+    }
     if (error) return toast({ title: error.message, variant: 'destructive' });
-    setProfiles((prev) => prev.map((x) => x.id === p.id ? { ...x, is_featured: !p.is_featured } : x));
+    setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_featured: !p.is_featured } : x)));
+  };
+
+  const toggleServerVerified = async (s: any) => {
+    let { error } = await supabase.rpc('site_owner_set_server_verified', {
+      p_server_id: s.id,
+      p_is_verified: !s.is_verified,
+    });
+    const msg = error?.message ?? '';
+    const rpcUnavailable =
+      !!error &&
+      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_server_verified/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('servers').update({ is_verified: !s.is_verified }).eq('id', s.id));
+    }
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setServers((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_verified: !s.is_verified } : x)));
   };
   const removeProfile = async (p: any) => {
     if (!confirm(`Delete account ${p.display_name}? This cannot be undone.`)) return;
@@ -212,10 +253,16 @@ const Admin = () => {
               <Card key={s.id}><CardContent className="p-3 flex items-center gap-3">
                 <Avatar className="h-9 w-9 rounded-md"><AvatarImage src={s.icon || undefined} /><AvatarFallback className="rounded-md">{s.name?.[0]}</AvatarFallback></Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{s.name}</p>
+                  <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                    {s.name}
+                    {s.is_verified && <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />}
+                  </p>
                   <p className="text-xs text-muted-foreground">{s.member_count || 0} members</p>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => removeServer(s)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                <Button size="sm" variant={s.is_verified ? 'default' : 'outline'} onClick={() => toggleServerVerified(s)} className="gap-1 shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5" />{s.is_verified ? 'Verified' : 'Verify'}
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => removeServer(s)} className="text-destructive shrink-0"><Trash2 className="h-4 w-4" /></Button>
               </CardContent></Card>
             ))}
           </TabsContent>

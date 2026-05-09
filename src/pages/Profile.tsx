@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
+import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 
 interface ProfileData {
   id: string;
@@ -360,7 +361,9 @@ const Profile = () => {
                         {profile.display_name || 'Discord member'}
                       </h1>
                       {profile.is_verified && (
-                        <Badge className="badge-verified text-[10px] px-2 py-0.5">Verified</Badge>
+                        <Badge className="badge-verified text-[10px] px-2 py-0.5" title={DIRECTORY_STAFF_VERIFIED_TITLE}>
+                          Verified
+                        </Badge>
                       )}
                       {profile.is_featured && (
                         <Badge variant="outline" className="text-[10px] px-2 py-0.5" style={{ background: `${accent}22`, color: accent, borderColor: `${accent}55` }}>

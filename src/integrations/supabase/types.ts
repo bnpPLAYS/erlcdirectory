@@ -622,6 +622,10 @@ export type Database = {
         Args: { p_guild_ids: string[] }
         Returns: { guild_id: string; cnt: number }[]
       }
+      site_owner_set_server_verified: {
+        Args: { p_server_id: string; p_is_verified: boolean }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

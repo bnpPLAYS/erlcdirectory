@@ -6,6 +6,7 @@ import { Users, UserCheck, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/mockData';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
+import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 
 interface ServerCardProps {
   server: {
@@ -53,7 +54,13 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 {server.name}
               </h3>
               {server.is_verified && (
-                <CheckCircle2 className="h-4 w-4 text-verified flex-shrink-0" />
+                <Badge
+                  className="badge-verified text-[10px] px-1.5 py-0 h-5 gap-0.5 font-normal"
+                  title={DIRECTORY_STAFF_VERIFIED_TITLE}
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  Verified
+                </Badge>
               )}
               {server.is_featured && (
                 <Badge className="badge-featured text-[10px] px-1.5 py-0">Featured</Badge>
