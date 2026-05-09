@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     }).then((r) => r.json())
     if (!me?.id) return json({ error: 'Could not read Discord account.' }, 400)
 
-    const guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
+    const guildsRes = await fetch('https://discord.com/api/users/@me/guilds?with_counts=true', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     })
     if (!guildsRes.ok) return json({ error: 'Could not read your servers from Discord.' }, 400)
