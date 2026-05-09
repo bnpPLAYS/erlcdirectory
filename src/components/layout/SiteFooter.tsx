@@ -19,7 +19,7 @@ const SiteFooter = ({ className }: { className?: string }) => (
               aria-hidden
             />
           </div>
-          <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} erlc.directory</span>
+          <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} www.erlc.directory</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <Link to="/docs" className="hover:text-foreground transition-colors">

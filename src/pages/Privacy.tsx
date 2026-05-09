@@ -9,14 +9,14 @@ const Privacy = () => (
     <main className="flex-1 container mx-auto px-4 py-10 max-w-3xl">
       <div className={pageHeroEnter}>
       <h1 className="text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
-      <p className="text-sm text-muted-foreground mb-8">Last updated: May 9, 2026 · Site: erlc.directory</p>
+      <p className="text-sm text-muted-foreground mb-8">Last updated: May 9, 2026 · Site: www.erlc.directory</p>
       </div>
 
       <div className="space-y-8 text-sm text-muted-foreground leading-relaxed">
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-2">1. Overview</h2>
           <p>
-            This policy describes how erlc.directory (“we”, “us”) collects and uses information when you use the Service.
+            This policy describes how www.erlc.directory (“we”, “us”) collects and uses information when you use the Service.
             By using the Service, you acknowledge this policy alongside our Terms of Service.
           </p>
         </section>

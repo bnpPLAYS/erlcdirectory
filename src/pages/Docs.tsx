@@ -39,7 +39,7 @@ const SECTION_DATA: Omit<Section, 'body'>[] = [
     id: 'introduction',
     title: 'Introduction',
     icon: BookOpen,
-    toc: ['What is erlc.directory?', 'Who it’s for'],
+    toc: ['What is www.erlc.directory?', 'Who it’s for'],
   },
   {
     id: 'getting-started',
@@ -85,10 +85,10 @@ const Docs = () => {
           meta.id === 'introduction' ? (
             <>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="introduction-what">
-                What is erlc.directory?
+                What is www.erlc.directory?
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                erlc.directory is a staff-focused directory for Emergency Response: Liberty County communities—profiles, verified experience,
+                www.erlc.directory is a staff-focused directory for Emergency Response: Liberty County communities—profiles, verified experience,
                 server listings, openings, and lightweight networking between members.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="introduction-who">
@@ -273,7 +273,7 @@ const Docs = () => {
                 <FileText className="h-3.5 w-3.5" />
                 Documentation
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">How to use erlc.directory</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">How to use www.erlc.directory</h1>
               <p className="mt-3 text-muted-foreground max-w-2xl leading-relaxed">
                 Animated reference layout aligned with our monochrome accent—jump between sections or skim the on-this-page outline on desktop.
               </p>
