@@ -27,6 +27,7 @@ import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
 import { profilePath } from '@/lib/profilePath';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
+import { normalizeDiscordInvite } from '@/lib/discordInvite';
 
 interface Post {
   id: string;
@@ -331,6 +332,7 @@ const Posts = () => {
             <div className="space-y-4 max-w-2xl mx-auto">
               {filteredPosts.map((post) => {
                 const typeConfig = postTypeConfig[post.type];
+                const serverInviteHref = normalizeDiscordInvite(post.servers?.discord_invite ?? null);
                 return (
                   <Card key={post.id} className="hover:border-primary/50 transition-colors border-white/10">
                     <CardContent className="p-5">
@@ -418,11 +420,11 @@ const Posts = () => {
                             >
                               {post.profiles?.display_name || 'Discord member'}
                             </Link>
-                            {post.servers?.discord_invite && (
+                            {serverInviteHref && (
                               <a
-                                href={post.servers.discord_invite}
+                                href={serverInviteHref}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="hover:text-foreground inline-flex items-center gap-1"
                                 title="Open server invite"
                               >

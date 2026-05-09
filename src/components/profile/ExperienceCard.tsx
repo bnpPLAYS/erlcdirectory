@@ -5,6 +5,7 @@ import { Calendar, ExternalLink, Shield, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { normalizeDiscordInvite } from '@/lib/discordInvite';
 
 interface Experience {
   id: string;
@@ -25,22 +26,26 @@ interface Experience {
 
 const ExperienceCard = ({ experience }: { experience: Experience }) => {
   const [serverId, setServerId] = useState<string | null>(null);
+  const [joinHref, setJoinHref] = useState<string | null>(null);
 
   useEffect(() => {
     if (!experience.guild_id) return;
     supabase
       .from('servers')
-      .select('id')
+      .select('id, discord_invite')
       .eq('guild_id', experience.guild_id)
       .maybeSingle()
-      .then(({ data }) => setServerId(data?.id || null));
+      .then(({ data }) => {
+        setServerId(data?.id || null);
+        setJoinHref(normalizeDiscordInvite(data?.discord_invite ?? null));
+      });
   }, [experience.guild_id]);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   const ServerHeader = (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 flex-wrap">
       {experience.server_icon ? (
         <img
           src={experience.server_icon}
@@ -53,7 +58,7 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
         </div>
       )}
       <span className="truncate">{experience.server_name}</span>
-      {serverId && <ExternalLink className="h-3 w-3 opacity-50" />}
+      {serverId && <ExternalLink className="h-3 w-3 opacity-50 shrink-0" />}
     </div>
   );
 
@@ -76,13 +81,28 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
                 </Badge>
               )}
             </div>
-            {serverId ? (
-              <Link to={`/server/${serverId}`} className="hover:text-foreground transition-colors block">
-                {ServerHeader}
-              </Link>
-            ) : (
-              ServerHeader
-            )}
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <div className="min-w-0 flex-1">
+                {serverId ? (
+                  <Link to={`/server/${serverId}`} className="hover:text-foreground transition-colors block">
+                    {ServerHeader}
+                  </Link>
+                ) : (
+                  ServerHeader
+                )}
+              </div>
+              {joinHref && (
+                <a
+                  href={joinHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-medium text-cyan-400/90 hover:text-cyan-300 shrink-0 underline-offset-2 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Join server
+                </a>
+              )}
+            </div>
           </div>
         </div>
 

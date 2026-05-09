@@ -9,6 +9,33 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import ReviewsSection from '@/components/profile/ReviewsSection';
+import { normalizeDiscordInvite } from '@/lib/discordInvite';
+
+interface GuildExperienceRow {
+  id: string;
+  role: string;
+  is_current: boolean;
+  is_verified: boolean;
+  profile_id: string;
+  start_date: string;
+}
+
+/** One card per member — duplicate experience rows for the same guild skewed counts vs the list. */
+function dedupeExperiencesOnePerProfile(exps: GuildExperienceRow[]): GuildExperienceRow[] {
+  const sorted = [...exps].sort((a, b) => {
+    if (a.is_verified !== b.is_verified) return (b.is_verified ? 1 : 0) - (a.is_verified ? 1 : 0);
+    if (a.is_current !== b.is_current) return (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0);
+    return new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime();
+  });
+  const seen = new Set<string>();
+  const out: GuildExperienceRow[] = [];
+  for (const e of sorted) {
+    if (!e.profile_id || seen.has(e.profile_id)) continue;
+    seen.add(e.profile_id);
+    out.push(e);
+  }
+  return out;
+}
 
 interface ServerRow {
   id: string;
@@ -52,15 +79,26 @@ const ServerDetail = () => {
     (async () => {
       setLoading(true);
       const { data: s } = await supabase.from('servers').select('*').eq('id', id).maybeSingle();
-      setServer(s as any);
+      setServer((s as ServerRow | null) ?? null);
       if (s?.guild_id) {
-        const { data: exps } = await supabase
+        const { data: expsRaw } = await supabase
           .from('experiences')
-          .select('id, role, is_current, is_verified, profile_id')
-          .eq('guild_id', s.guild_id)
-          .order('start_date', { ascending: false });
-        const profileIds = [...new Set((exps || []).map((e) => e.profile_id))];
-        let profilesMap = new Map<string, any>();
+          .select('id, role, is_current, is_verified, profile_id, start_date')
+          .eq('guild_id', s.guild_id);
+        const exps = dedupeExperiencesOnePerProfile((expsRaw || []) as GuildExperienceRow[]);
+        const profileIds = exps.map((e) => e.profile_id).filter(Boolean);
+        let profilesMap = new Map<
+          string,
+          {
+            id: string;
+            discord_username: string | null;
+            display_name: string | null;
+            discord_avatar: string | null;
+            discord_id: string | null;
+            rating: number;
+            review_count: number;
+          }
+        >();
         if (profileIds.length) {
           const { data: profiles } = await supabase
             .from('profiles')
@@ -69,7 +107,7 @@ const ServerDetail = () => {
           profilesMap = new Map((profiles || []).map((p) => [p.id, p]));
         }
         setCoworkers(
-          (exps || []).map((e) => ({
+          exps.map((e) => ({
             id: e.id,
             role: e.role,
             is_current: !!e.is_current,
@@ -104,6 +142,9 @@ const ServerDetail = () => {
       </div>
     );
   }
+
+  const joinHref = normalizeDiscordInvite(server.discord_invite);
+  const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,11 +184,11 @@ const ServerDetail = () => {
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {server.member_count} members</span>
-                  <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {server.staff_count} listed staff</span>
+                  <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {staffListedCount} work here</span>
                 </div>
               </div>
-              {server.discord_invite && (
-                <a href={server.discord_invite} target="_blank" rel="noreferrer">
+              {joinHref && (
+                <a href={joinHref} target="_blank" rel="noopener noreferrer">
                   <Button className="gap-2"><ExternalLink className="h-4 w-4" /> Join Discord</Button>
                 </a>
               )}
@@ -159,12 +200,12 @@ const ServerDetail = () => {
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Users className="h-4 w-4" /> Members who work here
-              <span className="text-xs text-muted-foreground font-normal">({server.staff_count})</span>
+              <span className="text-xs text-muted-foreground font-normal">({staffListedCount})</span>
             </h2>
             {coworkers.length === 0 ? (
               <Card className="card-elevated">
                 <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No verified staff yet. Members who add and verify experience here will show up.
+                  No one listed yet. Members who add experience for this server will appear here.
                 </CardContent>
               </Card>
             ) : (
