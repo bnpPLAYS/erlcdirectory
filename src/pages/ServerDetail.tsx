@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
@@ -73,6 +73,29 @@ const ServerDetail = () => {
   const [server, setServer] = useState<ServerRow | null>(null);
   const [coworkers, setCoworkers] = useState<CoworkerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const detailBannerRefreshRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    detailBannerRefreshRef.current = null;
+  }, [id]);
+
+  useEffect(() => {
+    if (!server?.id || !server.guild_id) return;
+    if (detailBannerRefreshRef.current === server.id) return;
+    detailBannerRefreshRef.current = server.id;
+    let cancelled = false;
+    void (async () => {
+      await supabase.functions.invoke('servers-enrich-metadata', {
+        body: { guild_ids: [server.guild_id], refresh_visuals: true },
+      });
+      if (cancelled) return;
+      const { data: s } = await supabase.from('servers').select('*').eq('id', server.id).maybeSingle();
+      if (s && !cancelled) setServer(s as ServerRow);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [server?.id, server?.guild_id]);
 
   useEffect(() => {
     if (!id) return;

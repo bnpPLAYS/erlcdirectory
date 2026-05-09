@@ -38,6 +38,7 @@ import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVer
 import { cn } from '@/lib/utils';
 import { COUNTY_OPTIONS, normalizeStoredCounty } from '@/lib/ukCounties';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
+import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
 
 interface Experience {
   id: string;
@@ -93,6 +94,8 @@ interface Props {
   initialTab?: string;
   openAddExperienceOnMount?: boolean;
   onConsumedAddDeepLink?: () => void;
+  /** Called after Discord banner/avatar sync so the parent can reload profile data. */
+  onDiscordMediaSynced?: () => void;
 }
 
 const profileSchema = z.object({
@@ -193,6 +196,7 @@ const ProfileEditor = ({
   initialTab,
   openAddExperienceOnMount,
   onConsumedAddDeepLink,
+  onDiscordMediaSynced,
 }: Props) => {
   const [form, setForm] = useState({
     display_name: profile.display_name || '',
@@ -217,6 +221,7 @@ const ProfileEditor = ({
   const [activeTab, setActiveTab] = useState<EditorTab>(() => parseEditorTab(initialTab));
   const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(!!profile.dm_website_updates);
   const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
+  const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -740,9 +745,41 @@ const ProfileEditor = ({
             </div>
           </EditorSection>
 
-          <EditorSection title="Banner image" description="Wide image behind your header — use a high-resolution URL." icon={ImageIcon}>
+          <EditorSection
+            title="Banner image"
+            description="Wide image behind your header — sync from Discord (uses your Nitro banner when available) or paste a URL."
+            icon={ImageIcon}
+          >
             <Field label="Banner URL">
-              <Input value={form.banner_url} maxLength={500} onChange={(e) => update('banner_url', e.target.value)} className={editorInput} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <Input
+                  value={form.banner_url}
+                  maxLength={500}
+                  onChange={(e) => update('banner_url', e.target.value)}
+                  className={cn(editorInput, 'flex-1')}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="shrink-0 gap-2 sm:self-start"
+                  disabled={discordMediaBusy}
+                  onClick={async () => {
+                    setDiscordMediaBusy(true);
+                    const r = await invokeDiscordProfileMediaSync();
+                    setDiscordMediaBusy(false);
+                    if (!r.ok) {
+                      toast.error(r.error || 'Could not sync from Discord');
+                      return;
+                    }
+                    if (r.banner_url) update('banner_url', r.banner_url);
+                    toast.success('Discord banner and avatar updated');
+                    onDiscordMediaSynced?.();
+                  }}
+                >
+                  <RefreshCw className={cn('h-4 w-4', discordMediaBusy && 'animate-spin')} />
+                  Sync from Discord
+                </Button>
+              </div>
             </Field>
             {form.banner_url ? (
               <div className="mt-2 overflow-hidden rounded-xl border border-white/12 aspect-[21/8]">

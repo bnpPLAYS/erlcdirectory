@@ -17,7 +17,6 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
 import SiteFooter from '@/components/layout/SiteFooter';
-import { useAuth } from '@/hooks/useAuth';
 import { distinctStaffCountByGuild } from '@/lib/serverStaffCount';
 
 interface ServerData {
@@ -37,17 +36,12 @@ interface ServerData {
 }
 
 const Servers = () => {
-  const { user } = useAuth();
   const [servers, setServers] = useState<ServerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
   const [filterHiring, setFilterHiring] = useState(false);
   const enrichOnceRef = useRef(false);
-
-  useEffect(() => {
-    if (!user) enrichOnceRef.current = false;
-  }, [user]);
 
   const fetchServers = useCallback(async () => {
     setLoading(true);
@@ -116,7 +110,7 @@ const Servers = () => {
 
   /** Backfill Discord invite + banner for rows missing data (bot token / widget / preview APIs). */
   useEffect(() => {
-    if (!user || enrichOnceRef.current) return;
+    if (enrichOnceRef.current) return;
     enrichOnceRef.current = true;
     void (async () => {
       const { error } = await supabase.functions.invoke('servers-enrich-metadata', {
@@ -124,7 +118,7 @@ const Servers = () => {
       });
       if (!error) await fetchServers();
     })();
-  }, [user, fetchServers]);
+  }, [fetchServers]);
 
   const filteredServers = servers.filter(server => {
     const matchesSearch = !searchQuery || 

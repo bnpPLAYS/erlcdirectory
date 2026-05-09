@@ -16,4 +16,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.servers-enrich-metadata]
+verify_jwt = false
+
+[functions.discord-profile-media]
 verify_jwt = true
