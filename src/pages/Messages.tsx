@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
+import { filterPlaintext } from '@/lib/chatFilter';
+import { toast } from 'sonner';
 
 interface Conversation {
   id: string;
@@ -45,7 +47,11 @@ const Messages = () => {
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversation) return;
-    // Send message logic
+    const { text, blockedHits } = filterPlaintext(newMessage.trim());
+    if (!text) return;
+    if (blockedHits) toast.info('Message wording was adjusted to meet community guidelines.');
+    // Send message logic — persist `text` when wired to Supabase
+    void text;
     setNewMessage('');
   };
 

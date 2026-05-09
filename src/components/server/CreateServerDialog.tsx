@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { filterPlaintext } from '@/lib/chatFilter';
 
 const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
   const { profile } = useAuth();
@@ -36,19 +37,30 @@ const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
       toast({ title: 'Server name too short', variant: 'destructive' });
       return;
     }
+    const nameF = filterPlaintext(name.trim());
+    const descF = filterPlaintext(description.trim());
+    let tagHits = 0;
+    const tagParts = tags
+      .split(',')
+      .map((t) => {
+        const r = filterPlaintext(t.trim());
+        tagHits += r.blockedHits;
+        return r.text;
+      })
+      .filter(Boolean);
+    if (nameF.blockedHits || descF.blockedHits || tagHits) {
+      toast({ title: 'Some wording was adjusted to meet community guidelines.' });
+    }
     setSubmitting(true);
     const { error } = await supabase.from('servers').insert({
       owner_id: profile.id,
-      name: name.trim(),
-      description: description.trim() || null,
+      name: nameF.text,
+      description: descF.text || null,
       icon: icon.trim() || null,
       discord_invite: discordInvite.trim() || null,
       roblox_link: robloxLink.trim() || null,
       is_hiring: isHiring,
-      tags: tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: tagParts,
     });
     setSubmitting(false);
     if (error) {

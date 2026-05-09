@@ -331,6 +331,7 @@ export type Database = {
           social_links: Json | null
           status: string | null
           theme_preset: string | null
+          terms_accepted_at: string | null
           timezone: string | null
           updated_at: string
           user_id: string
@@ -360,6 +361,7 @@ export type Database = {
           social_links?: Json | null
           status?: string | null
           theme_preset?: string | null
+          terms_accepted_at?: string | null
           timezone?: string | null
           updated_at?: string
           user_id: string
@@ -389,6 +391,7 @@ export type Database = {
           social_links?: Json | null
           status?: string | null
           theme_preset?: string | null
+          terms_accepted_at?: string | null
           timezone?: string | null
           updated_at?: string
           user_id?: string

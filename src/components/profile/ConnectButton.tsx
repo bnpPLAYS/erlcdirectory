@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { filterPlaintext } from '@/lib/chatFilter';
 import { Link } from 'react-router-dom';
 
 type RequestRow = {
@@ -76,12 +77,14 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
       )
       .in('status', ['declined', 'cancelled']);
 
+    const msgF = filterPlaintext(message.trim());
+    if (msgF.blockedHits) toast.info('Note wording was adjusted to meet community guidelines.');
     const { data, error } = await supabase
       .from('connection_requests')
       .insert({
         sender_id: myId,
         receiver_id: targetProfileId,
-        message: message.trim() || null,
+        message: msgF.text || null,
       })
       .select('id, sender_id, receiver_id, status')
       .single();

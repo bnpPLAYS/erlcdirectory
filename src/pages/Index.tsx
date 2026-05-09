@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import directoryPreview from '@/assets/directory-preview.png';
+import SiteFooter from '@/components/layout/SiteFooter';
 
 // Rotating taglines under the main hero description
 const HEADLINES = [
@@ -369,38 +370,7 @@ const Index = () => {
         </div>
       </section>
 
-      <footer className="py-6 border-t border-border/30">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 flex items-center justify-center">
-                <img
-                  src={logo}
-                  alt=""
-                  className="logo-mark w-6 h-6 object-contain"
-                  width={24}
-                  height={24}
-                  loading="lazy"
-                  decoding="async"
-                  aria-hidden
-                />
-              </div>
-              <span className="text-sm text-muted-foreground">© 2026 erlc.directory</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link to="/privacy" className="hover:text-foreground transition-colors">
-                Privacy
-              </Link>
-              <Link to="/terms" className="hover:text-foreground transition-colors">
-                Terms
-              </Link>
-              <Link to="/contact" className="hover:text-foreground transition-colors">
-                Contact
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

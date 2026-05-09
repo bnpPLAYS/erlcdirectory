@@ -17,6 +17,11 @@ import DiscordCallback from "./pages/DiscordCallback";
 import VerifyExperience from "./pages/VerifyExperience";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
+import Docs from "./pages/Docs";
+import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 
 const queryClient = new QueryClient();
 
@@ -27,21 +32,27 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/browse" element={<Browse />} />
-            <Route path="/profile/:id" element={<Profile />} />
-            <Route path="/servers" element={<Servers />} />
-            <Route path="/server/:id" element={<ServerDetail />} />
-            <Route path="/posts" element={<Posts />} />
-            <Route path="/connections" element={<Connections />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/discord/callback" element={<DiscordCallback />} />
-            <Route path="/verify/:token" element={<VerifyExperience />} />
-            <Route path="/staff" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AcceptTermsGate>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/browse" element={<Browse />} />
+              <Route path="/profile/:id" element={<Profile />} />
+              <Route path="/servers" element={<Servers />} />
+              <Route path="/server/:id" element={<ServerDetail />} />
+              <Route path="/posts" element={<Posts />} />
+              <Route path="/connections" element={<Connections />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/discord/callback" element={<DiscordCallback />} />
+              <Route path="/verify/:token" element={<VerifyExperience />} />
+              <Route path="/staff" element={<Admin />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/docs" element={<Docs />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AcceptTermsGate>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

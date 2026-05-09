@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 interface Profile {
@@ -34,6 +35,8 @@ interface Profile {
   availability: string | null;
   website: string | null;
   theme_preset: string | null;
+  /** Absent or ISO timestamp = OK; explicit `null` from DB = must accept in-app. */
+  terms_accepted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshProfile = async () => {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    if (!uid) return;
+    const row = await supabase.from('profiles').select('*').eq('user_id', uid).single();
+    if (!row.error && row.data) setProfile(row.data as Profile);
+  };
+
   const signInWithDiscord = async () => {
     const state = crypto.randomUUID();
     const redirectUri = `${window.location.origin}/discord/callback`;
@@ -111,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signInWithDiscord, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signInWithDiscord, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

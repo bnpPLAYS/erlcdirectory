@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { filterPlaintext } from '@/lib/chatFilter';
 
 interface Guild {
   id: string;
@@ -105,10 +106,16 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
   const submit = async (kind: 'server' | 'direct') => {
     setSaving(true);
     try {
-      const payload: any = {
+      const roleF = filterPlaintext(role.trim());
+      const descF = filterPlaintext(description.trim());
+      const directNameF = filterPlaintext(serverName.trim());
+      if (roleF.blockedHits || descF.blockedHits || directNameF.blockedHits) {
+        toast.info('Some wording was adjusted to meet community guidelines.');
+      }
+      const payload: Record<string, unknown> = {
         profile_id: profileId,
-        role: role.trim().slice(0, 80),
-        description: description.trim().slice(0, 600) || null,
+        role: roleF.text.slice(0, 80),
+        description: descF.text.slice(0, 600) || null,
         start_date: startDate,
         end_date: isCurrent ? null : (endDate || null),
         is_current: isCurrent,
@@ -118,7 +125,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
         payload.server_icon = selectedGuild.icon;
         payload.guild_id = selectedGuild.id;
       } else {
-        payload.server_name = serverName.trim().slice(0, 80);
+        payload.server_name = directNameF.text.slice(0, 80);
       }
       const { error } = await supabase.from('experiences').insert(payload);
       if (error) throw error;

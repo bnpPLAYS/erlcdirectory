@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
 
@@ -109,8 +110,10 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const addSkill = () => {
-    const s = skillInput.trim().slice(0, 30);
+    const { text: sRaw, blockedHits } = filterPlaintext(skillInput.trim());
+    const s = sRaw.slice(0, 30);
     if (!s || skills.includes(s) || skills.length >= 20) return;
+    if (blockedHits) toast.info('Skill wording was adjusted to meet community guidelines.');
     setSkills([...skills, s]);
     setSkillInput('');
   };
@@ -136,7 +139,31 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   };
 
   const handleSave = async () => {
-    const parsed = profileSchema.safeParse(form);
+    let filterHits = 0;
+    const f = (v: string) => {
+      const r = filterPlaintext(v);
+      filterHits += r.blockedHits;
+      return r.text;
+    };
+    const filteredForm = {
+      ...form,
+      display_name: f(form.display_name),
+      bio: f(form.bio),
+      location: f(form.location),
+      timezone: f(form.timezone),
+      pronouns: f(form.pronouns),
+      status: f(form.status),
+      availability: f(form.availability),
+      website: form.website,
+      banner_url: form.banner_url,
+    };
+    const filteredSkills = skills.map((s) => {
+      const r = filterPlaintext(s);
+      filterHits += r.blockedHits;
+      return r.text;
+    }).filter(Boolean);
+
+    const parsed = profileSchema.safeParse(filteredForm);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message || 'Invalid input');
       return;
@@ -144,24 +171,30 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
     setSaving(true);
     try {
       const cleanedSocials = Object.fromEntries(
-        Object.entries(socials).filter(([, v]) => v && v.trim())
+        Object.entries(socials)
+          .filter(([, v]) => v && v.trim())
+          .map(([k, v]) => {
+            const r = filterPlaintext(v.trim());
+            filterHits += r.blockedHits;
+            return [k, r.text];
+          })
       );
 
       const { error } = await supabase
         .from('profiles')
         .update({
-          display_name: form.display_name || null,
-          bio: form.bio || null,
-          location: form.location || null,
-          timezone: form.timezone || null,
-          pronouns: form.pronouns || null,
-          status: form.status || null,
-          availability: form.availability || null,
-          website: form.website || null,
-          banner_url: form.banner_url || null,
+          display_name: filteredForm.display_name || null,
+          bio: filteredForm.bio || null,
+          location: filteredForm.location || null,
+          timezone: filteredForm.timezone || null,
+          pronouns: filteredForm.pronouns || null,
+          status: filteredForm.status || null,
+          availability: filteredForm.availability || null,
+          website: filteredForm.website || null,
+          banner_url: filteredForm.banner_url || null,
           accent_color: form.accent_color || null,
           theme_preset: form.theme_preset || 'mono',
-          skills,
+          skills: filteredSkills,
           social_links: cleanedSocials,
         })
         .eq('id', profile.id);
@@ -175,8 +208,10 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
       for (const e of exps) {
         if (newExpKeys.has(e.id)) continue;
         if (!e.role.trim() || !e.server_name.trim()) continue;
+        const roleF = filterPlaintext(e.role.trim());
+        filterHits += roleF.blockedHits;
         const payload = {
-          role: e.role.trim().slice(0, 80),
+          role: roleF.text.slice(0, 80),
           start_date: e.start_date,
           end_date: e.is_current ? null : e.end_date,
           is_current: e.is_current,
@@ -184,6 +219,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
         await supabase.from('experiences').update(payload).eq('id', e.id);
       }
 
+      if (filterHits) toast.info('Some wording was adjusted to meet community guidelines.');
       toast.success('Profile saved');
       onSaved();
     } catch (err: any) {

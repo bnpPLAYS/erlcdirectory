@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, MessageSquare, Users, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
+import SiteFooter from '@/components/layout/SiteFooter';
 import { useAuth } from '@/hooks/useAuth';
 
 const Auth = () => {
@@ -102,6 +103,8 @@ const Auth = () => {
           </p>
         </div>
       </div>
+
+      <SiteFooter />
     </div>
   );
 };

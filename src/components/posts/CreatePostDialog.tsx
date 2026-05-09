@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { filterPlaintext } from '@/lib/chatFilter';
 
 const TYPES = [
   { value: 'hiring', label: 'Hiring', desc: 'Recruit staff for a server' },
@@ -121,6 +122,11 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       toast({ title: 'Add a bit more detail', variant: 'destructive' });
       return;
     }
+    const titleF = filterPlaintext(title.trim());
+    const contentF = filterPlaintext(content.trim());
+    if (titleF.blockedHits || contentF.blockedHits) {
+      toast({ title: 'Some wording was adjusted to meet community guidelines.' });
+    }
     setSubmitting(true);
     const serverId = await ensureServerRow(selectedGuild);
     if (!serverId) {
@@ -130,8 +136,8 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     const { error } = await supabase.from('posts').insert({
       author_id: profile.id,
       type,
-      title: title.trim(),
-      content: content.trim(),
+      title: titleF.text,
+      content: contentF.text,
       server_id: serverId,
     });
     setSubmitting(false);

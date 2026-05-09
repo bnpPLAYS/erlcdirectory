@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { filterPlaintext } from '@/lib/chatFilter';
 import { Link } from 'react-router-dom';
 import {
   Select,
@@ -167,10 +168,14 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
   const submit = async () => {
     if (!me) return;
     setSubmitting(true);
-    const payload: any = {
+    const contentF = filterPlaintext(content.trim());
+    if (contentF.blockedHits) {
+      toast({ title: 'Review wording was adjusted to meet community guidelines.' });
+    }
+    const payload: Record<string, unknown> = {
       reviewer_id: me.id,
       rating,
-      content: content.trim() || null,
+      content: contentF.text || null,
     };
     if (serverId) {
       payload.server_id = serverId;
