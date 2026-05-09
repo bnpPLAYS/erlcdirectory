@@ -13,22 +13,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import heroScreenshot from '@/assets/home-features/public-profile.png';
-import homeFeatureProfileEditor from '@/assets/home-features/profile-editor.png';
 import homeFeatureBrowseMembers from '@/assets/home-features/member-directory.png';
 import homeFeatureCreatePost from '@/assets/home-features/create-post.png';
 import homeFeatureConnections from '@/assets/home-features/connections.png';
 import homeFeaturePublicProfile from '@/assets/home-features/public-profile.png';
+import homeFeatureServerDetail from '@/assets/home-features/server-detail.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { pageHeroEnter } from '@/lib/pageHero';
 import { profileEditorPath } from '@/lib/profilePath';
 
 /**
- * Homepage feature screenshots: each row pairs copy with a PNG in `src/assets/home-features/`.
- * Replace files in place (keep filenames) after exporting from www.erlc.directory.
- *
- * - member-directory.png → Browse Members grid (search, filters, profile cards)
- * - create-post.png → Create a post dialog (hiring / LFW / announcement / discussion)
+ * Homepage “How it works” tour — order matches marketing screenshots:
+ * browse → posts → connections → public profile → server page.
+ * PNGs live in `src/assets/home-features/` (replace in place after exporting).
  */
 const PRODUCT_SCREENSHOTS: {
   title: string;
@@ -36,13 +34,6 @@ const PRODUCT_SCREENSHOTS: {
   image: string;
   alt: string;
 }[] = [
-  {
-    title: 'Shape your profile',
-    description:
-      'Set pronouns, region, status, and quick emoji—then flesh out bio and skills so people see who you are before they DM you.',
-    image: homeFeatureProfileEditor,
-    alt: 'Profile editor on www.erlc.directory showing General tab and quick emoji row',
-  },
   {
     title: 'Browse members',
     description:
@@ -70,6 +61,13 @@ const PRODUCT_SCREENSHOTS: {
       'Verified experience, reviewer notes, and server links sit alongside your bio so owners and staff can trust what they are reading.',
     image: homeFeaturePublicProfile,
     alt: 'Public profile with verified experience and badges on www.erlc.directory',
+  },
+  {
+    title: 'Servers & staff',
+    description:
+      'Open a server for member counts, Discord invite, and members who list verified experience there—so communities and applicants share one clear picture.',
+    image: homeFeatureServerDetail,
+    alt: 'Server detail page with staff list on www.erlc.directory',
   },
 ];
 
@@ -227,7 +225,7 @@ const Index = () => {
               How it works on the site
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Real screens from the directory: profile editing, browse, posts, connections, and how visitors see you.
+              Real screens from the directory: browse, posts, your network, public profiles, and server pages.
             </p>
           </div>
 
