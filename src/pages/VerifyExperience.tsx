@@ -51,7 +51,9 @@ const VerifyExperience = () => {
     approver: string;
   } | null>(null);
 
-  const redirectUri = `${window.location.origin}/verify/${token}`;
+  // Use the statically-registered Discord callback URL so we don't have to
+  // pre-register a unique redirect_uri per verification token.
+  const redirectUri = `${window.location.origin}/discord/callback`;
 
   useEffect(() => {
     if (!token) return;
