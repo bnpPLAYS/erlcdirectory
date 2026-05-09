@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Sparkles,
   Bell,
-  Globe,
   Eye,
   Github,
   Youtube,
@@ -46,6 +45,7 @@ import AddExperienceDialog from './AddExperienceDialog';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
+import { COUNTY_OPTIONS, normalizeStoredCounty } from '@/lib/ukCounties';
 
 interface Experience {
   id: string;
@@ -106,15 +106,15 @@ interface Props {
 const profileSchema = z.object({
   display_name: z.string().trim().max(60, 'Name must be 60 characters or fewer').optional(),
   bio: z.string().trim().max(500, 'Bio must be 500 characters or fewer').optional(),
-  location: z.string().trim().max(80).optional(),
+  location: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || COUNTY_OPTIONS.includes(v), 'Choose a county or region from the list.'),
   timezone: z.string().trim().max(40).optional(),
   pronouns: z.string().trim().max(30).optional(),
   status: z.string().trim().max(140).optional(),
   availability: z.string().trim().max(40).optional(),
-  website: z.string().trim().max(200).optional().refine(
-    (v) => !v || /^https?:\/\//i.test(v),
-    'Website must start with http:// or https://'
-  ),
   banner_url: z.string().trim().max(500).optional().refine(
     (v) => !v || /^https?:\/\//i.test(v),
     'Banner URL must start with http:// or https://'
@@ -214,12 +214,11 @@ const ProfileEditor = ({
   const [form, setForm] = useState({
     display_name: profile.display_name || '',
     bio: profile.bio || '',
-    location: profile.location || '',
+    location: normalizeStoredCounty(profile.location || ''),
     timezone: profile.timezone || '',
     pronouns: profile.pronouns || '',
     status: profile.status || '',
     availability: profile.availability || '',
-    website: profile.website || '',
     banner_url: profile.banner_url || '',
     accent_color: profile.accent_color || '#ffffff',
     theme_preset: profile.theme_preset || 'mono',
@@ -325,7 +324,6 @@ const ProfileEditor = ({
       pronouns: f(form.pronouns),
       status: f(form.status),
       availability: f(form.availability),
-      website: form.website,
       banner_url: form.banner_url,
     };
     const filteredSkills = skills.map((s) => {
@@ -361,7 +359,7 @@ const ProfileEditor = ({
           pronouns: filteredForm.pronouns || null,
           status: filteredForm.status || null,
           availability: filteredForm.availability || null,
-          website: filteredForm.website || null,
+          website: null,
           banner_url: filteredForm.banner_url || null,
           accent_color: form.accent_color || null,
           theme_preset: form.theme_preset || 'mono',
@@ -546,8 +544,26 @@ const ProfileEditor = ({
                   className={editorInput}
                 />
               </Field>
-              <Field label="Location">
-                <Input value={form.location} maxLength={80} onChange={(e) => update('location', e.target.value)} className={editorInput} />
+              <Field
+                label="County / region"
+                hint="Pick your general area — not your street or town."
+              >
+                <Select
+                  value={form.location ? form.location : '__none'}
+                  onValueChange={(v) => update('location', v === '__none' ? '' : v)}
+                >
+                  <SelectTrigger className={editorSelect}>
+                    <SelectValue placeholder="Choose a county or region" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[min(22rem,70vh)]">
+                    <SelectItem value="__none">Don&apos;t show location</SelectItem>
+                    {COUNTY_OPTIONS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Timezone">
                 <Input value={form.timezone} maxLength={40} onChange={(e) => update('timezone', e.target.value)} className={editorInput} />
@@ -618,12 +634,6 @@ const ProfileEditor = ({
                   ))}
                 </div>
               )}
-            </Field>
-          </EditorSection>
-
-          <EditorSection title="Website" description="Public link shown on your profile card." icon={Globe}>
-            <Field label="URL">
-              <Input value={form.website} maxLength={200} onChange={(e) => update('website', e.target.value)} className={editorInput} />
             </Field>
           </EditorSection>
 
@@ -923,7 +933,6 @@ const ProfileEditor = ({
           pronouns={form.pronouns.trim()}
           status={form.status}
           availability={form.availability}
-          website={form.website}
           banner_url={form.banner_url}
           accent_color={form.accent_color}
           skills={skills}
