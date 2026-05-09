@@ -10,8 +10,7 @@ import { Label } from '@/components/ui/label';
 import logo from '@/assets/logo.png';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { callExperienceVerify } from '@/lib/callExperienceVerify';
-
-const DISCORD_CLIENT_ID = '1495931923237703792';
+import { getDiscordClientId, getDiscordRedirectUri } from '@/lib/discordOAuth';
 const APPROVE_EXTRAS_KEY = (t: string) => `experience-verify-approve:${t}`;
 
 interface RequestInfo {
@@ -62,8 +61,6 @@ const VerifyExperience = () => {
   const [verifierPosition, setVerifierPosition] = useState('');
   const [verifierReviewText, setVerifierReviewText] = useState('');
   const [verifierRating, setVerifierRating] = useState<string>('');
-
-  const redirectUri = `${window.location.origin}/discord/callback`;
 
   useEffect(() => {
     if (!token) return;
@@ -148,9 +145,10 @@ const VerifyExperience = () => {
       sessionStorage.removeItem(APPROVE_EXTRAS_KEY(token));
     }
     setError(null);
+    const redirectUri = getDiscordRedirectUri();
     const state = btoa(JSON.stringify({ kind: 'verify', token, action }));
     const q = new URLSearchParams({
-      client_id: DISCORD_CLIENT_ID,
+      client_id: getDiscordClientId(),
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'identify guilds',
@@ -203,7 +201,7 @@ const VerifyExperience = () => {
       }>(action, {
         token,
         code,
-        redirectUri,
+        redirectUri: getDiscordRedirectUri(),
         memberRole: memberRoleBody,
         verifierPosition: verifierPositionBody,
         verifierReviewText: verifierReviewTextBody,

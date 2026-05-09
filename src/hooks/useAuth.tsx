@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getDiscordRedirectUri } from '@/lib/discordOAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${window.location.origin}/discord/callback`,
+        redirectTo: getDiscordRedirectUri(),
         scopes: 'identify email guilds',
       },
     });
