@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Users, Building2, Shield, Star, Zap, MessageSquare } from 'lucide-react';
+import { ArrowRight, Users, Building2, Shield, Star, Zap } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ServerCard from '@/components/server/ServerCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
+import directoryPreview from '@/assets/directory-preview.png';
+
+// Headlines rotate on each visit so the homepage feels fresh.
+const HEADLINES = [
+  'Build your portfolio on erlc.directory',
+  'Make connections on erlc.directory',
+  'Find your next ER:LC role on erlc.directory',
+  'Get verified experience on erlc.directory',
+  'Hire trusted staff on erlc.directory',
+  'Show your work on erlc.directory',
+];
 
 interface Profile {
   id: string;
