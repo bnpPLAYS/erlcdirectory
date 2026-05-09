@@ -14,6 +14,40 @@ const json = (body: unknown, status = 200) =>
 
 const ADMIN = 0x8n
 
+/** Must match the authorize URL — one stable `/discord/callback` per site, not per /verify/:token. */
+function isAllowedVerifierRedirectUri(uri: string): boolean {
+  const raw = uri.trim()
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) return false
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    return false
+  }
+  const path = url.pathname.replace(/\/+$/, '') || '/'
+  if (path !== '/discord/callback') return false
+
+  const host = url.hostname.toLowerCase()
+
+  if (host === 'localhost' || host === '127.0.0.1') return true
+
+  if (host === 'www.erlc.directory' || host === 'erlc.directory') return true
+
+  if (host.endsWith('.vercel.app')) return true
+
+  const site = (Deno.env.get('PUBLIC_SITE_URL') || '').trim().replace(/\/+$/, '')
+  if (site) {
+    try {
+      const base = new URL(site.startsWith('http') ? site : `https://${site}`)
+      if (host === base.hostname.toLowerCase()) return true
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return false
+}
+
 async function notifyExperienceDecisionDm(
   db: SupabaseClient,
   params: {
@@ -127,6 +161,15 @@ Deno.serve(async (req) => {
     const code = (body.code ?? '').toString()
     const redirectUri = (body.redirectUri ?? '').toString()
     if (!code || !redirectUri) return json({ error: 'Missing Discord authorization.' }, 400)
+    if (!isAllowedVerifierRedirectUri(redirectUri)) {
+      return json(
+        {
+          error:
+            'Invalid OAuth redirect. Use the site Discord callback only — add https://www.erlc.directory/discord/callback in Discord Developer Portal (not a separate URL per verification link).',
+        },
+        400,
+      )
+    }
 
     let memberRole = ''
     let verifierPosition = ''
