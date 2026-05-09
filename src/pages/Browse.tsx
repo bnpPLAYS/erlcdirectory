@@ -55,12 +55,14 @@ const Browse = () => {
       .from('profiles')
       .select('id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills');
 
-    if (sortBy === 'featured') {
-      query = query.order('is_featured', { ascending: false }).order('rating', { ascending: false });
-    } else if (sortBy === 'rating') {
-      query = query.order('rating', { ascending: false });
+    if (sortBy === 'rating') {
+      // Featured pinned to top, then highest rated
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('rating', { ascending: false })
+        .order('review_count', { ascending: false });
     } else if (sortBy === 'newest') {
-      query = query.order('created_at', { ascending: false });
+      query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
     }
 
     const { data, error } = await query.limit(50);
