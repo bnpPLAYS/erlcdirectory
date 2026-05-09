@@ -17,7 +17,7 @@ import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
-import { profilePath, looksLikeProfileUuid } from '@/lib/profilePath';
+import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
 
 interface ProfileData {
   id: string;
@@ -59,12 +59,23 @@ interface Experience {
   verified_by_discord_username?: string | null;
 }
 
+function unwrapRpcProfileRow(data: unknown): ProfileData | null {
+  if (data == null) return null;
+  if (Array.isArray(data)) {
+    const row = data[0];
+    if (row && typeof row === 'object' && 'id' in row) return row as ProfileData;
+    return null;
+  }
+  if (typeof data === 'object' && 'id' in (data as object)) return data as ProfileData;
+  return null;
+}
+
 const Profile = () => {
   const { profileSlug } = useParams<{ profileSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile: meProfile } = useAuth();
+  const { profile: meProfile, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +92,8 @@ const Profile = () => {
     setLoading(true);
     setProfile(null);
     setExperiences([]);
-    const slug = profileSlug ? decodeURIComponent(profileSlug) : '';
+    const slugRaw = profileSlug ? decodeURIComponent(profileSlug) : '';
+    const slug = slugRaw.trim();
     if (!slug) {
       setLoading(false);
       return;
@@ -89,7 +101,10 @@ const Profile = () => {
 
     let profileData: ProfileData | null = null;
 
-    if (slug === 'me') {
+    if (slug.toLowerCase() === 'me') {
+      if (authLoading) {
+        return;
+      }
       const mid = meProfile?.id;
       if (!mid) {
         setLoading(false);
@@ -101,11 +116,35 @@ const Profile = () => {
       const { data } = await supabase.from('profiles').select('*').eq('id', slug).maybeSingle();
       if (data) profileData = data as ProfileData;
     } else {
-      const { data: rpcData, error } = await supabase.rpc('get_profile_by_username_lookup', {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_profile_by_username_lookup', {
         lookup: slug,
       });
-      const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-      if (!error && row) profileData = row as ProfileData;
+      if (rpcError && import.meta.env.DEV) {
+        console.warn('[Profile] get_profile_by_username_lookup:', rpcError.message);
+      }
+      profileData = unwrapRpcProfileRow(rpcData);
+
+      const urlKey = normalizeDiscordUsernameKey(slug);
+      if (!profileData && meProfile?.id && urlKey) {
+        const myKey = normalizeDiscordUsernameKey(meProfile.discord_username);
+        if (myKey && myKey === urlKey) {
+          const { data } = await supabase.from('profiles').select('*').eq('id', meProfile.id).single();
+          if (data) profileData = data as ProfileData;
+        }
+      }
+
+      if (!profileData) {
+        const variants = Array.from(
+          new Set([slug, slug.endsWith('.') ? slug : `${slug}.`, slug.replace(/\.$/u, '')]),
+        ).filter(Boolean);
+        for (const v of variants) {
+          const { data } = await supabase.from('profiles').select('*').ilike('discord_username', v).maybeSingle();
+          if (data) {
+            profileData = data as ProfileData;
+            break;
+          }
+        }
+      }
     }
 
     if (profileData) {
@@ -118,7 +157,7 @@ const Profile = () => {
       if (expData) setExperiences(expData);
     }
     setLoading(false);
-  }, [profileSlug, meProfile?.id]);
+  }, [profileSlug, meProfile?.id, meProfile?.discord_username, authLoading]);
 
   useEffect(() => {
     void fetchProfile();

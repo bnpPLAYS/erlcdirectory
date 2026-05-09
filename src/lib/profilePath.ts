@@ -33,12 +33,17 @@ export function isReservedProfileSlug(s: string): boolean {
   return RESERVED_PROFILE_SLUGS.has(s.trim().toLowerCase());
 }
 
+/** Normalize Discord username for comparison (matches DB username lookup: trim, lower, strip trailing dots). */
+export function normalizeDiscordUsernameKey(username: string | null | undefined): string {
+  if (username == null || typeof username !== 'string') return '';
+  const t = username.trim();
+  if (!t) return '';
+  return t.toLowerCase().replace(/\.+$/u, '');
+}
+
 /** Normalize Discord username for URL slug (match lookup RPC). */
 export function slugFromDiscordUsername(username: string | null | undefined): string | null {
-  if (username == null || typeof username !== 'string') return null;
-  const t = username.trim();
-  if (!t) return null;
-  const slug = t.toLowerCase().replace(/\.+$/u, '');
+  const slug = normalizeDiscordUsernameKey(username);
   if (!slug || isReservedProfileSlug(slug)) return null;
   return slug;
 }
