@@ -15,7 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -68,7 +68,7 @@ const Admin = () => {
 
   useEffect(() => { if (isAdmin) refresh(); }, [isAdmin]);
 
-  if (loading || isAdmin === null) {
+  if (authLoading || isAdmin === null) {
     return <div className="min-h-screen bg-background"><Navbar /><div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div></div>;
   }
   if (!user) return <Navigate to="/auth" replace />;
