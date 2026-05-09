@@ -141,7 +141,7 @@ const ServerDetail = () => {
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {server.member_count} members</span>
-                  <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {coworkers.length} listed staff</span>
+                  <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {server.staff_count} listed staff</span>
                 </div>
               </div>
               {server.discord_invite && (
@@ -157,7 +157,7 @@ const ServerDetail = () => {
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Users className="h-4 w-4" /> Members who work here
-              <span className="text-xs text-muted-foreground font-normal">({coworkers.length})</span>
+              <span className="text-xs text-muted-foreground font-normal">({server.staff_count})</span>
             </h2>
             {coworkers.length === 0 ? (
               <Card className="card-elevated">

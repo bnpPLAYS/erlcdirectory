@@ -368,9 +368,14 @@ Deno.serve(async (req) => {
           : null
       const iconUrl = (vr.guild_icon as string | null) ?? iconFromTarget
 
+      const oauthAccessToken =
+        typeof tokenData.access_token === 'string' ? tokenData.access_token : undefined
+
       let enriched: Awaited<ReturnType<typeof enrichDiscordGuildForDirectory>>
       try {
-        enriched = await enrichDiscordGuildForDirectory(guildIdStr, target.banner ?? null)
+        enriched = await enrichDiscordGuildForDirectory(guildIdStr, target.banner ?? null, {
+          userAccessToken: oauthAccessToken,
+        })
       } catch (e) {
         console.error('[experience-verify] guild_enrich_failed', e)
         enriched = { description: null, bannerUrl: null, discordInvite: null }

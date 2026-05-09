@@ -1,17 +1,22 @@
 /**
- * Resolve Discord CDN URLs and fetch public/bot metadata to populate directory `servers` rows.
- * Invite URL priority: vanity URL (bot) → new invite on first text channel (bot) → server widget (public).
+ * Resolve Discord CDN URLs and fetch guild metadata for directory `servers` rows.
+ *
+ * Priority for metadata (description / banner / vanity invite):
+ * 1) OAuth user Bearer (verifier just approved — works even if bot is not in the guild)
+ * 2) Bot token (if configured and bot is in the guild)
+ * 3) Guild preview (discoverable communities)
+ * Invite fallback: bot-created invite → server widget `instant_invite`
  */
 
 export function discordBannerCdnUrl(guildId: string, bannerHash: string | null | undefined): string | null {
   if (!guildId || !bannerHash) return null
-  const ext = bannerHash.startsWith('a_') ? 'gif' : 'png'
+  const ext = String(bannerHash).startsWith('a_') ? 'gif' : 'png'
   return `https://cdn.discordapp.com/banners/${guildId}/${bannerHash}.${ext}?size=1024`
 }
 
 export function discordIconCdnUrl(guildId: string, iconHash: string | null | undefined): string | null {
   if (!guildId || !iconHash) return null
-  const ext = iconHash.startsWith('a_') ? 'gif' : 'png'
+  const ext = String(iconHash).startsWith('a_') ? 'gif' : 'png'
   return `https://cdn.discordapp.com/icons/${guildId}/${iconHash}.${ext}?size=128`
 }
 
@@ -21,6 +26,11 @@ export type GuildDirectoryEnrichment = {
   discordInvite: string | null
 }
 
+export type EnrichGuildOptions = {
+  /** From Discord OAuth token exchange — enables GET /guilds/{id} without bot in server */
+  userAccessToken?: string | null
+}
+
 function normalizeInviteUrl(raw: string): string {
   const t = raw.trim()
   if (!t) return t
@@ -28,46 +38,74 @@ function normalizeInviteUrl(raw: string): string {
   return `https://discord.gg/${t.replace(/^\/+/, '')}`
 }
 
-/**
- * @param oauthBannerHash — optional hash from GET /users/@me/guilds (banner field when present)
- */
+function patchFromGuildJson(
+  guildId: string,
+  g: Record<string, unknown>,
+  into: GuildDirectoryEnrichment,
+): void {
+  const desc = g.description
+  if (!into.description && typeof desc === 'string' && desc.trim()) {
+    into.description = desc.trim()
+  }
+  const ban = g.banner
+  if (!into.bannerUrl && ban != null && String(ban).length > 0) {
+    const u = discordBannerCdnUrl(guildId, String(ban))
+    if (u) into.bannerUrl = u
+  }
+  const vanity = g.vanity_url_code
+  if (!into.discordInvite && typeof vanity === 'string' && vanity.trim()) {
+    into.discordInvite = `https://discord.gg/${vanity.trim()}`
+  }
+}
+
 export async function enrichDiscordGuildForDirectory(
   guildId: string,
   oauthBannerHash?: string | null,
+  options?: EnrichGuildOptions,
 ): Promise<GuildDirectoryEnrichment> {
   const oauthBanner = discordBannerCdnUrl(guildId, oauthBannerHash)
 
-  let description: string | null = null
-  let bannerUrl: string | null = oauthBanner
-  let discordInvite: string | null = null
+  const out: GuildDirectoryEnrichment = {
+    description: null,
+    bannerUrl: oauthBanner,
+    discordInvite: null,
+  }
+
+  const gid = encodeURIComponent(guildId)
+  const userToken = options?.userAccessToken?.trim()
+
+  // 1) User OAuth — Discord returns full guild for members (guilds scope)
+  if (userToken) {
+    const ur = await fetch(`https://discord.com/api/v10/guilds/${gid}`, {
+      headers: { Authorization: `Bearer ${userToken}` },
+    })
+    if (ur.ok) {
+      try {
+        patchFromGuildJson(guildId, (await ur.json()) as Record<string, unknown>, out)
+      } catch {
+        /* ignore JSON errors */
+      }
+    }
+  }
 
   const botToken = Deno.env.get('DISCORD_BOT_TOKEN')?.trim()
   const botHeaders = botToken ? ({ Authorization: `Bot ${botToken}` } as Record<string, string>) : null
 
-  const gid = encodeURIComponent(guildId)
-
+  // 2) Bot — fills gaps when user call failed or bot has richer data
   if (botHeaders) {
     const gr = await fetch(`https://discord.com/api/v10/guilds/${gid}`, { headers: botHeaders })
     if (gr.ok) {
-      const g = (await gr.json()) as {
-        description?: string | null
-        banner?: string | null
-        vanity_url_code?: string | null
+      try {
+        patchFromGuildJson(guildId, (await gr.json()) as Record<string, unknown>, out)
+      } catch {
+        /* ignore */
       }
-      if (typeof g.description === 'string' && g.description.trim()) {
-        description = g.description.trim()
-      }
-      const fromApiBanner = discordBannerCdnUrl(guildId, g.banner)
-      if (fromApiBanner) bannerUrl = fromApiBanner
+    }
 
-      const vanity = typeof g.vanity_url_code === 'string' ? g.vanity_url_code.trim() : ''
-      if (vanity) {
-        discordInvite = `https://discord.gg/${vanity}`
-      }
-
-      if (!discordInvite) {
-        const chRes = await fetch(`https://discord.com/api/v10/guilds/${gid}/channels`, { headers: botHeaders })
-        if (chRes.ok) {
+    if (!out.discordInvite) {
+      const chRes = await fetch(`https://discord.com/api/v10/guilds/${gid}/channels`, { headers: botHeaders })
+      if (chRes.ok) {
+        try {
           const channels = (await chRes.json()) as Array<{ id: string; type: number }>
           const textChannel = channels.find((c) => c.type === 0 || c.type === 5)
           if (textChannel?.id) {
@@ -78,44 +116,54 @@ export async function enrichDiscordGuildForDirectory(
             })
             if (invRes.ok) {
               const inv = (await invRes.json()) as { code?: string }
-              if (inv?.code) discordInvite = `https://discord.gg/${inv.code}`
+              if (inv?.code) out.discordInvite = `https://discord.gg/${inv.code}`
             }
           }
+        } catch {
+          /* ignore */
         }
       }
     }
   }
 
-  if (!discordInvite) {
+  if (!out.discordInvite) {
     const wr = await fetch(`https://discord.com/api/guilds/${gid}/widget.json`)
     if (wr.ok) {
-      const w = (await wr.json()) as { instant_invite?: string | null }
-      const inv = w?.instant_invite
-      if (typeof inv === 'string' && inv.trim()) {
-        discordInvite = normalizeInviteUrl(inv.trim())
+      try {
+        const w = (await wr.json()) as { instant_invite?: string | null }
+        const inv = w?.instant_invite
+        if (typeof inv === 'string' && inv.trim()) {
+          out.discordInvite = normalizeInviteUrl(inv.trim())
+        }
+      } catch {
+        /* ignore */
       }
     }
   }
 
-  if (!description || !bannerUrl) {
+  if (!out.description || !out.bannerUrl) {
     const pr = await fetch(`https://discord.com/api/v10/guilds/${gid}/preview`)
     if (pr.ok) {
-      const pv = (await pr.json()) as {
-        description?: string | null
-        splash?: string | null
-        discovery_splash?: string | null
-      }
-      if (!description && typeof pv.description === 'string' && pv.description.trim()) {
-        description = pv.description.trim()
-      }
-      if (!bannerUrl && pv.splash) {
-        bannerUrl = `https://cdn.discordapp.com/splashes/${guildId}/${pv.splash}.png?size=1024`
-      }
-      if (!bannerUrl && pv.discovery_splash) {
-        bannerUrl = `https://cdn.discordapp.com/discovery-splashes/${guildId}/${pv.discovery_splash}.png?size=1024`
+      try {
+        const pv = (await pr.json()) as {
+          description?: string | null
+          splash?: string | null
+          discovery_splash?: string | null
+        }
+        if (!out.description && typeof pv.description === 'string' && pv.description.trim()) {
+          out.description = pv.description.trim()
+        }
+        if (!out.bannerUrl && pv.splash) {
+          out.bannerUrl = `https://cdn.discordapp.com/splashes/${guildId}/${pv.splash}.png?size=1024`
+        }
+        if (!out.bannerUrl && pv.discovery_splash) {
+          out.bannerUrl = `https://cdn.discordapp.com/discovery-splashes/${guildId}/${pv.discovery_splash}.png?size=1024`
+        }
+      } catch {
+        /* ignore */
       }
     }
   }
 
-  return { description, bannerUrl, discordInvite }
+  return out
 }
