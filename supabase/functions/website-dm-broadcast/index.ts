@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { sendDiscordUserDm } from '../_shared/discordDm.ts'
+import { isSiteOwnerDiscordUsername } from '../_shared/siteOwner.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,13 +37,14 @@ Deno.serve(async (req) => {
     if (userErr || !user) return json({ error: 'Unauthorized.' }, 401)
 
     const adminDb = createClient(supabaseUrl, serviceKey)
-    const { data: staff } = await adminDb
-      .from('user_roles')
-      .select('id')
+    const { data: callerProfile } = await adminDb
+      .from('profiles')
+      .select('discord_username')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
       .maybeSingle()
-    if (!staff) return json({ error: 'Staff only.' }, 403)
+    if (!isSiteOwnerDiscordUsername(callerProfile?.discord_username ?? null)) {
+      return json({ error: 'Staff only.' }, 403)
+    }
 
     if (!botToken) return json({ error: 'DISCORD_BOT_TOKEN is not configured.' }, 500)
 
