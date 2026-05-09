@@ -114,9 +114,11 @@ const Admin = () => {
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
   };
   const addStaff = async (target: any) => {
-    const { error } = await supabase.from('user_roles').insert({ user_id: target.user_id, role: 'admin' });
+    const { error } = await supabase.rpc('site_owner_grant_admin_role', {
+      p_target_user_id: target.user_id,
+    });
     if (error) return toast({ title: error.message, variant: 'destructive' });
-    toast({ title: `${target.display_name} is now staff` });
+    toast({ title: `${target.display_name || target.discord_username || 'Member'} is now staff` });
     setNewStaffQuery('');
     refresh();
   };
@@ -137,7 +139,9 @@ const Admin = () => {
   const removeStaff = async (row: any) => {
     if (row.user_id === user.id) return toast({ title: "You can't remove yourself.", variant: 'destructive' });
     if (!confirm(`Remove staff access from ${row.profile?.display_name || 'this user'}?`)) return;
-    const { error } = await supabase.from('user_roles').delete().eq('id', row.id);
+    const { error } = await supabase.rpc('site_owner_revoke_admin_role', {
+      p_target_user_id: row.user_id,
+    });
     if (error) return toast({ title: error.message, variant: 'destructive' });
     refresh();
   };
@@ -283,8 +287,12 @@ const Admin = () => {
               <Card key={row.id}><CardContent className="p-3 flex items-center gap-3">
                 <Avatar className="h-9 w-9"><AvatarImage src={row.profile?.discord_avatar || undefined} /><AvatarFallback>{row.profile?.display_name?.[0] || '?'}</AvatarFallback></Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{row.profile?.display_name || row.user_id}</p>
-                  <p className="text-xs text-muted-foreground truncate">@{row.profile?.discord_username || '—'}</p>
+                  <p className="text-sm font-medium truncate">
+                    {row.profile?.display_name || row.profile?.discord_username || 'Staff (profile not linked)'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {row.profile?.discord_username ? `@${row.profile.discord_username}` : '—'}
+                  </p>
                 </div>
                 <Badge>admin</Badge>
                 <Button size="icon" variant="ghost" onClick={() => removeStaff(row)} className="text-destructive"><X className="h-4 w-4" /></Button>
