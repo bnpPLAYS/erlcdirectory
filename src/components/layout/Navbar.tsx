@@ -56,28 +56,24 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Top spacer so floating bar doesn't overlap content */}
-      <div className="h-24" aria-hidden />
-
-      <header className="fixed top-4 inset-x-0 z-50 px-4 pointer-events-none">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          {/* Centered floating pill */}
-          <div className="flex-1 flex justify-center">
-            <nav className="pointer-events-auto glass-strong liquid-edge rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
-              <Link to="/" className="flex items-center gap-2 pl-3 pr-3 py-1 rounded-full hover:bg-white/5 transition-colors">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+          <div className="flex-1 flex items-center">
+            <nav className="flex items-center gap-1">
+              <Link to="/" className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-secondary transition-colors">
                 <img src={logo} alt="ERLC Directory logo" className="w-6 h-6 object-contain" width={24} height={24} />
                 <span className="hidden sm:inline text-sm font-bold tracking-tight">ERLC Directory</span>
               </Link>
 
-              <div className="hidden md:flex items-center gap-0.5 ml-1">
+              <div className="hidden md:flex items-center gap-1 ml-2">
                 {visibleLinks.map(({ path, label, icon: Icon }) => (
                   <Link key={path} to={path}>
                     <button
                       className={cn(
-                        'h-9 px-3 rounded-full inline-flex items-center justify-center gap-1.5 text-sm transition-all',
+                        'h-9 px-3 rounded-md inline-flex items-center justify-center gap-1.5 text-sm transition-colors',
                         isActive(path)
-                          ? 'bg-white/12 text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                          ? 'bg-secondary text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
                       )}
                       aria-label={label}
                     >
@@ -91,7 +87,7 @@ const Navbar = () => {
               {user && (
                 <Link to="/posts" className="hidden md:block">
                   <button
-                    className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white text-black hover:bg-white/90 transition-colors ml-1"
+                    className="h-9 w-9 rounded-md inline-flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
                     aria-label="Create"
                   >
                     <Plus className="h-4 w-4" />
@@ -100,7 +96,7 @@ const Navbar = () => {
               )}
 
               <button
-                className="md:hidden h-9 w-9 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="md:hidden h-9 w-9 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle menu"
               >
@@ -109,13 +105,12 @@ const Navbar = () => {
             </nav>
           </div>
 
-          {/* Right floating profile pill */}
-          <div className="pointer-events-auto">
+          <div>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="glass-strong liquid-edge rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2 hover:bg-white/5 transition-colors shadow-2xl">
-                    <Avatar className="h-8 w-8 ring-1 ring-white/15">
+                  <button className="border border-border rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2 hover:bg-secondary transition-colors">
+                    <Avatar className="h-8 w-8 ring-1 ring-border">
                       <AvatarImage src={profile?.discord_avatar || undefined} />
                       <AvatarFallback className="text-xs bg-secondary">
                         {profile?.display_name?.[0] || 'U'}
@@ -132,7 +127,7 @@ const Navbar = () => {
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
+                <DropdownMenuContent align="end" className="w-64">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={profile?.discord_avatar || undefined} />
@@ -145,7 +140,7 @@ const Navbar = () => {
                       </span>
                     </div>
                   </div>
-                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                     <Link to={`/profile/${profile?.id}`}>
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
@@ -183,7 +178,7 @@ const Navbar = () => {
                       </div>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuSeparator />
                   {isAdmin && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                       <Link to="/staff">
@@ -209,7 +204,7 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <button className="glass-strong liquid-edge rounded-full px-4 py-2 text-sm font-medium hover:bg-white/10 transition-colors shadow-2xl">
+                <button className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity">
                   Sign in
                 </button>
               </Link>
@@ -219,7 +214,7 @@ const Navbar = () => {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-3 mx-auto max-w-sm pointer-events-auto glass-strong rounded-2xl p-3 animate-in shadow-2xl">
+          <div className="md:hidden border-t bg-background px-4 py-3 animate-in">
             <div className="flex flex-col gap-1">
               {visibleLinks.map(({ path, label, icon: Icon }) => (
                 <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}>

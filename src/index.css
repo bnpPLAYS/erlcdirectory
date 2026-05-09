@@ -1,94 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ERLC Directory — Monochrome Liquid Glass Design System */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ERLC Directory — Clean, approachable design system */
 
 @layer base {
   :root {
-    /* Pure monochrome base */
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
+    /* Soft neutral base */
+    --background: 220 20% 98%;
+    --foreground: 224 23% 16%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 23% 16%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 23% 16%;
 
-    /* Subtle white accent */
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 6%;
+    --primary: 224 50% 26%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 11%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary: 220 20% 96%;
+    --secondary-foreground: 224 23% 16%;
 
-    --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 11% 42%;
 
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 220 20% 94%;
+    --accent-foreground: 224 23% 16%;
 
-    --destructive: 0 60% 55%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 75% 52%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100%;
-    --input: 0 0% 14%;
-    --ring: 0 0% 80%;
+    --border: 220 16% 86%;
+    --input: 0 0% 100%;
+    --ring: 224 50% 40%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
     /* Semantic */
-    --success: 0 0% 92%;
-    --success-foreground: 0 0% 6%;
-    --warning: 0 0% 88%;
-    --warning-foreground: 0 0% 6%;
-    --verified: 0 0% 96%;
-    --featured: 0 0% 96%;
-    --rating: 0 0% 96%;
+    --success: 140 43% 92%;
+    --success-foreground: 152 45% 20%;
+    --warning: 45 100% 92%;
+    --warning-foreground: 26 83% 22%;
+    --verified: 140 43% 92%;
+    --featured: 45 100% 92%;
+    --rating: 45 100% 92%;
     --discord: 235 86% 65%;
 
-    --card-hover: 0 0% 10%;
-    --card-elevated: 0 0% 9%;
+    --card-hover: 220 20% 97%;
+    --card-elevated: 0 0% 100%;
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 6%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 0 0% 80%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 23% 16%;
+    --sidebar-primary: 224 50% 26%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 96%;
+    --sidebar-accent-foreground: 224 23% 16%;
+    --sidebar-border: 220 16% 86%;
+    --sidebar-ring: 224 50% 40%;
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 6%;
-    --secondary: 0 0% 11%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 60% 55%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 100%;
-    --input: 0 0% 14%;
-    --ring: 0 0% 80%;
+    --background: 224 20% 10%;
+    --foreground: 220 20% 96%;
+    --card: 224 21% 14%;
+    --card-foreground: 220 20% 96%;
+    --popover: 224 21% 14%;
+    --popover-foreground: 220 20% 96%;
+    --primary: 220 20% 96%;
+    --primary-foreground: 224 23% 16%;
+    --secondary: 224 18% 18%;
+    --secondary-foreground: 220 20% 96%;
+    --muted: 224 15% 20%;
+    --muted-foreground: 220 14% 68%;
+    --accent: 224 15% 24%;
+    --accent-foreground: 220 20% 96%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 15% 27%;
+    --input: 224 20% 14%;
+    --ring: 220 20% 70%;
   }
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border) / 0.08);
+    border-color: hsl(var(--border));
   }
 
   html {
@@ -98,55 +97,30 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-image:
-      radial-gradient(1200px 600px at 10% -10%, hsl(0 0% 100% / 0.04), transparent 60%),
-      radial-gradient(900px 500px at 110% 10%, hsl(0 0% 100% / 0.03), transparent 60%),
-      radial-gradient(700px 400px at 50% 120%, hsl(0 0% 100% / 0.025), transparent 60%);
-    background-attachment: fixed;
+    background-image: linear-gradient(to bottom, hsl(220 20% 99%), hsl(220 20% 97%));
   }
 }
 
 @layer utilities {
-  /* Liquid glass surfaces */
+  /* Simple neutral surfaces */
   .glass {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 100% / 0.06) 0%,
-      hsl(0 0% 100% / 0.02) 100%
-    );
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid hsl(0 0% 100% / 0.08);
-    box-shadow:
-      inset 0 1px 0 hsl(0 0% 100% / 0.08),
-      0 8px 32px hsl(0 0% 0% / 0.4);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 8px 24px hsl(220 30% 20% / 0.07);
   }
 
   .glass-strong {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 100% / 0.10) 0%,
-      hsl(0 0% 100% / 0.04) 100%
-    );
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border: 1px solid hsl(0 0% 100% / 0.12);
-    box-shadow:
-      inset 0 1px 0 hsl(0 0% 100% / 0.12),
-      inset 0 -1px 0 hsl(0 0% 0% / 0.4),
-      0 12px 40px hsl(0 0% 0% / 0.5);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 12px 28px hsl(220 30% 20% / 0.1);
   }
 
   .glass-hover {
     @apply transition-all duration-300;
   }
   .glass-hover:hover {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 100% / 0.10) 0%,
-      hsl(0 0% 100% / 0.04) 100%
-    );
-    border-color: hsl(0 0% 100% / 0.16);
+    background: hsl(var(--card-hover));
+    border-color: hsl(var(--border));
   }
 
   .gradient-primary {
@@ -161,39 +135,21 @@
   }
 
   .card-elevated {
-    background: linear-gradient(
-      180deg,
-      hsl(0 0% 100% / 0.05) 0%,
-      hsl(0 0% 100% / 0.015) 100%
-    );
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid hsl(0 0% 100% / 0.08);
-    box-shadow:
-      inset 0 1px 0 hsl(0 0% 100% / 0.06),
-      0 10px 30px hsl(0 0% 0% / 0.4);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 25px hsl(220 30% 20% / 0.08);
   }
 
   .card-interactive {
-    background: linear-gradient(
-      180deg,
-      hsl(0 0% 100% / 0.04) 0%,
-      hsl(0 0% 100% / 0.01) 100%
-    );
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid hsl(0 0% 100% / 0.07);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .card-interactive:hover {
-    background: linear-gradient(
-      180deg,
-      hsl(0 0% 100% / 0.08) 0%,
-      hsl(0 0% 100% / 0.02) 100%
-    );
-    border-color: hsl(0 0% 100% / 0.18);
+    background: hsl(var(--card-hover));
+    border-color: hsl(var(--border));
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px hsl(0 0% 0% / 0.5);
+    box-shadow: 0 14px 30px hsl(220 30% 20% / 0.12);
   }
 
   .badge-verified {
@@ -210,7 +166,6 @@
     backdrop-filter: blur(8px);
   }
 
-  /* Liquid highlight on hover (glossy edge) */
   .liquid-edge {
     position: relative;
   }
@@ -220,13 +175,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 100% / 0.25),
-      hsl(0 0% 100% / 0) 40%,
-      hsl(0 0% 100% / 0) 60%,
-      hsl(0 0% 100% / 0.1)
-    );
+    background: linear-gradient(180deg, hsl(220 20% 100% / 0.6), hsl(220 20% 100% / 0));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
             mask-composite: exclude;
