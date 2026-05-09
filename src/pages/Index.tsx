@@ -51,10 +51,19 @@ const Index = () => {
   const [featuredProfiles, setFeaturedProfiles] = useState<Profile[]>([]);
   const [topServers, setTopServers] = useState<Server[]>([]);
   const [stats, setStats] = useState({ profiles: 0, servers: 0 });
+  const [headlineIndex, setHeadlineIndex] = useState(0);
 
   useEffect(() => {
     fetchFeaturedData();
     fetchStats();
+    // Pick a different headline on every visit/refresh
+    const last = Number(sessionStorage.getItem('homeHeadlineIdx') ?? '-1');
+    let next = Math.floor(Math.random() * HEADLINES.length);
+    if (HEADLINES.length > 1 && next === last) {
+      next = (next + 1) % HEADLINES.length;
+    }
+    sessionStorage.setItem('homeHeadlineIdx', String(next));
+    setHeadlineIndex(next);
   }, []);
 
   const fetchFeaturedData = async () => {
