@@ -5,6 +5,11 @@ import Navbar from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  getSupabaseDiscordCallbackUrl,
+  isDiscordTokenExchangeFailure,
+  parseOAuthErrorDescription,
+} from '@/lib/discordOAuthErrors';
 import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
 
 function readOAuthParams() {
@@ -43,6 +48,7 @@ const DiscordCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Connecting your Discord account...');
+  const [showExchangeHelp, setShowExchangeHelp] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,10 +88,15 @@ const DiscordCallback = () => {
       const { code, state, oauthError, oauthErrorDesc } = readOAuthParams();
 
       if (oauthError) {
-        const detail = oauthErrorDesc ? decodeURIComponent(oauthErrorDesc.replace(/\+/g, ' ')) : oauthError;
+        const detail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : oauthError;
         if (!cancelled) {
           setStatus('error');
-          setMessage(`Discord: ${detail}`);
+          setShowExchangeHelp(isDiscordTokenExchangeFailure(detail));
+          setMessage(
+            detail
+              ? `Could not complete sign-in (${oauthError}). ${detail}`
+              : `Could not complete sign-in (${oauthError}).`,
+          );
         }
         stripOAuthParamsFromUrl();
         return;
@@ -134,10 +145,12 @@ const DiscordCallback = () => {
           }
           if (!cancelled) {
             setStatus('error');
+            const em = exchangeError.message || '';
+            setShowExchangeHelp(isDiscordTokenExchangeFailure(em));
             setMessage(
-              exchangeError.message.includes('code verifier')
+              em.includes('code verifier')
                 ? 'Sign-in session expired or started on a different device. Try signing in again from the Auth page.'
-                : exchangeError.message || 'Could not complete Discord sign-in.',
+                : em || 'Could not complete Discord sign-in.',
             );
           }
           subscription.unsubscribe();
@@ -185,6 +198,35 @@ const DiscordCallback = () => {
             />
             <h1 className="mb-2 text-2xl font-bold">Discord Connection</h1>
             <p className="mb-6 text-sm text-muted-foreground">{message}</p>
+            {status === 'error' && showExchangeHelp && (
+              <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Fix this in your Supabase + Discord apps</p>
+                <p className="mt-2">
+                  Supabase could not exchange Discord&apos;s authorization code. That almost always means the Discord{' '}
+                  <strong className="text-foreground">Client Secret</strong> in Supabase does not match your Discord app, or Discord is missing Supabase&apos;s callback URL.
+                </p>
+                <ol className="mt-3 list-decimal space-y-2 pl-4">
+                  <li>
+                    <span className="text-foreground">Discord Developer Portal</span> → OAuth2 → Redirects → add{' '}
+                    <code className="break-all rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
+                      {getSupabaseDiscordCallbackUrl()}
+                    </code>{' '}
+                    (this is different from your website&apos;s <code className="text-[11px]">/discord/callback</code> URL).
+                  </li>
+                  <li>
+                    <span className="text-foreground">Supabase</span> → Authentication → Providers → Discord → paste the same Discord app&apos;s{' '}
+                    <strong className="text-foreground">Client ID</strong> and <strong className="text-foreground">Client Secret</strong> as on Discord (re-copy the secret if you rotated it).
+                  </li>
+                  <li>
+                    <span className="text-foreground">Supabase</span> → Authentication → URL Configuration → Redirect URLs → include your site callback, e.g.{' '}
+                    <code className="break-all rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
+                      https://www.erlc.directory/discord/callback
+                    </code>
+                    .
+                  </li>
+                </ol>
+              </div>
+            )}
             {status === 'error' && (
               <Link to="/auth">
                 <Button>Back to sign in</Button>
