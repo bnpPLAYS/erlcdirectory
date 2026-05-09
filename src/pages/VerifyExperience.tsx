@@ -68,9 +68,6 @@ const VerifyExperience = () => {
     let parsed: { token: string; action: 'approve' | 'reject' } | null = null;
     try { parsed = JSON.parse(atob(state)); } catch { /* ignore */ }
     if (!parsed || parsed.token !== token) return;
-    // Strip the kind tag before processing
-
-    if (!parsed || parsed.token !== token) return;
     submitDecision(parsed.action, code);
     // Clean URL
     const next = new URLSearchParams(params);
