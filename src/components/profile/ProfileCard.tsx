@@ -50,8 +50,8 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const showNewBadge = isNewProfile(profile.created_at);
 
   return (
-    <Link to={`/profile/${profile.id}`} className="block h-full">
-      <Card className="group h-full overflow-hidden rounded-2xl border border-white/10 bg-[hsl(240_6%_8%/0.85)] shadow-lg transition-all duration-300 hover:border-white/18 hover:bg-[hsl(240_6%_10%/0.9)] hover:shadow-xl">
+    <Link to={`/profile/${profile.id}`} className="block h-full overflow-visible py-1">
+      <Card className="group h-full overflow-hidden rounded-2xl border-0 bg-[hsl(240_6%_8%/0.85)] shadow-lg shadow-black/40 -rotate-1 origin-[center_70%] transition-[transform,box-shadow,background-color] duration-300 ease-out hover:rotate-0 hover:scale-[1.035] hover:-translate-y-2 hover:bg-[hsl(240_6%_11%/0.92)] hover:shadow-2xl hover:shadow-black/70">
         <CardContent className="p-5 sm:p-6 space-y-4">
           {/* Header row */}
           <div className="flex items-start justify-between gap-4">
