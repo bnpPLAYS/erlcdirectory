@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/mockData';
+import { normalizeDiscordInvite } from '@/lib/discordInvite';
 
 interface ServerCardProps {
   server: {
@@ -24,6 +25,8 @@ interface ServerCardProps {
 }
 
 const ServerCard = ({ server }: ServerCardProps) => {
+  const joinHref = normalizeDiscordInvite(server.discord_invite ?? null);
+
   return (
     <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
       {server.banner ? (
@@ -84,11 +87,11 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 </span>
               </div>
               
-              <div className="flex items-center gap-1.5">
-                {server.discord_invite && (
-                  <a href={server.discord_invite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {joinHref && (
+                  <a href={joinHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
-                      <ExternalLink className="h-3 w-3" /> Join Discord
+                      <ExternalLink className="h-3 w-3" /> Join server
                     </Button>
                   </a>
                 )}
