@@ -12,21 +12,18 @@ import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
-import heroScreenshot from '@/assets/home-features/public-profile.png';
-import homeFeatureBrowseMembers from '@/assets/home-features/member-directory.png';
-import homeFeatureCreatePost from '@/assets/home-features/create-post.png';
-import homeFeatureConnections from '@/assets/home-features/connections.png';
-import homeFeaturePublicProfile from '@/assets/home-features/public-profile.png';
-import homeFeatureServerDetail from '@/assets/home-features/server-detail.png';
+import homePublicProfile from '@/assets/home-features/home-public-profile.png';
+import homeProfileEditor from '@/assets/home-features/home-profile-editor.png';
+import homeCreatePost from '@/assets/home-features/home-create-post.png';
+import homeConnections from '@/assets/home-features/home-connections.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { pageHeroEnter } from '@/lib/pageHero';
 import { profileEditorPath } from '@/lib/profilePath';
 
 /**
- * Homepage “How it works” tour — order matches marketing screenshots:
- * browse → posts → connections → public profile → server page.
- * PNGs live in `src/assets/home-features/` (replace in place after exporting).
+ * Homepage “How it works” — PNGs in `src/assets/home-features/home-*.png`.
+ * Replace those files when updating screenshots (keep filenames so imports stay stable).
  */
 const PRODUCT_SCREENSHOTS: {
   title: string;
@@ -35,39 +32,32 @@ const PRODUCT_SCREENSHOTS: {
   alt: string;
 }[] = [
   {
-    title: 'Browse members',
+    title: 'Edit your profile',
     description:
-      'Search by name, bio, or skills; filter by role tags; sort featured listings—then open a profile card to see verified experience before you connect.',
-    image: homeFeatureBrowseMembers,
-    alt: 'Browse Members directory with search, filters, and profile cards on www.erlc.directory',
+      'General, Customize, and Experience in one place—display name, pronouns, location, status with quick emoji, banner URL, accent theme, and server-linked roles.',
+    image: homeProfileEditor,
+    alt: 'Profile editor with General tab on www.erlc.directory',
   },
   {
     title: 'Post hiring, LFW, and updates',
     description:
-      'Structured posts for hiring, looking for work, announcements, and discussion—with optional application links and Discord server requirements.',
-    image: homeFeatureCreatePost,
-    alt: 'Create a post dialog with post type cards and application fields on www.erlc.directory',
+      'Pick a post type first—hiring, looking for work, announcements, or discussion—with optional application URLs and Discord membership checks on hiring threads.',
+    image: homeCreatePost,
+    alt: 'Create a post flow with Hiring selected on www.erlc.directory',
   },
   {
     title: 'Your network',
     description:
-      'Send connection requests from profiles, then manage incoming and sent requests in one place—built for a small, serious directory, not noisy feeds.',
-    image: homeFeatureConnections,
+      'Connections, incoming, and sent requests in one view—search your network or browse members to start from a profile.',
+    image: homeConnections,
     alt: 'Your network page with connections tabs on www.erlc.directory',
   },
   {
     title: 'Profiles that prove the work',
     description:
-      'Verified experience, reviewer notes, and server links sit alongside your bio so owners and staff can trust what they are reading.',
-    image: homeFeaturePublicProfile,
-    alt: 'Public profile with verified experience and badges on www.erlc.directory',
-  },
-  {
-    title: 'Servers & staff',
-    description:
-      'Open a server for member counts, Discord invite, and members who list verified experience there—so communities and applicants share one clear picture.',
-    image: homeFeatureServerDetail,
-    alt: 'Server detail page with staff list on www.erlc.directory',
+      'Verified and featured badges, bio, experience cards with verifier notes, and structured identity so communities know who they are hiring or connecting with.',
+    image: homePublicProfile,
+    alt: 'Public profile with experience and badges on www.erlc.directory',
   },
 ];
 
@@ -202,7 +192,7 @@ const Index = () => {
               <div className="relative home-image-pop rounded-2xl bg-white/[0.03] p-2">
                 <div className="rounded-xl overflow-hidden">
                   <img
-                    src={heroScreenshot}
+                    src={homePublicProfile}
                     alt="Public profile view on www.erlc.directory"
                     width={1156}
                     height={810}
@@ -225,7 +215,7 @@ const Index = () => {
               How it works on the site
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Real screens from the directory: browse, posts, your network, public profiles, and server pages.
+              Real screens from the directory: editing your listing, structured posts, connections, and live profiles.
             </p>
           </div>
 
