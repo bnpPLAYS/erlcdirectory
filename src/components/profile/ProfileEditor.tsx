@@ -1,5 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon, RefreshCw } from 'lucide-react';
+import { useState, useEffect, type ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Save,
+  X,
+  Briefcase,
+  Palette,
+  User as UserIcon,
+  Link2,
+  Shield,
+  BadgeCheck,
+  Pencil,
+  ImageIcon,
+  RefreshCw,
+  Sparkles,
+  Bell,
+  Globe,
+  Eye,
+  Github,
+  Youtube,
+  Twitch,
+  Twitter,
+  MessageCircle,
+  Gamepad2,
+} from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProfilePreviewCard from './ProfilePreviewCard';
 
@@ -96,13 +121,86 @@ const profileSchema = z.object({
   ),
 });
 
+/** Shared field chrome — matches site dark glass UI */
+const editorInput =
+  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] px-4 text-sm shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-violet-400/35 focus-visible:ring-2 focus-visible:ring-violet-400/15';
+const editorTextarea =
+  'rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm min-h-[120px] resize-y shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-violet-400/35 focus-visible:ring-2 focus-visible:ring-violet-400/15';
+const editorSelect =
+  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] shadow-inner shadow-black/20 focus:ring-2 focus:ring-violet-400/15';
+
 const PRESETS = [
-  { id: 'mono', label: 'Mono', accent: '#ffffff' },
-  { id: 'ice', label: 'Ice', accent: '#cfe8ff' },
-  { id: 'ember', label: 'Ember', accent: '#ffb4a2' },
-  { id: 'mint', label: 'Mint', accent: '#b8f2d8' },
-  { id: 'lilac', label: 'Lilac', accent: '#d6c2ff' },
-];
+  { id: 'mono', label: 'Mono', accent: '#e4e4e7', hint: 'Clean default' },
+  { id: 'slate', label: 'Slate', accent: '#94a3b8', hint: 'Cool gray' },
+  { id: 'ice', label: 'Ice', accent: '#7dd3fc', hint: 'Frost blue' },
+  { id: 'ocean', label: 'Ocean', accent: '#38bdf8', hint: 'Bright aqua' },
+  { id: 'mint', label: 'Mint', accent: '#6ee7b7', hint: 'Soft green' },
+  { id: 'ember', label: 'Ember', accent: '#fb923c', hint: 'Warm coral' },
+  { id: 'rose', label: 'Rose', accent: '#fb7185', hint: 'Pink accent' },
+  { id: 'gold', label: 'Gold', accent: '#fbbf24', hint: 'Highlight' },
+  { id: 'violet', label: 'Violet', accent: '#a78bfa', hint: 'Brand tone' },
+  { id: 'lilac', label: 'Lilac', accent: '#d8b4fe', hint: 'Soft purple' },
+] as const;
+
+const ACCENT_SWATCHES = [
+  '#ffffff',
+  '#94a3b8',
+  '#38bdf8',
+  '#22d3ee',
+  '#34d399',
+  '#fbbf24',
+  '#fb923c',
+  '#fb7185',
+  '#a78bfa',
+  '#e879f9',
+]
+
+const SOCIAL_PLATFORMS: { key: string; label: string; Icon: LucideIcon }[] = [
+  { key: 'twitter', label: 'X / Twitter', Icon: Twitter },
+  { key: 'youtube', label: 'YouTube', Icon: Youtube },
+  { key: 'twitch', label: 'Twitch', Icon: Twitch },
+  { key: 'github', label: 'GitHub', Icon: Github },
+  { key: 'discord_server', label: 'Discord invite', Icon: MessageCircle },
+  { key: 'roblox', label: 'Roblox', Icon: Gamepad2 },
+]
+
+function EditorSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+}: {
+  title: string
+  description?: string
+  icon?: LucideIcon
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <section
+      className={cn(
+        'rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 sm:p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04]',
+        className,
+      )}
+    >
+      <div className="flex items-start gap-3 mb-5">
+        {Icon && (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/[0.12] border border-violet-400/25">
+            <Icon className="h-5 w-5 text-violet-200/90" aria-hidden />
+          </div>
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+          {description ? (
+            <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+          ) : null}
+        </div>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
+  )
+}
 
 const ProfileEditor = ({
   profile,
@@ -336,7 +434,10 @@ const ProfileEditor = ({
                   maxLength={60}
                   onChange={(e) => update('display_name', e.target.value)}
                   placeholder="Your display name"
-                  className="text-lg font-semibold bg-transparent border-white/10 focus-visible:ring-1 focus-visible:ring-white/30 h-10"
+                  className={cn(
+                    editorInput,
+                    'text-lg font-semibold h-11 border-white/14 bg-white/[0.06]',
+                  )}
                 />
                 <Pencil className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
               </div>
@@ -358,20 +459,45 @@ const ProfileEditor = ({
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EditorTab)} className="w-full min-w-0">
-        <TabsList className="glass">
-          <TabsTrigger value="general" className="gap-2"><UserIcon className="h-4 w-4" />General</TabsTrigger>
-          <TabsTrigger value="customize" className="gap-2"><Palette className="h-4 w-4" />Customize</TabsTrigger>
-          <TabsTrigger value="experience" className="gap-2"><Briefcase className="h-4 w-4" />Experience</TabsTrigger>
-          <TabsTrigger value="socials" className="gap-2"><Link2 className="h-4 w-4" />Socials</TabsTrigger>
+        <TabsList className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30">
+          <TabsTrigger
+            value="general"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+          >
+            <UserIcon className="h-4 w-4 shrink-0 opacity-80" />
+            General
+          </TabsTrigger>
+          <TabsTrigger
+            value="customize"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+          >
+            <Palette className="h-4 w-4 shrink-0 opacity-80" />
+            Customize
+          </TabsTrigger>
+          <TabsTrigger
+            value="experience"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+          >
+            <Briefcase className="h-4 w-4 shrink-0 opacity-80" />
+            Experience
+          </TabsTrigger>
+          <TabsTrigger
+            value="socials"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+          >
+            <Link2 className="h-4 w-4 shrink-0 opacity-80" />
+            Socials
+          </TabsTrigger>
         </TabsList>
 
         {/* GENERAL */}
-        <TabsContent value="general" className="mt-4">
-          <Card className="card-elevated liquid-edge">
-            <CardContent className="p-5 grid md:grid-cols-2 gap-4">
-              <Field label="Display name">
-                <Input value={form.display_name} maxLength={60} onChange={(e) => update('display_name', e.target.value)} placeholder="How others see you" />
-              </Field>
+        <TabsContent value="general" className="mt-5 space-y-6">
+          <EditorSection
+            title="About you"
+            description="Basics that appear on your card — edit your display name in the banner above."
+            icon={UserIcon}
+          >
+            <div className="grid md:grid-cols-2 gap-4">
               <Field label="Pronouns">
                 {(() => {
                   const isPreset = PRONOUN_PRESETS.includes(form.pronouns);
@@ -386,11 +512,15 @@ const ProfileEditor = ({
                           else update('pronouns', v);
                         }}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select pronouns" /></SelectTrigger>
+                        <SelectTrigger className={editorSelect}>
+                          <SelectValue placeholder="Select pronouns" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none">Prefer not to say</SelectItem>
                           {PRONOUN_PRESETS.map((p) => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                            <SelectItem key={p} value={p}>
+                              {p}
+                            </SelectItem>
                           ))}
                           <SelectItem value="__custom">Other (custom)</SelectItem>
                         </SelectContent>
@@ -401,152 +531,245 @@ const ProfileEditor = ({
                           maxLength={30}
                           autoFocus
                           onChange={(e) => update('pronouns', e.target.value)}
-                          placeholder="Enter custom pronouns"
+                          className={editorInput}
                         />
                       )}
                     </div>
                   );
                 })()}
               </Field>
-              <Field label="What's on your mind" className="md:col-span-2">
-                <div className="flex flex-wrap gap-1.5 mb-2">
+              <Field label="Availability" hint="Short phrase — hiring, open to collab, etc.">
+                <Input
+                  value={form.availability}
+                  maxLength={40}
+                  onChange={(e) => update('availability', e.target.value)}
+                  className={editorInput}
+                />
+              </Field>
+              <Field label="Location">
+                <Input value={form.location} maxLength={80} onChange={(e) => update('location', e.target.value)} className={editorInput} />
+              </Field>
+              <Field label="Timezone">
+                <Input value={form.timezone} maxLength={40} onChange={(e) => update('timezone', e.target.value)} className={editorInput} />
+              </Field>
+            </div>
+
+            <Field label="Status" hint={`Shown on your profile — ${form.status.length}/140`}>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-3 mb-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Quick emoji</p>
+                <div className="flex flex-wrap gap-1.5">
                   {['💭', '🚓', '🚑', '🚒', '🎧', '☕', '🛠️', '🌙', '🔥', '✅'].map((emo) => (
                     <button
                       key={emo}
                       type="button"
                       onClick={() => update('status', `${emo} ${form.status.replace(/^\p{Emoji}\s*/u, '')}`.trim())}
-                      className="h-8 w-8 rounded-md glass glass-hover text-base"
+                      className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.05] text-base hover:bg-white/[0.12] hover:border-white/20 transition-colors"
                       aria-label={`Add ${emo}`}
                     >
                       {emo}
                     </button>
                   ))}
                 </div>
-                <Input
-                  value={form.status}
-                  maxLength={140}
-                  onChange={(e) => update('status', e.target.value)}
-                  placeholder="What are you up to right now?"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Share a vibe — what you're doing, listening to, or looking for. {form.status.length}/140
-                </p>
-              </Field>
-              <Field label="Availability">
-                <Input value={form.availability} maxLength={40} onChange={(e) => update('availability', e.target.value)} placeholder="Open to work" />
-              </Field>
-              <Field label="Location">
-                <Input value={form.location} maxLength={80} onChange={(e) => update('location', e.target.value)} placeholder="Manchester, UK" />
-              </Field>
-              <Field label="Timezone">
-                <Input value={form.timezone} maxLength={40} onChange={(e) => update('timezone', e.target.value)} placeholder="GMT / UTC+0" />
-              </Field>
-              <Field label="Website" className="md:col-span-2">
-                <Input value={form.website} maxLength={200} onChange={(e) => update('website', e.target.value)} placeholder="https://example.com" />
-              </Field>
-              <div className="md:col-span-2 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Discord notifications
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  The directory bot can DM you only if you opt in and share a server with it.
-                </p>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">Website updates</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Occasional messages about the site (sent by staff from the panel).
-                    </p>
-                  </div>
-                  <Switch checked={dmWebsiteUpdates} onCheckedChange={(c) => setDmWebsiteUpdates(!!c)} />
-                </div>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">Experience verification</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      When a pending verification is approved or declined.
-                    </p>
-                  </div>
-                  <Switch checked={dmExperienceUpdates} onCheckedChange={(c) => setDmExperienceUpdates(!!c)} />
-                </div>
               </div>
-              <Field label="Bio" className="md:col-span-2">
-                <Textarea value={form.bio} maxLength={500} rows={4} onChange={(e) => update('bio', e.target.value)} placeholder="Tell servers what you bring." />
-                <p className="text-xs text-muted-foreground mt-1">{form.bio.length}/500</p>
-              </Field>
+              <Input
+                value={form.status}
+                maxLength={140}
+                onChange={(e) => update('status', e.target.value)}
+                className={editorInput}
+              />
+            </Field>
+          </EditorSection>
 
-              <Field label="Skills" className="md:col-span-2">
-                <div className="flex gap-2">
-                  <Input
-                    value={skillInput}
-                    maxLength={30}
-                    onChange={(e) => setSkillInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
-                    placeholder="Add a skill and press Enter"
-                  />
-                  <Button type="button" variant="secondary" onClick={addSkill}><Plus className="h-4 w-4" /></Button>
+          <EditorSection title="Bio & skills" description="Tell communities what you bring and tag relevant skills." icon={Sparkles}>
+            <Field label="Bio">
+              <Textarea value={form.bio} maxLength={500} rows={5} onChange={(e) => update('bio', e.target.value)} className={editorTextarea} />
+              <p className="text-xs text-muted-foreground mt-1.5 tabular-nums">{form.bio.length}/500</p>
+            </Field>
+
+            <Field label="Skills" hint="Up to 20 — click a chip to remove">
+              <div className="flex gap-2">
+                <Input
+                  value={skillInput}
+                  maxLength={30}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addSkill();
+                    }
+                  }}
+                  className={editorInput}
+                />
+                <Button type="button" variant="secondary" className="rounded-xl shrink-0 h-11 px-4" onClick={addSkill}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {skills.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {skills.map((s) => (
+                    <Badge
+                      key={s}
+                      variant="outline"
+                      className="gap-1.5 cursor-pointer rounded-full border-white/15 bg-white/[0.04] px-3 py-1 text-sm hover:bg-white/[0.08]"
+                      onClick={() => removeSkill(s)}
+                    >
+                      {s} <X className="h-3 w-3 opacity-70" />
+                    </Badge>
+                  ))}
                 </div>
-                {skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {skills.map((s) => (
-                      <Badge key={s} variant="outline" className="gap-1 cursor-pointer" onClick={() => removeSkill(s)}>
-                        {s} <X className="h-3 w-3" />
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </Field>
-            </CardContent>
-          </Card>
+              )}
+            </Field>
+          </EditorSection>
+
+          <EditorSection title="Website" description="Public link shown on your profile card." icon={Globe}>
+            <Field label="URL">
+              <Input value={form.website} maxLength={200} onChange={(e) => update('website', e.target.value)} className={editorInput} />
+            </Field>
+          </EditorSection>
+
+          <EditorSection title="Discord notifications" description="Optional — the bot only works if you share a server with it." icon={Bell}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/25 p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Website updates</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-snug">News from staff via the admin panel.</p>
+                </div>
+                <Switch checked={dmWebsiteUpdates} onCheckedChange={(c) => setDmWebsiteUpdates(!!c)} />
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Experience verification</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-snug">When a pending verification is approved or declined.</p>
+                </div>
+                <Switch checked={dmExperienceUpdates} onCheckedChange={(c) => setDmExperienceUpdates(!!c)} />
+              </div>
+            </div>
+          </EditorSection>
         </TabsContent>
 
         {/* CUSTOMIZE */}
-        <TabsContent value="customize" className="mt-4">
-          <Card className="card-elevated liquid-edge">
-            <CardContent className="p-5 space-y-5">
-              <Field label="Banner image URL">
-                <Input value={form.banner_url} maxLength={500} onChange={(e) => update('banner_url', e.target.value)} placeholder="https://…/banner.jpg" />
-                {form.banner_url && (
-                  <div className="mt-3 h-28 rounded-xl overflow-hidden border border-white/10">
-                    <img src={form.banner_url} alt="banner preview" className="w-full h-full object-cover" />
-                  </div>
-                )}
-              </Field>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <Field label="Accent color">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={form.accent_color}
-                      onChange={(e) => update('accent_color', e.target.value)}
-                      className="h-10 w-14 rounded-md bg-transparent border border-white/10 cursor-pointer"
-                    />
-                    <Input value={form.accent_color} maxLength={9} onChange={(e) => update('accent_color', e.target.value)} />
-                  </div>
-                </Field>
-                <Field label="Theme preset">
-                  <div className="flex flex-wrap gap-2">
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => { update('theme_preset', p.id); update('accent_color', p.accent); }}
-                        className={`px-3 py-2 rounded-lg text-sm glass glass-hover ${form.theme_preset === p.id ? 'ring-1 ring-white/40' : ''}`}
-                      >
-                        <span className="inline-block w-3 h-3 rounded-full mr-2 align-middle" style={{ background: p.accent }} />
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
+        <TabsContent value="customize" className="mt-5 space-y-6">
+          <EditorSection
+            title="Live preview"
+            description="How accent color reads against your banner."
+            icon={Eye}
+          >
+            <div
+              className="relative overflow-hidden rounded-2xl border border-white/12 shadow-2xl shadow-black/40 aspect-[21/9] min-h-[140px]"
+              style={{
+                boxShadow: `inset 0 -4px 48px ${form.accent_color}22`,
+              }}
+            >
+              {form.banner_url ? (
+                <img src={form.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+              <div
+                className="absolute bottom-0 left-0 right-0 h-1"
+                style={{ background: `linear-gradient(90deg, transparent, ${form.accent_color}, transparent)` }}
+              />
+              <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                <div
+                  className="h-12 w-12 rounded-full ring-2 ring-background shadow-lg"
+                  style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
+                >
+                  {profile.discord_avatar ? (
+                    <img src={profile.discord_avatar} alt="" className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+                      {(form.display_name || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
+                  <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>
+                    Accent preview
+                  </p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </EditorSection>
+
+          <EditorSection title="Color & theme" description="Choose a preset or tune accent — affects highlights and badges on your profile." icon={Palette}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    update('theme_preset', p.id);
+                    update('accent_color', p.accent);
+                  }}
+                  className={cn(
+                    'rounded-xl border p-3 text-left transition-all hover:border-white/25 hover:bg-white/[0.06]',
+                    form.theme_preset === p.id
+                      ? 'border-violet-400/45 bg-violet-500/10 ring-1 ring-violet-400/30 shadow-lg shadow-violet-500/10'
+                      : 'border-white/10 bg-black/20',
+                  )}
+                >
+                  <span
+                    className="mb-2 block h-8 w-full rounded-lg ring-1 ring-white/10"
+                    style={{ background: p.accent }}
+                  />
+                  <span className="text-sm font-medium block">{p.label}</span>
+                  <span className="text-[11px] text-muted-foreground line-clamp-1">{p.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Quick accent</p>
+              <div className="flex flex-wrap gap-2">
+                {ACCENT_SWATCHES.map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    aria-label={`Accent ${hex}`}
+                    onClick={() => update('accent_color', hex)}
+                    className={cn(
+                      'h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-background transition-transform hover:scale-105',
+                      form.accent_color.toLowerCase() === hex.toLowerCase() ? 'ring-white/50' : 'ring-transparent',
+                    )}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+              <Field label="Custom accent">
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.accent_color.match(/^#[0-9a-fA-F]{6}$/) ? form.accent_color : '#ffffff'}
+                    onChange={(e) => update('accent_color', e.target.value)}
+                    className="h-11 w-14 cursor-pointer rounded-xl border border-white/15 bg-transparent"
+                  />
+                  <Input
+                    value={form.accent_color}
+                    maxLength={9}
+                    onChange={(e) => update('accent_color', e.target.value)}
+                    className={cn(editorInput, 'max-w-[180px] font-mono text-xs')}
+                  />
+                </div>
+              </Field>
+            </div>
+          </EditorSection>
+
+          <EditorSection title="Banner image" description="Wide image behind your header — use a high-resolution URL." icon={ImageIcon}>
+            <Field label="Banner URL">
+              <Input value={form.banner_url} maxLength={500} onChange={(e) => update('banner_url', e.target.value)} className={editorInput} />
+            </Field>
+            {form.banner_url ? (
+              <div className="mt-2 overflow-hidden rounded-xl border border-white/12 aspect-[21/8]">
+                <img src={form.banner_url} alt="Banner preview" className="h-full w-full object-cover" />
+              </div>
+            ) : null}
+          </EditorSection>
         </TabsContent>
 
         {/* EXPERIENCE */}
-        <TabsContent value="experience" className="mt-4">
+        <TabsContent value="experience" className="mt-5">
           <div className="flex justify-end mb-3">
             <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" /> Add experience
@@ -584,12 +807,17 @@ const ProfileEditor = ({
                         value={e.role}
                         maxLength={80}
                         onChange={(ev) => updateExp(e.id, { role: ev.target.value })}
-                        placeholder="e.g. Patrol Officer, Staff"
+                        className={editorInput}
                       />
                     )}
                   </Field>
                   <Field label="Start date">
-                    <Input type="date" value={e.start_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })} />
+                    <Input
+                      type="date"
+                      value={e.start_date?.slice(0, 10) || ''}
+                      onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })}
+                      className={cn(editorInput, 'font-mono text-[13px]')}
+                    />
                   </Field>
                   <div className="flex items-center justify-between md:col-span-2">
                     <div className="flex items-center gap-3">
@@ -598,7 +826,12 @@ const ProfileEditor = ({
                     </div>
                     {!e.is_current && (
                       <Field label="End date" className="w-48">
-                        <Input type="date" value={e.end_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { end_date: ev.target.value })} />
+                        <Input
+                          type="date"
+                          value={e.end_date?.slice(0, 10) || ''}
+                          onChange={(ev) => updateExp(e.id, { end_date: ev.target.value })}
+                          className={cn(editorInput, 'font-mono text-[13px]')}
+                        />
                       </Field>
                     )}
                   </div>
@@ -647,21 +880,34 @@ const ProfileEditor = ({
         </TabsContent>
 
         {/* SOCIALS */}
-        <TabsContent value="socials" className="mt-4">
-          <Card className="card-elevated liquid-edge">
-            <CardContent className="p-5 grid md:grid-cols-2 gap-4">
-              {['twitter', 'youtube', 'twitch', 'roblox', 'discord_server', 'github'].map((k) => (
-                <Field key={k} label={k.replace('_', ' ')}>
-                  <Input
-                    value={socials[k] || ''}
-                    maxLength={200}
-                    onChange={(e) => setSocial(k, e.target.value)}
-                    placeholder={`https://…`}
-                  />
-                </Field>
+        <TabsContent value="socials" className="mt-5">
+          <EditorSection
+            title="Social links"
+            description="Full URLs — only filled fields show on your public profile."
+            icon={Link2}
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              {SOCIAL_PLATFORMS.map(({ key, label, Icon }) => (
+                <div
+                  key={key}
+                  className="flex gap-3 rounded-xl border border-white/10 bg-black/20 p-4 transition-colors hover:border-white/18 hover:bg-white/[0.03]"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] border border-white/10">
+                    <Icon className="h-5 w-5 text-violet-200/85" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Label className="text-sm font-medium text-foreground">{label}</Label>
+                    <Input
+                      value={socials[key] || ''}
+                      maxLength={200}
+                      onChange={(e) => setSocial(key, e.target.value)}
+                      className={cn(editorInput, 'h-10 text-[13px]')}
+                    />
+                  </div>
+                </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </EditorSection>
         </TabsContent>
       </Tabs>
 
@@ -718,9 +964,22 @@ const ProfileEditor = ({
   );
 };
 
-const Field = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
-  <div className={className}>
-    <Label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">{label}</Label>
+const Field = ({
+  label,
+  hint,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+  className?: string;
+}) => (
+  <div className={cn('space-y-2', className)}>
+    <div>
+      <Label className="text-sm font-medium text-foreground">{label}</Label>
+      {hint ? <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{hint}</p> : null}
+    </div>
     {children}
   </div>
 );
