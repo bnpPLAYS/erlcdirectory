@@ -44,15 +44,18 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
       return;
     }
     setLoading(true);
+    // Pull the most recent active request between the two profiles.
+    // Use limit(1) instead of maybeSingle() so historical rows don't break the query.
     const { data } = await supabase
       .from('connection_requests')
-      .select('id, sender_id, receiver_id, status')
+      .select('id, sender_id, receiver_id, status, created_at')
       .or(
         `and(sender_id.eq.${myId},receiver_id.eq.${targetProfileId}),and(sender_id.eq.${targetProfileId},receiver_id.eq.${myId})`,
       )
       .in('status', ['pending', 'accepted'])
-      .maybeSingle();
-    setRequest((data as RequestRow) || null);
+      .order('created_at', { ascending: false })
+      .limit(1);
+    setRequest(((data && data[0]) as RequestRow) || null);
     setLoading(false);
   };
 
@@ -64,6 +67,15 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
 
   const sendRequest = async () => {
     setBusy(true);
+    // Clean up any historical declined/cancelled rows so the insert is fresh.
+    await supabase
+      .from('connection_requests')
+      .delete()
+      .or(
+        `and(sender_id.eq.${myId},receiver_id.eq.${targetProfileId}),and(sender_id.eq.${targetProfileId},receiver_id.eq.${myId})`,
+      )
+      .in('status', ['declined', 'cancelled']);
+
     const { data, error } = await supabase
       .from('connection_requests')
       .insert({
@@ -75,6 +87,7 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
       .single();
     setBusy(false);
     if (error) {
+      console.error('Connect request failed', error);
       toast.error(error.message || 'Could not send request');
       return;
     }

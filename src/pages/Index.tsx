@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Users, Building2, Shield, Star, Zap, MessageSquare } from 'lucide-react';
+import { ArrowRight, Users, Building2, Shield, Star, Zap } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ServerCard from '@/components/server/ServerCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
+import directoryPreview from '@/assets/directory-preview.png';
+
+// Headlines rotate on each visit so the homepage feels fresh.
+const HEADLINES = [
+  'Build your portfolio on erlc.directory',
+  'Make connections on erlc.directory',
+  'Find your next ER:LC role on erlc.directory',
+  'Get verified experience on erlc.directory',
+  'Hire trusted staff on erlc.directory',
+  'Show your work on erlc.directory',
+];
 
 interface Profile {
   id: string;
@@ -40,10 +51,19 @@ const Index = () => {
   const [featuredProfiles, setFeaturedProfiles] = useState<Profile[]>([]);
   const [topServers, setTopServers] = useState<Server[]>([]);
   const [stats, setStats] = useState({ profiles: 0, servers: 0 });
+  const [headlineIndex, setHeadlineIndex] = useState(0);
 
   useEffect(() => {
     fetchFeaturedData();
     fetchStats();
+    // Pick a different headline on every visit/refresh
+    const last = Number(sessionStorage.getItem('homeHeadlineIdx') ?? '-1');
+    let next = Math.floor(Math.random() * HEADLINES.length);
+    if (HEADLINES.length > 1 && next === last) {
+      next = (next + 1) % HEADLINES.length;
+    }
+    sessionStorage.setItem('homeHeadlineIdx', String(next));
+    setHeadlineIndex(next);
   }, []);
 
   const fetchFeaturedData = async () => {
@@ -82,77 +102,78 @@ const Index = () => {
       
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(0_0%_100%_/_0.06),_transparent_60%)]" />
-
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center animate-in">
-              <img src={logo} alt="ERLC Directory" className="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]" width={96} height={96} />
-            </div>
+          <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-14 items-center">
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/60 bg-secondary/40 text-[11px] uppercase tracking-widest text-muted-foreground mb-6">
+                <img src={logo} alt="" className="w-3.5 h-3.5 object-contain" width={14} height={14} aria-hidden />
+                ER:LC Directory
+              </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-5 tracking-tight animate-in stagger-1 text-gradient">
-              ERLC Directory
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-in stagger-2">
-              The home for Emergency Response: Liberty County staff, server owners, and applicants.
-              Real profiles. Verified experience. Direct contact.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-in stagger-3">
-              {user ? (
-                <>
-                  <Link to="/browse">
-                    <Button size="lg" className="gap-2 px-6 h-11">
-                      <Users className="h-4 w-4" />
-                      Browse Members
-                    </Button>
-                  </Link>
-                  <Link to="/servers">
-                    <Button size="lg" variant="outline" className="gap-2 h-11 border-border/60">
-                      <Building2 className="h-4 w-4" />
-                      Explore Servers
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link to="/auth">
-                    <Button size="lg" className="gap-2 px-6 h-11 bg-discord hover:bg-discord/90 text-white">
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                      </svg>
-                      Get Started with Discord
-                    </Button>
-                  </Link>
-                  <Link to="/browse">
-                    <Button size="lg" variant="outline" className="gap-2 h-11 border-border/60">
-                      Browse Directory
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 tracking-tight leading-[1.05]">
+                {HEADLINES[headlineIndex]}
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
+                Real profiles. Verified experience. Direct contact between staff,
+                applicants, and server owners.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+                {user ? (
+                  <>
+                    <Link to="/browse">
+                      <Button size="lg" className="gap-2 px-6 h-11">
+                        <Users className="h-4 w-4" />
+                        Browse Members
+                      </Button>
+                    </Link>
+                    <Link to="/servers">
+                      <Button size="lg" variant="outline" className="gap-2 h-11 border-border/60">
+                        <Building2 className="h-4 w-4" />
+                        Explore Servers
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth">
+                      <Button size="lg" className="gap-2 px-6 h-11 bg-discord hover:bg-discord/90 text-white">
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                        Continue with Discord
+                      </Button>
+                    </Link>
+                    <Link to="/browse">
+                      <Button size="lg" variant="outline" className="gap-2 h-11 border-border/60">
+                        Browse Directory
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
+
+              {(stats.profiles > 0 || stats.servers > 0) && (
+                <div className="mt-8 flex items-center justify-center lg:justify-start gap-6 text-sm text-muted-foreground">
+                  <span><span className="font-semibold text-foreground">{stats.profiles}</span> members</span>
+                  <span className="w-1 h-1 rounded-full bg-border" aria-hidden />
+                  <span><span className="font-semibold text-foreground">{stats.servers}</span> servers</span>
+                </div>
               )}
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Stats */}
-      <section className="py-8 border-y border-border/30 bg-secondary/20">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { icon: Users, value: stats.profiles || '0', label: 'Members' },
-              { icon: Building2, value: stats.servers || '0', label: 'Servers' },
-              { icon: Shield, value: '100%', label: 'Discord Linked' },
-              { icon: MessageSquare, value: 'Direct', label: 'Messaging' },
-            ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <stat.icon className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <div className="text-xl md:text-2xl font-bold">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
+            {/* Live screenshot of the directory */}
+            <div className="relative">
+              <div className="rounded-xl border border-border/60 overflow-hidden bg-secondary/20 shadow-2xl">
+                <img
+                  src={directoryPreview}
+                  alt="Preview of the ERLC Directory members page"
+                  className="block w-full h-auto"
+                  loading="eager"
+                />
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>

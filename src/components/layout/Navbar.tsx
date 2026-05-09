@@ -66,10 +66,7 @@ const Navbar = () => {
             <nav className="pointer-events-auto glass-strong liquid-edge rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
               <Link to="/" className="flex items-center gap-2 pl-3 pr-3 py-1 rounded-full hover:bg-white/5 transition-colors">
                 <img src={logo} alt="ERLC Directory logo" className="w-6 h-6 object-contain" width={24} height={24} />
-                <div className="hidden sm:flex flex-col leading-none">
-                  <span className="text-sm font-bold tracking-tight">ERLC Directory</span>
-                  <span className="text-[9px] text-muted-foreground tracking-widest uppercase">Liberty County</span>
-                </div>
+                <span className="hidden sm:inline text-sm font-bold tracking-tight">ERLC Directory</span>
               </Link>
 
               <div className="hidden md:flex items-center gap-0.5 ml-1">

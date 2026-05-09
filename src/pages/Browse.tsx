@@ -42,7 +42,7 @@ const Browse = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('rating');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,12 +55,14 @@ const Browse = () => {
       .from('profiles')
       .select('id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills');
 
-    if (sortBy === 'featured') {
-      query = query.order('is_featured', { ascending: false }).order('rating', { ascending: false });
-    } else if (sortBy === 'rating') {
-      query = query.order('rating', { ascending: false });
+    if (sortBy === 'rating') {
+      // Featured pinned to top, then highest rated
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('rating', { ascending: false })
+        .order('review_count', { ascending: false });
     } else if (sortBy === 'newest') {
-      query = query.order('created_at', { ascending: false });
+      query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
     }
 
     const { data, error } = await query.limit(50);
@@ -128,8 +130,8 @@ const Browse = () => {
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-10">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-              <Users className="h-8 w-8 text-primary-foreground" />
+            <div className="w-14 h-14 mx-auto mb-6 rounded-xl border border-border/60 bg-secondary/40 flex items-center justify-center">
+              <Users className="h-6 w-6 text-foreground" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Browse Members</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -155,7 +157,6 @@ const Browse = () => {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="featured">Featured First</SelectItem>
                   <SelectItem value="rating">Highest Rated</SelectItem>
                   <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
