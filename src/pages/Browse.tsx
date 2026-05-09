@@ -42,7 +42,7 @@ const Browse = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('rating');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
 
   useEffect(() => {
