@@ -1,10 +1,13 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import { getCanonicalRedirectUrl } from '@/lib/canonicalHost';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
   throw new Error('Missing #root element');
 }
+
+const redirectTo = getCanonicalRedirectUrl();
 
 const missing: string[] = [];
 if (!import.meta.env.VITE_SUPABASE_URL) missing.push('VITE_SUPABASE_URL');
@@ -32,4 +35,8 @@ async function boot() {
   createRoot(rootEl).render(<App />);
 }
 
-void boot();
+if (redirectTo) {
+  window.location.replace(redirectTo);
+} else {
+  void boot();
+}
