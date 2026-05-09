@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { sendDiscordUserDm } from '../_shared/discordDm.ts'
+import { discordIconCdnUrl, enrichDiscordGuildForDirectory } from '../_shared/discordGuildEnrichment.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -358,27 +359,49 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Auto-create / refresh server stub keyed by guild_id, and capture member count from Discord
+      // Auto-create / refresh server row: Discord description, banner, invite (bot → widget → preview)
       const memberCount = Number(target.approximate_member_count ?? 0) || 0
+      const guildIdStr = String(vr.guild_id)
+      const iconFromTarget =
+        target.icon && target.id
+          ? discordIconCdnUrl(String(target.id), String(target.icon))
+          : null
+      const iconUrl = (vr.guild_icon as string | null) ?? iconFromTarget
+
+      let enriched: Awaited<ReturnType<typeof enrichDiscordGuildForDirectory>>
+      try {
+        enriched = await enrichDiscordGuildForDirectory(guildIdStr, target.banner ?? null)
+      } catch (e) {
+        console.error('[experience-verify] guild_enrich_failed', e)
+        enriched = { description: null, bannerUrl: null, discordInvite: null }
+      }
+
       const { data: existingServer } = await admin
         .from('servers')
         .select('id, member_count')
         .eq('guild_id', vr.guild_id)
         .maybeSingle()
 
+      const serverName = vr.guild_name ?? target.name ?? 'Discord server'
+
       if (!existingServer) {
         await admin.from('servers').insert({
-          name: vr.guild_name ?? target.name ?? 'Discord server',
-          icon: vr.guild_icon ?? null,
-          guild_id: vr.guild_id,
-          description: null,
+          name: serverName,
+          icon: iconUrl,
+          guild_id: guildIdStr,
+          description: enriched.description,
+          banner: enriched.bannerUrl,
+          discord_invite: enriched.discordInvite,
           member_count: memberCount,
         })
-      } else if (memberCount > 0) {
-        await admin
-          .from('servers')
-          .update({ member_count: memberCount })
-          .eq('id', existingServer.id)
+      } else {
+        const patch: Record<string, unknown> = { name: serverName }
+        if (memberCount > 0) patch.member_count = memberCount
+        if (iconUrl) patch.icon = iconUrl
+        if (enriched.description) patch.description = enriched.description
+        if (enriched.bannerUrl) patch.banner = enriched.bannerUrl
+        if (enriched.discordInvite) patch.discord_invite = enriched.discordInvite
+        await admin.from('servers').update(patch).eq('id', existingServer.id)
       }
 
       // Verified staff experience for the approving admin on this server (directory account may be new)
