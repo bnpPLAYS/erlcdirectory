@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Pencil, Clock, Star, Shield, ShieldCheck, Crown } from 'lucide-react';
+import {
+  ArrowLeft,
+  Briefcase,
+  MessageSquare,
+  MapPin,
+  Pencil,
+  Clock,
+  Star,
+  Shield,
+  ShieldCheck,
+  Crown,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,7 +31,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
+cursor/directory-staff-verify-badge-6ef5
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
+
+import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+import { cn } from '@/lib/utils';
+main
 
 interface ProfileData {
   id: string;
@@ -83,6 +100,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
@@ -161,6 +179,18 @@ const Profile = () => {
     }
     setLoading(false);
   }, [profileSlug, meProfile?.id, meProfile?.discord_username, authLoading]);
+
+  const syncDiscordBanner = useCallback(async () => {
+    setDiscordMediaBusy(true);
+    const r = await invokeDiscordProfileMediaSync();
+    setDiscordMediaBusy(false);
+    if (!r.ok) {
+      toast.error(r.error || 'Could not sync from Discord');
+      return;
+    }
+    toast.success('Banner and avatar updated from Discord');
+    await fetchProfile();
+  }, [fetchProfile]);
 
   useEffect(() => {
     void fetchProfile();
@@ -261,6 +291,21 @@ const Profile = () => {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${accent}80, transparent)` }} />
+        {isOwner && (
+          <div className="absolute bottom-4 right-4 z-20 flex gap-2 pointer-events-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-2 backdrop-blur-sm shadow-lg bg-background/80"
+              disabled={discordMediaBusy}
+              onClick={() => void syncDiscordBanner()}
+            >
+              <RefreshCw className={cn('h-4 w-4', discordMediaBusy && 'animate-spin')} />
+              Sync Discord banner
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="container mx-auto px-4 -mt-20 md:-mt-24 relative z-10">
@@ -333,6 +378,7 @@ const Profile = () => {
               next.delete('add');
               setSearchParams(next, { replace: true });
             }}
+            onDiscordMediaSynced={() => void fetchProfile()}
           />
         ) : (
           <>

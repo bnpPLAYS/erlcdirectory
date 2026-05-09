@@ -19,6 +19,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+type ProfileChip = {
+  id: string;
+  display_name: string | null;
+  discord_avatar: string | null;
+  discord_username: string | null;
+};
+
 interface ReviewRow {
   id: string;
   rating: number;
@@ -27,12 +34,9 @@ interface ReviewRow {
   reviewer_id: string;
   server_id: string | null;
   reviewee_id: string | null;
-  reviewer?: {
-    id: string;
-    display_name: string | null;
-    discord_avatar: string | null;
-    discord_username: string | null;
-  } | null;
+  reviewer?: ProfileChip | null;
+  /** Present when this review is about a specific member (server context). */
+  reviewee?: ProfileChip | null;
   server?: { id: string; name: string; icon: string | null } | null;
 }
 
@@ -62,13 +66,25 @@ const Stars = ({ value, onChange, size = 16 }: { value: number; onChange?: (v: n
   </div>
 );
 
+/** Members listed on the server page — used to post reviews about a specific person. */
+export type ServerReviewTarget = {
+  profileId: string;
+  display_name: string | null;
+  discord_avatar: string | null;
+  discord_username: string | null;
+};
+
 interface Props {
   profileId?: string;
   serverId?: string;
   serverName?: string;
+  /** Coworkers on this server; enables “review about [member]” on the server reviews card. */
+  serverReviewTargets?: ServerReviewTarget[];
 }
 
-const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
+const GENERAL_SERVER_REVIEW = '__general__';
+
+const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets }: Props) => {
   const { profile: me } = useAuth();
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +93,8 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
   const [submitting, setSubmitting] = useState(false);
   // For profile reviews: optional server tag
   const [tagServerId, setTagServerId] = useState<string>('none');
+  /** Server reviews: general feedback vs a specific member profile id. */
+  const [reviewAboutId, setReviewAboutId] = useState<string>(GENERAL_SERVER_REVIEW);
   const [memberServers, setMemberServers] = useState<MemberServer[]>([]);
 
   const isOwn = !!profileId && me?.id === profileId;
@@ -103,9 +121,13 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
         .from('servers')
         .select('id, name, icon, guild_id')
         .in('guild_id', guildIds);
-      setMemberServers((servers || []) as any);
+      setMemberServers((servers || []) as MemberServer[]);
     })();
   }, [profileId]);
+
+  useEffect(() => {
+    setReviewAboutId(GENERAL_SERVER_REVIEW);
+  }, [serverId]);
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -119,23 +141,32 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
     const { data } = await query;
     if (data && data.length) {
       const reviewerIds = [...new Set(data.map((r) => r.reviewer_id))];
+      const revieweeIds = [...new Set(data.map((r) => r.reviewee_id).filter(Boolean) as string[])];
       const serverIds = [...new Set(data.map((r) => r.server_id).filter(Boolean) as string[])];
-      const [{ data: reviewers }, serversRes] = await Promise.all([
+      const [{ data: reviewers }, { data: reviewees }, serversRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, display_name, discord_avatar, discord_username')
           .in('id', reviewerIds),
+        revieweeIds.length
+          ? supabase
+              .from('profiles')
+              .select('id, display_name, discord_avatar, discord_username')
+              .in('id', revieweeIds)
+          : Promise.resolve({ data: [] as ProfileChip[] }),
         serverIds.length
           ? supabase.from('servers').select('id, name, icon').in('id', serverIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as { id: string; name: string; icon: string | null }[] }),
       ]);
-      const rmap = new Map((reviewers || []).map((r) => [r.id, r]));
-      const smap = new Map(((serversRes as any).data || []).map((s: any) => [s.id, s]));
+      const rmap = new Map((reviewers || []).map((r) => [r.id, r as ProfileChip]));
+      const emap = new Map((reviewees || []).map((r) => [r.id, r as ProfileChip]));
+      const smap = new Map((serversRes.data || []).map((s) => [s.id, s]));
       setReviews(
         data.map((r) => ({
           ...r,
           reviewer: rmap.get(r.reviewer_id) || null,
-          server: r.server_id ? (smap.get(r.server_id) as any) || null : null,
+          reviewee: r.reviewee_id ? emap.get(r.reviewee_id) || null : null,
+          server: r.server_id ? smap.get(r.server_id) || null : null,
         }))
       );
     } else {
@@ -148,7 +179,10 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
     (r) =>
       r.reviewer_id === me?.id &&
       (serverId
-        ? r.server_id === serverId && !r.reviewee_id
+        ? r.server_id === serverId &&
+          (reviewAboutId === GENERAL_SERVER_REVIEW
+            ? !r.reviewee_id
+            : r.reviewee_id === reviewAboutId)
         : profileId
         ? r.reviewee_id === profileId &&
           ((tagServerId === 'none' && !r.server_id) || r.server_id === tagServerId)
@@ -164,7 +198,7 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
       setRating(5);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myReview?.id, tagServerId]);
+  }, [myReview?.id, tagServerId, reviewAboutId]);
 
   const submit = async () => {
     if (!me) return;
@@ -180,7 +214,8 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
     };
     if (serverId) {
       payload.server_id = serverId;
-      payload.reviewee_id = null;
+      payload.reviewee_id =
+        reviewAboutId !== GENERAL_SERVER_REVIEW && reviewAboutId ? reviewAboutId : null;
     } else if (profileId) {
       payload.reviewee_id = profileId;
       payload.server_id = tagServerId !== 'none' ? tagServerId : null;
@@ -224,8 +259,17 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
     fetchReviews();
   };
 
+  const targetMemberLabel =
+    serverId && reviewAboutId !== GENERAL_SERVER_REVIEW
+      ? serverReviewTargets?.find((t) => t.profileId === reviewAboutId)?.display_name ||
+        serverReviewTargets?.find((t) => t.profileId === reviewAboutId)?.discord_username ||
+        'this member'
+      : null;
+
   const composerLabel = serverId
-    ? `Review ${serverName || 'this server'}`
+    ? reviewAboutId !== GENERAL_SERVER_REVIEW && targetMemberLabel
+      ? `Review about ${targetMemberLabel}`
+      : `Review ${serverName || 'this server'}`
     : 'Your review';
 
   return (
@@ -240,6 +284,25 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
         {me && !isOwn && (
           <div className="glass rounded-xl p-4 mb-5 space-y-3">
             <p className="text-xs text-muted-foreground">{composerLabel}</p>
+
+            {serverId && (serverReviewTargets?.length ?? 0) > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Who is this about?</p>
+                <Select value={reviewAboutId} onValueChange={setReviewAboutId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={GENERAL_SERVER_REVIEW}>This server (general)</SelectItem>
+                    {(serverReviewTargets ?? []).map((t) => (
+                      <SelectItem key={t.profileId} value={t.profileId}>
+                        {t.display_name || t.discord_username || 'Member'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {profileId && memberServers.length > 0 && (
               <div className="space-y-1">
@@ -269,7 +332,9 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
               onChange={(e) => setContent(e.target.value)}
               placeholder={
                 serverId
-                  ? 'What is it like to work / be in this server?'
+                  ? reviewAboutId !== GENERAL_SERVER_REVIEW && targetMemberLabel
+                    ? `Share your experience with ${targetMemberLabel}…`
+                    : 'What is it like to work / be in this server?'
                   : 'Share your honest experience with this member…'
               }
               rows={3}
@@ -340,6 +405,25 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
                         </Link>
                       )}
                     </div>
+                    {serverId && r.reviewee && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
+                        <span className="text-muted-foreground/70 shrink-0">Review for</span>
+                        <Link
+                          to={profilePath(r.reviewee)}
+                          className="inline-flex items-center gap-1.5 min-w-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 hover:bg-white/10"
+                        >
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={r.reviewee.discord_avatar || undefined} />
+                            <AvatarFallback className="text-[9px] bg-secondary">
+                              {r.reviewee.display_name?.[0] || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-foreground/90 truncate">
+                            {r.reviewee.display_name || r.reviewee.discord_username || 'Member'}
+                          </span>
+                        </Link>
+                      </div>
+                    )}
                     {r.content && (
                       <p className="text-sm text-muted-foreground/90 mt-1 whitespace-pre-wrap">{r.content}</p>
                     )}
