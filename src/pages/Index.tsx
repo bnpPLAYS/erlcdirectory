@@ -20,6 +20,7 @@ import directoryPreview from '@/assets/directory-preview.png';
 import homeFeaturePlaceholder from '@/assets/home-features/member-directory.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 interface Profile {
   id: string;
@@ -136,7 +137,7 @@ const Index = () => {
       <section className="relative overflow-x-clip overflow-y-visible pb-2">
         <div className="container mx-auto px-4 relative">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-16 md:py-20 lg:py-28">
-            <div className="text-center lg:text-left order-2 lg:order-1 space-y-6">
+            <div className={`text-center lg:text-left order-2 lg:order-1 space-y-6 ${pageHeroEnter}`}>
               <div className="inline-flex items-center gap-2 mb-6 lg:mb-8">
                 <img
                   src={logo}

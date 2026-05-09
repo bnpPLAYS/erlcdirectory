@@ -246,15 +246,56 @@ export type Database = {
           },
         ]
       }
+      post_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           application_count: number | null
+          application_url: string | null
           author_id: string
           content: string
           created_at: string
           id: string
           is_open: boolean | null
           requirements: string[] | null
+          require_guild_membership: boolean
           server_id: string | null
           title: string
           type: string
@@ -263,12 +304,14 @@ export type Database = {
         }
         Insert: {
           application_count?: number | null
+          application_url?: string | null
           author_id: string
           content: string
           created_at?: string
           id?: string
           is_open?: boolean | null
           requirements?: string[] | null
+          require_guild_membership?: boolean
           server_id?: string | null
           title: string
           type: string
@@ -277,12 +320,14 @@ export type Database = {
         }
         Update: {
           application_count?: number | null
+          application_url?: string | null
           author_id?: string
           content?: string
           created_at?: string
           id?: string
           is_open?: boolean | null
           requirements?: string[] | null
+          require_guild_membership?: boolean
           server_id?: string | null
           title?: string
           type?: string

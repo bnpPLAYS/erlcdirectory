@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Briefcase, Search, Server as ServerIcon, RefreshCw, Shield } from 'lucide-react';
+import { Plus, Search, Server as ServerIcon, RefreshCw, Shield, Link2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -16,10 +17,18 @@ import { cn } from '@/lib/utils';
 import { filterPlaintext } from '@/lib/chatFilter';
 
 const TYPES = [
-  { value: 'hiring', label: 'Hiring', desc: 'Recruit staff for a server' },
-  { value: 'looking', label: 'Looking for work', desc: 'Tell servers what role you want' },
-  { value: 'announcement', label: 'Announcement', desc: 'Community update or news' },
-  { value: 'discussion', label: 'Discussion', desc: 'Start a conversation' },
+  {
+    value: 'hiring',
+    label: 'Hiring',
+    desc: 'Link an application, optional Discord membership check, and requirements.',
+  },
+  {
+    value: 'looking',
+    label: 'Looking for work',
+    desc: 'Highlights your profile so server teams can reach you privately.',
+  },
+  { value: 'announcement', label: 'Announcement', desc: 'News or updates for the community.' },
+  { value: 'discussion', label: 'Discussion', desc: 'Starts a thread others can reply to below the post.' },
 ];
 
 interface Guild {
@@ -36,16 +45,25 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
   const [type, setType] = useState('hiring');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [applicationUrl, setApplicationUrl] = useState('');
+  const [requireGuildMember, setRequireGuildMember] = useState(false);
+  const [extraRequirements, setExtraRequirements] = useState('');
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [guildSearch, setGuildSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [loadingGuilds, setLoadingGuilds] = useState(false);
 
+  const hiring = type === 'hiring';
+  const serverOptional = !hiring;
+
   const reset = () => {
     setTitle('');
     setContent('');
     setType('hiring');
+    setApplicationUrl('');
+    setRequireGuildMember(false);
+    setExtraRequirements('');
     setSelectedGuild(null);
     setGuildSearch('');
   };
@@ -54,7 +72,6 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     if (!profile) return;
     setLoadingGuilds(true);
     try {
-      // Only servers the user has a VERIFIED experience in
       const { data, error } = await supabase
         .from('experiences')
         .select('guild_id, server_name, server_icon')
@@ -64,14 +81,15 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       if (error) throw error;
       const seen = new Set<string>();
       const list: Guild[] = [];
-      for (const r of (data || []) as any[]) {
+      for (const r of (data || []) as { guild_id: string; server_name: string; server_icon: string | null }[]) {
         if (!r.guild_id || seen.has(r.guild_id)) continue;
         seen.add(r.guild_id);
         list.push({ id: r.guild_id, name: r.server_name, icon: r.server_icon, owner: false, is_admin: false });
       }
       setGuilds(list);
-    } catch (e: any) {
-      toast({ title: 'Could not load your verified servers', description: e?.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      toast({ title: 'Could not load your verified servers', description: msg, variant: 'destructive' });
     } finally {
       setLoadingGuilds(false);
     }
@@ -82,22 +100,16 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
   }, [open]);
 
   const ensureServerRow = async (g: Guild): Promise<string | null> => {
-    // Look up existing server by guild_id
-    const { data: existing } = await supabase
-      .from('servers')
-      .select('id')
-      .eq('guild_id', g.id)
-      .maybeSingle();
+    const { data: existing } = await supabase.from('servers').select('id').eq('guild_id', g.id).maybeSingle();
     if (existing) return existing.id;
-    // Create stub
     const { data: created, error } = await supabase
       .from('servers')
       .insert({
         name: g.name,
         icon: g.icon,
         guild_id: g.id,
-        owner_id: g.is_admin ? profile?.id : null,
-        is_hiring: type === 'hiring',
+        owner_id: null,
+        is_hiring: hiring,
       })
       .select('id')
       .single();
@@ -110,8 +122,12 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
 
   const submit = async () => {
     if (!profile) return;
-    if (!selectedGuild) {
-      toast({ title: 'Pick a Discord server', description: 'Every opening must be linked to a server you belong to.', variant: 'destructive' });
+    if (hiring && !selectedGuild) {
+      toast({
+        title: 'Pick a Discord server',
+        description: 'Hiring posts must be tied to a server you are verified in.',
+        variant: 'destructive',
+      });
       return;
     }
     if (title.trim().length < 3) {
@@ -127,22 +143,45 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     if (titleF.blockedHits || contentF.blockedHits) {
       toast({ title: 'Some wording was adjusted to meet community guidelines.' });
     }
-    setSubmitting(true);
-    const serverId = await ensureServerRow(selectedGuild);
-    if (!serverId) {
-      setSubmitting(false);
-      return;
+    const reqLines = extraRequirements
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    let applicationUrlClean: string | null = null;
+    if (hiring && applicationUrl.trim()) {
+      try {
+        const u = new URL(applicationUrl.trim());
+        if (u.protocol === 'http:' || u.protocol === 'https:') applicationUrlClean = u.toString();
+        else throw new Error('invalid');
+      } catch {
+        toast({ title: 'Application link must be a valid http(s) URL', variant: 'destructive' });
+        return;
+      }
     }
+
+    setSubmitting(true);
+    let serverId: string | null = null;
+    if (selectedGuild) {
+      serverId = await ensureServerRow(selectedGuild);
+      if (!serverId) {
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.from('posts').insert({
       author_id: profile.id,
       type,
       title: titleF.text,
       content: contentF.text,
       server_id: serverId,
+      application_url: hiring ? applicationUrlClean : null,
+      require_guild_membership: hiring && requireGuildMember,
+      requirements: reqLines.length ? reqLines : null,
     });
     setSubmitting(false);
     if (error) {
-      toast({ title: 'Could not create opening', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not create post', description: error.message, variant: 'destructive' });
       return;
     }
     toast({ title: 'Posted!' });
@@ -151,41 +190,36 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     onCreated?.();
   };
 
-  const filteredGuilds = guilds.filter((g) =>
-    g.name.toLowerCase().includes(guildSearch.toLowerCase())
-  );
+  const filteredGuilds = guilds.filter((g) => g.name.toLowerCase().includes(guildSearch.toLowerCase()));
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="gap-2">
-          <Plus className="h-4 w-4" /> New opening
+          <Plus className="h-4 w-4" /> New post
         </Button>
       </DialogTrigger>
-      <DialogContent
-        fullscreen
-        className="glass-strong p-0 gap-0 overflow-hidden flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
+      <DialogContent fullscreen hideClose className="glass-strong p-0 gap-0 overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0 pt-12">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
-              <Briefcase className="h-5 w-5 text-primary" />
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Create an opening</h2>
-              <p className="text-xs text-muted-foreground">Linked to a Discord server you belong to.</p>
+              <h2 className="text-lg font-semibold">Create a post</h2>
+              <p className="text-xs text-muted-foreground">Choose a type first—it controls how the post behaves.</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close">
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
-            {/* Type picker */}
             <section className="space-y-3">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Type</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -193,10 +227,16 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => setType(t.value)}
+                    onClick={() => {
+                      setType(t.value);
+                      if (t.value !== 'hiring') {
+                        setRequireGuildMember(false);
+                        setApplicationUrl('');
+                      }
+                    }}
                     className={cn(
                       'glass glass-hover rounded-xl p-4 text-left border transition-colors',
-                      type === t.value ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10'
+                      type === t.value ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10',
                     )}
                   >
                     <p className="font-medium text-sm">{t.label}</p>
@@ -206,29 +246,100 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
               </div>
             </section>
 
-            {/* Discord server picker */}
+            {hiring && (
+              <section className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Link2 className="h-3 w-3" /> Application &amp; requirements
+                </Label>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Application URL (optional)</Label>
+                  <Input
+                    value={applicationUrl}
+                    onChange={(e) => setApplicationUrl(e.target.value)}
+                    placeholder="https://…"
+                    inputMode="url"
+                  />
+                </div>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="req-guild"
+                    checked={requireGuildMember}
+                    onCheckedChange={(v) => setRequireGuildMember(!!v)}
+                  />
+                  <div>
+                    <label htmlFor="req-guild" className="text-sm font-medium cursor-pointer">
+                      Require applicants to be in this Discord server
+                    </label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Uses your Discord login to verify membership before opening the application link.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Extra requirements (one per line)</Label>
+                  <Textarea
+                    value={extraRequirements}
+                    onChange={(e) => setExtraRequirements(e.target.value)}
+                    placeholder={'Must be 16+\nPrior moderation experience'}
+                    rows={4}
+                  />
+                </div>
+              </section>
+            )}
+
+            {type === 'looking' && (
+              <p className="text-sm text-muted-foreground rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                Your profile will be linked on the post so hiring teams can open your directory listing and message you
+                privately when in-app messaging is enabled.
+              </p>
+            )}
+
+            {type === 'discussion' && (
+              <p className="text-sm text-muted-foreground rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                Replies appear under this post. Keep the first message focused so the thread stays on-topic.
+              </p>
+            )}
+
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                  <Shield className="h-3 w-3" /> Discord server *
+                  <Shield className="h-3 w-3" /> Discord server {hiring ? '*' : '(optional)'}
                 </Label>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={loadGuilds} disabled={loadingGuilds}>
                   <RefreshCw className={cn('h-3.5 w-3.5', loadingGuilds && 'animate-spin')} />
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground -mt-1">
-                Verifies you actually belong to the server. We'll auto-list it if it's new.
+                {hiring
+                  ? 'Hiring posts must reference a server where your experience is verified.'
+                  : 'Optionally tag a server. Skip if this post is general.'}
               </p>
 
+              {serverOptional && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedGuild(null)}
+                  className={cn(
+                    'w-full glass rounded-lg px-3 py-2 text-left text-sm border transition-colors',
+                    selectedGuild === null ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10',
+                  )}
+                >
+                  No server linked
+                </button>
+              )}
+
               {loadingGuilds ? (
-                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">Loading your verified servers…</div>
-              ) : guilds.length === 0 ? (
+                <div className="glass rounded-xl p-6 text-sm text-muted-foreground text-center">
+                  Loading your verified servers…
+                </div>
+              ) : hiring && guilds.length === 0 ? (
                 <div className="glass rounded-xl p-6 text-center text-sm text-muted-foreground">
-                  You can only post openings for servers where your experience has been verified by a Discord admin. Add and verify an experience first.
+                  You need at least one verified server experience to post a hiring thread. Add and verify an
+                  experience first.
                 </div>
               ) : (
                 <>
-                  {guilds.length > 4 && (
+                  {guilds.length > 3 && (
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -249,7 +360,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                           onClick={() => setSelectedGuild(g)}
                           className={cn(
                             'glass glass-hover rounded-lg p-3 flex items-center gap-3 text-left border transition-colors',
-                            selected ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10'
+                            selected ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/10',
                           )}
                         >
                           {g.icon ? (
@@ -261,14 +372,12 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{g.name}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Verified member
-                            </p>
+                            <p className="text-[11px] text-muted-foreground">Verified member</p>
                           </div>
                         </button>
                       );
                     })}
-                    {filteredGuilds.length === 0 && (
+                    {filteredGuilds.length === 0 && guilds.length > 0 && (
                       <p className="col-span-full text-sm text-muted-foreground text-center py-4">No servers match.</p>
                     )}
                   </div>
@@ -276,25 +385,23 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
               )}
             </section>
 
-            {/* Title */}
             <section className="space-y-2">
               <Label>Title</Label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Hiring senior moderator for night shift"
+                placeholder="Short headline for the board"
                 maxLength={120}
               />
               <p className="text-[11px] text-muted-foreground text-right">{title.length}/120</p>
             </section>
 
-            {/* Details */}
             <section className="space-y-2">
               <Label>Details</Label>
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="What you're looking for, requirements, how to apply…"
+                placeholder="What people should know, how to engage, links in text if needed…"
                 rows={10}
                 maxLength={2000}
               />
@@ -303,15 +410,12 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-white/10 px-6 py-4 flex items-center justify-end gap-2 shrink-0 bg-background/60 backdrop-blur">
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button
-            onClick={submit}
-            disabled={submitting || !selectedGuild}
-            className="gap-2"
-          >
-            {submitting ? 'Posting…' : 'Post opening'}
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={submitting || (hiring && !selectedGuild)} className="gap-2">
+            {submitting ? 'Posting…' : 'Publish'}
           </Button>
         </div>
       </DialogContent>

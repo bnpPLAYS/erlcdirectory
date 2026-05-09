@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Search, Plus, Briefcase, User, Megaphone, MessageCircle, Clock, ExternalLink, Server as ServerIcon } from 'lucide-react';
+import {
+  Search,
+  Clock,
+  ExternalLink,
+  Server as ServerIcon,
+  ChevronDown,
+  Send,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Navbar from '@/components/layout/Navbar';
+import SiteFooter from '@/components/layout/SiteFooter';
 import CreatePostDialog from '@/components/posts/CreatePostDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatTimeAgo } from '@/lib/mockData';
+import { cn } from '@/lib/utils';
+import { filterPlaintext } from '@/lib/chatFilter';
+import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 interface Post {
   id: string;
@@ -22,6 +36,9 @@ interface Post {
   application_count: number;
   created_at: string;
   server_id: string | null;
+  application_url: string | null;
+  require_guild_membership: boolean;
+  requirements: string[] | null;
   profiles: {
     id: string;
     display_name: string | null;
@@ -34,15 +51,144 @@ interface Post {
     name: string;
     icon: string | null;
     discord_invite: string | null;
+    guild_id: string | null;
   } | null;
 }
 
-const postTypeConfig: Record<string, { label: string; icon: typeof Briefcase; color: string }> = {
-  hiring: { label: 'Hiring', icon: Briefcase, color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  looking: { label: 'Looking for work', icon: User, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  announcement: { label: 'Announcement', icon: Megaphone, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  discussion: { label: 'Discussion', icon: MessageCircle, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+const postTypeConfig: Record<string, { label: string; badgeClass: string }> = {
+  hiring: {
+    label: 'Hiring',
+    badgeClass: 'border-violet-400/35 bg-violet-500/12 text-violet-200',
+  },
+  looking: {
+    label: 'Looking for work',
+    badgeClass: 'border-white/18 bg-white/[0.07] text-foreground/90',
+  },
+  announcement: {
+    label: 'Announcement',
+    badgeClass: 'border-white/15 bg-white/[0.05] text-muted-foreground',
+  },
+  discussion: {
+    label: 'Discussion',
+    badgeClass: 'border-sky-400/35 bg-sky-500/12 text-sky-200',
+  },
 };
+
+type CommentRow = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  profiles: { display_name: string | null; discord_avatar: string | null } | null;
+};
+
+function DiscussionThread({ postId }: { postId: string }) {
+  const { user, profile } = useAuth();
+  const [comments, setComments] = useState<CommentRow[]>([]);
+  const [text, setText] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data: rows, error } = await supabase
+      .from('post_comments')
+      .select('id, content, created_at, author_id')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const base = rows || [];
+    const authorIds = [...new Set(base.map((r) => r.author_id))];
+    let profMap = new Map<string, { display_name: string | null; discord_avatar: string | null }>();
+    if (authorIds.length) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, display_name, discord_avatar')
+        .in('id', authorIds);
+      (profs || []).forEach((p) => profMap.set(p.id, { display_name: p.display_name, discord_avatar: p.discord_avatar }));
+    }
+    setComments(
+      base.map((r) => ({
+        ...r,
+        profiles: profMap.get(r.author_id) ?? null,
+      })),
+    );
+  }, [postId]);
+
+  useEffect(() => {
+    if (open) load();
+  }, [open, load]);
+
+  const send = async () => {
+    if (!profile || !text.trim()) return;
+    const { text: t, blockedHits } = filterPlaintext(text.trim());
+    if (!t) return;
+    const { error } = await supabase.from('post_comments').insert({
+      post_id: postId,
+      author_id: profile.id,
+      content: t,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (blockedHits) toast.info('Wording was adjusted to meet community guidelines.');
+    setText('');
+    load();
+  };
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (v) load();
+      }}
+    >
+      <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mt-3 w-full text-left">
+        <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
+        <span>
+          {comments.length} {comments.length === 1 ? 'reply' : 'replies'}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-3 pt-3 border-t border-white/10 mt-3">
+        {comments.map((c) => (
+          <div key={c.id} className="rounded-lg bg-white/[0.03] border border-white/8 px-3 py-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={c.profiles?.discord_avatar || undefined} />
+                <AvatarFallback className="text-[10px]">
+                  {c.profiles?.display_name?.[0] || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs font-medium">{c.profiles?.display_name || 'Member'}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {formatTimeAgo(c.created_at)}
+              </span>
+            </div>
+            <p className="text-sm text-foreground/90 whitespace-pre-wrap">{c.content}</p>
+          </div>
+        ))}
+        {user ? (
+          <div className="flex gap-2 pt-1">
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Write a reply…"
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), void send())}
+            />
+            <Button type="button" size="icon" variant="secondary" onClick={send} disabled={!text.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Sign in to join the thread.</p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 const Posts = () => {
   const { user } = useAuth();
@@ -59,11 +205,14 @@ const Posts = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('posts')
-      .select(`
+      .select(
+        `
         id, type, title, content, is_open, view_count, application_count, created_at, server_id,
+        application_url, require_guild_membership, requirements,
         profiles!author_id(id, display_name, discord_avatar, discord_id, is_verified),
-        servers(id, name, icon, discord_invite)
-      `)
+        servers(id, name, icon, discord_invite, guild_id)
+      `,
+      )
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -73,40 +222,72 @@ const Posts = () => {
     setLoading(false);
   };
 
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = !searchQuery || 
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch =
+      !searchQuery ||
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.content.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesType = !activeFilter || post.type === activeFilter;
-    
+
     return matchesSearch && matchesType;
   });
+
+  const applyToHiring = async (post: Post) => {
+    if (!user) {
+      toast.error('Sign in with Discord to apply.');
+      return;
+    }
+    if (post.require_guild_membership && post.servers?.guild_id) {
+      const { data, error } = await supabase.functions.invoke('discord-guilds', { body: {} });
+      if (error) {
+        toast.error(error.message || 'Could not verify Discord.');
+        return;
+      }
+      const guilds = (data as { guilds?: { id: string }[] })?.guilds || [];
+      const ok = guilds.some((g) => g.id === post.servers!.guild_id);
+      if (!ok) {
+        toast.error('Join the server on Discord first—this post requires membership.');
+        return;
+      }
+    }
+    if (post.application_url) {
+      window.open(post.application_url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.message('No application link', {
+        description: 'Reach out via the server invite or Discord links on this post.',
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-              <FileText className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Openings & Updates</h1>
+          <div className={`text-center mb-10 ${pageHeroEnter}`}>
+            <img
+              src={logo}
+              alt=""
+              className="logo-mark mx-auto mb-6 h-14 w-14 object-contain sm:h-16 sm:w-16"
+              width={64}
+              height={64}
+              decoding="async"
+              aria-hidden
+            />
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Posts</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Hiring posts, staff searches, and server updates from the ER:LC community.
+              Hiring threads, résumés, announcements, and discussions from the ER:LC community.
             </p>
           </div>
 
-          {/* Search & Filters */}
           <div className="max-w-2xl mx-auto mb-8">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search openings and updates..."
+                  placeholder="Search posts…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -115,7 +296,6 @@ const Posts = () => {
               {user && <CreatePostDialog onCreated={fetchPosts} />}
             </div>
 
-            {/* Type filters */}
             <div className="flex flex-wrap gap-2 mt-4">
               <Badge
                 variant={activeFilter === null ? 'default' : 'outline'}
@@ -128,17 +308,15 @@ const Posts = () => {
                 <Badge
                   key={type}
                   variant={activeFilter === type ? 'default' : 'outline'}
-                  className="cursor-pointer gap-1"
+                  className="cursor-pointer"
                   onClick={() => setActiveFilter(type)}
                 >
-                  <config.icon className="h-3 w-3" />
                   {config.label}
                 </Badge>
               ))}
             </div>
           </div>
 
-          {/* Results */}
           {loading ? (
             <div className="space-y-4 max-w-2xl mx-auto">
               {[...Array(4)].map((_, i) => (
@@ -150,7 +328,7 @@ const Posts = () => {
               {filteredPosts.map((post) => {
                 const typeConfig = postTypeConfig[post.type];
                 return (
-                  <Card key={post.id} className="hover:border-primary/50 transition-colors">
+                  <Card key={post.id} className="hover:border-primary/50 transition-colors border-white/10">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
                         <Avatar className="h-10 w-10">
@@ -160,12 +338,18 @@ const Posts = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {typeConfig && (
-                              <Badge className={typeConfig.color}>
-                                <typeConfig.icon className="h-3 w-3 mr-1" />
+                              <Badge variant="outline" className={cn('font-medium', typeConfig.badgeClass)}>
                                 {typeConfig.label}
                               </Badge>
                             )}
-                            <Badge variant="outline" className={post.is_open ? 'text-green-400' : 'text-red-400'}>
+                            <Badge
+                              variant="outline"
+                              className={
+                                post.is_open
+                                  ? 'border-white/20 text-foreground/90'
+                                  : 'border-white/10 text-muted-foreground'
+                              }
+                            >
                               {post.is_open ? 'Open' : 'Closed'}
                             </Badge>
                             <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
@@ -187,9 +371,42 @@ const Posts = () => {
                               {post.servers.name}
                             </Link>
                           )}
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                            {post.content}
-                          </p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-2">{post.content}</p>
+
+                          {post.type === 'hiring' && post.requirements && post.requirements.length > 0 && (
+                            <ul className="text-xs text-muted-foreground list-disc pl-4 mb-2 space-y-0.5">
+                              {post.requirements.map((r, i) => (
+                                <li key={i}>{r}</li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {post.type === 'hiring' && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              <Button size="sm" variant="secondary" className="h-8" onClick={() => applyToHiring(post)}>
+                                Apply
+                              </Button>
+                              {post.application_url && (
+                                <span className="text-[11px] text-muted-foreground self-center">
+                                  {post.require_guild_membership
+                                    ? 'Discord membership may be verified before the form opens.'
+                                    : 'Opens the application in a new tab.'}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {post.type === 'looking' && post.profiles?.id && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              <Button size="sm" variant="secondary" className="h-8" asChild>
+                                <Link to={`/profile/${post.profiles.id}`}>View profile</Link>
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8" asChild>
+                                <Link to={`/messages?with=${post.profiles.id}`}>Message</Link>
+                              </Button>
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                             <Link to={`/profile/${post.profiles?.id}`} className="hover:text-foreground">
                               {post.profiles?.display_name || 'Discord member'}
@@ -221,6 +438,8 @@ const Posts = () => {
                               <span>• {post.application_count} applications</span>
                             )}
                           </div>
+
+                          {post.type === 'discussion' && <DiscussionThread postId={post.id} />}
                         </div>
                       </div>
                     </CardContent>
@@ -231,10 +450,17 @@ const Posts = () => {
           ) : (
             <Card className="border-dashed max-w-2xl mx-auto card-elevated">
               <CardContent className="p-12 text-center">
-                <FileText className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No openings yet</h3>
+                <img
+                  src={logo}
+                  alt=""
+                  className="logo-mark h-16 w-16 mx-auto mb-6 object-contain opacity-40"
+                  width={64}
+                  height={64}
+                  aria-hidden
+                />
+                <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Start the board with a hiring post, application, or community update.
+                  Start the board with a hiring thread, looking-for-work post, announcement, or discussion.
                 </p>
                 {user ? (
                   <CreatePostDialog onCreated={fetchPosts} />
@@ -248,6 +474,8 @@ const Posts = () => {
           )}
         </div>
       </section>
+
+      <SiteFooter />
     </div>
   );
 };

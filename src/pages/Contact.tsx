@@ -1,11 +1,12 @@
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Mail } from 'lucide-react';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 const Contact = () => (
   <div className="min-h-screen bg-background flex flex-col">
     <Navbar />
-    <main className="flex-1 container mx-auto px-4 py-16 max-w-lg text-center">
+    <main className={`flex-1 container mx-auto px-4 py-16 max-w-lg text-center ${pageHeroEnter}`}>
       <h1 className="text-3xl font-bold tracking-tight mb-3">Contact</h1>
       <p className="text-muted-foreground text-sm mb-8">
         For support, privacy requests, or abuse reports related to erlc.directory.

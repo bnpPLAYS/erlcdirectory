@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import VerifiedBadge from '@/components/ui/verified-badge';
 import { toast } from 'sonner';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 interface Person {
   id: string;
@@ -159,7 +160,7 @@ const Connections = () => {
         <Navbar />
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-10">
+            <div className={`text-center mb-10 ${pageHeroEnter}`}>
               <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-white/10 grid place-items-center">
                 <Users className="h-7 w-7" />
               </div>
@@ -196,7 +197,7 @@ const Connections = () => {
 
       <section className="py-10 md:py-14">
         <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-8">
+          <div className={`text-center mb-8 ${pageHeroEnter}`}>
             <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 grid place-items-center">
               <Users className="h-6 w-6" />
             </div>

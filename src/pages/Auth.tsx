@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { useAuth } from '@/hooks/useAuth';
+import { pageHeroEnter } from '@/lib/pageHero';
 
 const Auth = () => {
   const { user, loading, signInWithDiscord } = useAuth();
@@ -46,7 +47,7 @@ const Auth = () => {
 
         <div className="max-w-2xl mx-auto">
           <div className="card-elevated liquid-edge rounded-3xl border border-white/10 bg-background/60 backdrop-blur-xl p-8 sm:p-12">
-            <div className="flex flex-col items-center text-center">
+            <div className={`flex flex-col items-center text-center ${pageHeroEnter}`}>
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg ring-1 ring-white/10">
                 <span className="text-primary-foreground font-bold text-3xl">E</span>
               </div>

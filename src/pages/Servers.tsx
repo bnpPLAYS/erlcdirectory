@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Server, Plus, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,9 @@ import {
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import logo from '@/assets/logo.png';
+import { pageHeroEnter } from '@/lib/pageHero';
+import SiteFooter from '@/components/layout/SiteFooter';
 
 interface ServerData {
   id: string;
@@ -32,7 +34,6 @@ interface ServerData {
 }
 
 const Servers = () => {
-  const { user } = useAuth();
   const [servers, setServers] = useState<ServerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,11 +83,17 @@ const Servers = () => {
       <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="text-center mb-10">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-              <Server className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">ER:LC Servers</h1>
+          <div className={`text-center mb-10 ${pageHeroEnter}`}>
+            <img
+              src={logo}
+              alt=""
+              className="logo-mark mx-auto mb-6 h-14 w-14 object-contain sm:h-16 sm:w-16"
+              width={64}
+              height={64}
+              decoding="async"
+              aria-hidden
+            />
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Servers</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
               Browse active communities, hiring status, and Discord links in one place.
             </p>
@@ -153,7 +160,14 @@ const Servers = () => {
           ) : (
             <Card className="border-dashed max-w-2xl mx-auto card-elevated">
               <CardContent className="p-12 text-center">
-                <Server className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
+                <img
+                  src={logo}
+                  alt=""
+                  className="logo-mark h-16 w-16 mx-auto mb-6 object-contain opacity-40"
+                  width={64}
+                  height={64}
+                  aria-hidden
+                />
                 <h3 className="text-xl font-semibold mb-2">No servers listed yet</h3>
                 <p className="text-muted-foreground">
                   Servers appear automatically once a member's experience is verified by a Discord admin.
@@ -164,6 +178,8 @@ const Servers = () => {
           )}
         </div>
       </section>
+
+      <SiteFooter />
     </div>
   );
 };

@@ -47,7 +47,10 @@ const ServerCard = ({ server }: ServerCardProps) => {
             
             <div className="flex items-center gap-2 mb-2">
               {server.is_hiring && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/40 text-emerald-300 bg-emerald-500/5">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 border-violet-400/35 bg-violet-500/12 text-violet-200"
+                >
                   Hiring
                 </Badge>
               )}
