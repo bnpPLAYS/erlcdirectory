@@ -5,10 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/mockData';
-import { cn } from '@/lib/utils';
 
 interface ServerCardProps {
-  variant?: 'default' | 'home';
   server: {
     id: string;
     name: string;
@@ -24,18 +22,9 @@ interface ServerCardProps {
   };
 }
 
-const ServerCard = ({ server, variant = 'default' }: ServerCardProps) => {
-  const isHome = variant === 'home';
-
+const ServerCard = ({ server }: ServerCardProps) => {
   return (
-    <Card
-      className={cn(
-        'group h-full overflow-hidden rounded-2xl',
-        isHome
-          ? 'home-hover-pop border-0 bg-[hsl(var(--card))] hover:bg-[hsl(var(--card-hover))]'
-          : 'card-interactive',
-      )}
-    >
+    <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-14 w-14 rounded-xl ring-2 ring-border group-hover:ring-primary/50 transition-all flex-shrink-0">

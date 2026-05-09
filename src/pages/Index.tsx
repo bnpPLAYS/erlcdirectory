@@ -133,32 +133,31 @@ const Index = () => {
       <Navbar />
 
       {/* Hero — split layout: copy left, product preview right (desktop) */}
-      <section className="relative overflow-x-clip overflow-y-visible">
+      <section className="relative overflow-x-clip overflow-y-visible pb-2">
         <div className="container mx-auto px-4 relative">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-16 md:py-20 lg:py-28">
             <div className="text-center lg:text-left order-2 lg:order-1 space-y-6">
-              <div className="home-hover-pop rounded-2xl bg-white/[0.03] p-6 sm:p-8 space-y-5">
-                <div className="inline-flex items-center gap-2">
-                  <img
-                    src={logo}
-                    alt=""
-                    className="logo-mark h-9 w-9 object-contain sm:h-10 sm:w-10"
-                    width={40}
-                    height={40}
-                    decoding="async"
-                    fetchPriority="high"
-                    aria-hidden
-                  />
-                </div>
+              <div className="inline-flex items-center gap-2 mb-6 lg:mb-8">
+                <img
+                  src={logo}
+                  alt=""
+                  className="logo-mark h-9 w-9 object-contain sm:h-10 sm:w-10"
+                  width={40}
+                  height={40}
+                  decoding="async"
+                  fetchPriority="high"
+                  aria-hidden
+                />
+              </div>
 
-                <h1 className="text-4xl sm:text-5xl lg:text-[2.75rem] xl:text-6xl font-bold tracking-tight text-foreground leading-[1.08]">
-                  erlc.directory
-                </h1>
-                <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                  Hire staff, post resumes and portfolios, connect with friends.
-                </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[2.75rem] xl:text-6xl font-bold tracking-tight text-foreground leading-[1.08] mb-5">
+                erlc.directory
+              </h1>
+              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+                Hire staff, post resumes and portfolios, connect with friends.
+              </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-1">
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-10">
                 {user ? (
                   <>
                     <Link to={profile?.id ? `/profile/${profile.id}?edit=1` : '/browse'}>
@@ -204,12 +203,10 @@ const Index = () => {
                     </Link>
                   </>
                 )}
-                </div>
               </div>
 
               {(stats.profiles > 0 || stats.servers > 0) && (
-                <div className="home-hover-pop rounded-2xl bg-white/[0.03] px-5 py-4 w-full lg:w-fit lg:mx-0 mx-auto">
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-2 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-2">
                       <Users className="h-4 w-4 text-foreground/70" strokeWidth={1.75} aria-hidden />
                       <span>
@@ -223,7 +220,6 @@ const Index = () => {
                         <span className="font-semibold text-foreground tabular-nums">{stats.servers}</span> servers
                       </span>
                     </span>
-                  </div>
                 </div>
               )}
             </div>
@@ -233,7 +229,7 @@ const Index = () => {
                 aria-hidden
                 className="pointer-events-none absolute -inset-4 rounded-3xl bg-gradient-to-br from-primary/8 via-transparent to-transparent opacity-80 blur-2xl lg:block hidden"
               />
-              <div className="relative home-hover-pop rounded-2xl bg-white/[0.03] p-2">
+              <div className="relative home-image-pop rounded-2xl bg-white/[0.03] p-2">
                 <div className="rounded-xl overflow-hidden">
                   <img
                     src={directoryPreview}
@@ -253,9 +249,9 @@ const Index = () => {
       </section>
 
       {featuredProfiles.length > 0 && (
-        <section className="py-12 md:py-16 border-t border-white/[0.06] overflow-x-clip overflow-y-visible">
+        <section className="py-12 md:py-16 border-t border-white/[0.06]">
           <div className="container mx-auto px-4">
-            <div className="home-hover-pop rounded-2xl bg-white/[0.03] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2.5">
                   <Sparkles className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
@@ -271,9 +267,9 @@ const Index = () => {
               </Link>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 py-1">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {featuredProfiles.map((p) => (
-                <ProfileCard key={p.id} profile={p} variant="home" />
+                <ProfileCard key={p.id} profile={p} />
               ))}
             </div>
           </div>
@@ -281,9 +277,9 @@ const Index = () => {
       )}
 
       {topServers.length > 0 && (
-        <section className="py-12 md:py-16 bg-secondary/10 border-y border-border/30 overflow-x-clip overflow-y-visible">
+        <section className="py-12 md:py-16 bg-secondary/10 border-y border-border/30">
           <div className="container mx-auto px-4">
-            <div className="home-hover-pop rounded-2xl bg-white/[0.03] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2.5">
                   <Server className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
@@ -299,20 +295,18 @@ const Index = () => {
               </Link>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 md:gap-5 py-1">
+            <div className="grid md:grid-cols-2 gap-4">
               {topServers.map((server) => (
-                <div key={server.id} className="h-full py-1">
-                  <ServerCard server={server} variant="home" />
-                </div>
+                <ServerCard key={server.id} server={server} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      <section className="py-12 md:py-20 border-t border-white/[0.06] overflow-x-clip overflow-y-visible">
+      <section className="py-12 md:py-20 border-t border-white/[0.06]">
         <div className="container mx-auto px-4">
-          <div className="home-hover-pop max-w-2xl rounded-2xl bg-white/[0.03] p-5 sm:p-6 mb-14 md:mb-16">
+          <div className="max-w-2xl mb-14 md:mb-16">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-3">
               How it works on the site
             </h2>
@@ -328,7 +322,7 @@ const Index = () => {
                 className="grid gap-8 md:gap-12 md:grid-cols-2 md:items-center"
               >
                 <div className={cn('py-1', i % 2 === 1 && 'md:order-2')}>
-                  <div className="home-hover-pop rounded-2xl bg-white/[0.03] p-2">
+                  <div className="home-image-pop rounded-2xl bg-white/[0.03] p-2">
                     <div className="rounded-xl overflow-hidden">
                       <img
                         src={item.image}
@@ -343,12 +337,7 @@ const Index = () => {
                     </div>
                   </div>
                 </div>
-                <div
-                  className={cn(
-                    'home-hover-pop space-y-3 rounded-2xl bg-white/[0.03] p-5 sm:p-6',
-                    i % 2 === 1 && 'md:order-1',
-                  )}
-                >
+                <div className={cn('space-y-3', i % 2 === 1 && 'md:order-1')}>
                   <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">
                     {item.title}
                   </h3>
@@ -362,9 +351,9 @@ const Index = () => {
         </div>
       </section>
 
-      <section className="py-12 md:py-16 bg-secondary/20 border-t border-border/30 overflow-x-clip overflow-y-visible">
+      <section className="py-12 md:py-16 bg-secondary/20 border-t border-border/30">
         <div className="container mx-auto px-4">
-          <div className="home-hover-pop max-w-xl mx-auto text-center lg:mx-0 lg:text-left lg:max-w-2xl rounded-2xl bg-white/[0.03] p-6 sm:p-8">
+          <div className="max-w-xl mx-auto text-center lg:mx-0 lg:text-left lg:max-w-2xl">
             <h2 className="text-xl md:text-2xl font-bold mb-3 flex items-center justify-center lg:justify-start gap-2.5">
               <Rocket className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
               Ready to build your listing?
@@ -382,9 +371,7 @@ const Index = () => {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 pb-6 overflow-x-clip overflow-y-visible">
-        <SiteFooter className="home-hover-pop rounded-2xl bg-white/[0.03] px-5 sm:px-6 border-t-0" />
-      </div>
+      <SiteFooter />
     </div>
   );
 };
