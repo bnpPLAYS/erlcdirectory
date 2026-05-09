@@ -5,14 +5,10 @@ import {
   Users,
   Pencil,
   Monitor,
-  Sparkles,
-  Server,
   Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
-import ProfileCard from '@/components/profile/ProfileCard';
-import ServerCard from '@/components/server/ServerCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
@@ -21,31 +17,6 @@ import homeFeaturePlaceholder from '@/assets/home-features/member-directory.png'
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { pageHeroEnter } from '@/lib/pageHero';
-
-interface Profile {
-  id: string;
-  display_name: string | null;
-  discord_avatar: string | null;
-  bio: string | null;
-  is_verified: boolean;
-  is_featured: boolean;
-  rating: number;
-  review_count: number;
-  skills: string[];
-}
-
-interface ServerRow {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  member_count: number;
-  staff_count: number;
-  is_verified: boolean;
-  is_featured: boolean;
-  is_hiring: boolean;
-  tags: string[];
-}
 
 /**
  * Product tour: one image per row. Drop distinct PNGs into `src/assets/home-features/` and
@@ -82,31 +53,10 @@ const PRODUCT_SCREENSHOTS: {
 
 const Index = () => {
   const { user, profile } = useAuth();
-  const [featuredProfiles, setFeaturedProfiles] = useState<Profile[]>([]);
-  const [topServers, setTopServers] = useState<ServerRow[]>([]);
   const [stats, setStats] = useState({ profiles: 0, servers: 0 });
 
   useEffect(() => {
     let cancelled = false;
-
-    const fetchFeaturedData = async () => {
-      const [profilesRes, serversRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills')
-          .eq('is_featured', true)
-          .limit(3),
-        supabase
-          .from('servers')
-          .select('id, name, description, icon, member_count, staff_count, is_verified, is_featured, is_hiring, tags')
-          .order('member_count', { ascending: false })
-          .limit(2),
-      ]);
-
-      if (cancelled) return;
-      if (profilesRes.data) setFeaturedProfiles(profilesRes.data);
-      if (serversRes.data) setTopServers(serversRes.data);
-    };
 
     const fetchStats = async () => {
       const [profileCount, serverCount] = await Promise.all([
@@ -121,7 +71,6 @@ const Index = () => {
       });
     };
 
-    fetchFeaturedData();
     fetchStats();
 
     return () => {
@@ -248,62 +197,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {featuredProfiles.length > 0 && (
-        <section className="py-12 md:py-16 border-t border-white/[0.06]">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2.5">
-                  <Sparkles className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
-                  Featured Members
-                </h2>
-                <p className="text-sm text-muted-foreground">Members with complete profiles and recent activity</p>
-              </div>
-              <Link to="/browse">
-                <Button variant="ghost" size="sm" className="gap-1 shrink-0">
-                  View All
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {featuredProfiles.map((p) => (
-                <ProfileCard key={p.id} profile={p} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {topServers.length > 0 && (
-        <section className="py-12 md:py-16 bg-secondary/10 border-y border-border/30">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2.5">
-                  <Server className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
-                  Active Servers
-                </h2>
-                <p className="text-sm text-muted-foreground">Communities sharing openings and server details</p>
-              </div>
-              <Link to="/servers">
-                <Button variant="ghost" size="sm" className="gap-1 shrink-0">
-                  View All
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              {topServers.map((server) => (
-                <ServerCard key={server.id} server={server} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       <section className="py-12 md:py-20 border-t border-white/[0.06]">
         <div className="container mx-auto px-4">
