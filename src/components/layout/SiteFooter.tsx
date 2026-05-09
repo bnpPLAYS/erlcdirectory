@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import logo from '@/assets/logo.png';
+import { cn } from '@/lib/utils';
 
-const SiteFooter = () => (
-  <footer className="py-6 border-t border-border/30">
+const SiteFooter = ({ className }: { className?: string }) => (
+  <footer className={cn('py-6 border-t border-border/30', className)}>
     <div className="container mx-auto px-4">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">

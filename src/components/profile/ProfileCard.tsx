@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Crown, CheckCircle2, Star, Users } from 'lucide-react';
 import SkillBadge from '@/components/ui/skill-badge';
+import { cn } from '@/lib/utils';
 
 interface ExperiencePreview {
   id: string;
@@ -15,6 +16,8 @@ interface ExperiencePreview {
 }
 
 interface ProfileCardProps {
+  /** Homepage featured grid: tilt + pop on hover. Browse uses default (flat card). */
+  variant?: 'default' | 'home';
   profile: {
     id: string;
     display_name: string | null;
@@ -42,16 +45,28 @@ const isNewProfile = (created_at?: string) => {
   return Date.now() - new Date(created_at).getTime() < 14 * MS_DAY;
 };
 
-const ProfileCard = ({ profile }: ProfileCardProps) => {
+const ProfileCard = ({ profile, variant = 'default' }: ProfileCardProps) => {
   const traits = (profile.skills || []).slice(0, 4);
   const experiences = (profile.experiences || []).slice(0, 2);
   const remainingExp = Math.max(0, (profile.experiences?.length || 0) - experiences.length);
   const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
   const showNewBadge = isNewProfile(profile.created_at);
 
+  const isHome = variant === 'home';
+
   return (
-    <Link to={`/profile/${profile.id}`} className="block h-full overflow-visible py-1">
-      <Card className="group h-full overflow-hidden rounded-2xl border-0 bg-[hsl(240_6%_8%/0.85)] shadow-lg shadow-black/40 -rotate-1 origin-[center_70%] transition-[transform,box-shadow,background-color] duration-300 ease-out hover:rotate-0 hover:scale-[1.035] hover:-translate-y-2 hover:bg-[hsl(240_6%_11%/0.92)] hover:shadow-2xl hover:shadow-black/70">
+    <Link
+      to={`/profile/${profile.id}`}
+      className={cn('block h-full', isHome && 'overflow-visible py-1')}
+    >
+      <Card
+        className={cn(
+          'group h-full overflow-hidden rounded-2xl bg-[hsl(240_6%_8%/0.85)] shadow-lg transition-[transform,box-shadow,background-color,border-color] duration-300 ease-out',
+          isHome
+            ? 'home-hover-pop border-0 hover:bg-[hsl(240_6%_11%/0.92)]'
+            : 'border border-white/10 hover:border-white/14 hover:bg-[hsl(240_6%_10%/0.9)] hover:shadow-xl',
+        )}
+      >
         <CardContent className="p-5 sm:p-6 space-y-4">
           {/* Header row */}
           <div className="flex items-start justify-between gap-4">
