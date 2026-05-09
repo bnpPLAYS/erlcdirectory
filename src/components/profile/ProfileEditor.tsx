@@ -225,7 +225,6 @@ const ProfileEditor = ({
   const [skillInput, setSkillInput] = useState('');
   const [socials, setSocials] = useState<Record<string, string>>(profile.social_links || {});
   const [exps, setExps] = useState<Experience[]>(experiences);
-  const [newExpKeys, setNewExpKeys] = useState<Set<string>>(new Set());
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
@@ -270,7 +269,7 @@ const ProfileEditor = ({
 
   const deleteExp = (id: string) => {
     setExps(exps.filter((e) => e.id !== id));
-    if (!newExpKeys.has(id)) setRemovedExpIds((r) => [...r, id]);
+    setRemovedExpIds((r) => [...r, id]);
   };
 
   /** Server-linked: copy link in place. No guild: open picker dialog. */
@@ -375,7 +374,6 @@ const ProfileEditor = ({
       }
       // Update existing experiences (new ones are added via the AddExperienceDialog)
       for (const e of exps) {
-        if (newExpKeys.has(e.id)) continue;
         if (!e.role.trim() || !e.server_name.trim()) continue;
         const roleF = filterPlaintext(e.role.trim());
         filterHits += roleF.blockedHits;
