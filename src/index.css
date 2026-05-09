@@ -88,21 +88,6 @@
   filter: brightness(0) invert(1);
 }
 
-/* System emoji, toned light for dark backgrounds (Unicode glyphs, not image assets) */
-.emoji-on-dark {
-  font-family:
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Segoe UI Symbol",
-    "Noto Color Emoji",
-    sans-serif;
-  font-style: normal;
-  line-height: 1;
-  display: inline-block;
-  filter: grayscale(1) brightness(1.85) contrast(1.05);
-  -webkit-font-smoothing: antialiased;
-}
-
 @layer utilities {
   .glass {
     background: hsl(240 7% 7% / 0.72);
