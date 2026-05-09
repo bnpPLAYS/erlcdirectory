@@ -1,6 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Shield, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Star } from 'lucide-react';
+import {
+  Shield,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Loader2,
+  AlertTriangle,
+  Star,
+  Bug,
+  Copy,
+  Check,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -63,6 +74,23 @@ const VerifyExperience = () => {
   const [verifierPosition, setVerifierPosition] = useState('');
   const [verifierReviewText, setVerifierReviewText] = useState('');
   const [verifierRating, setVerifierRating] = useState<number | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [copiedUri, setCopiedUri] = useState(false);
+
+  /** Stable values we send to Discord — exposed for debugging when rejected as Invalid redirect_uri. */
+  const oauthDebug = useMemo(() => {
+    const redirectUri = getDiscordRedirectUri();
+    const clientId = getDiscordClientId();
+    const usingFallbackClientId =
+      !import.meta.env.VITE_DISCORD_CLIENT_ID || !import.meta.env.VITE_DISCORD_CLIENT_ID.trim();
+    let host = '';
+    try {
+      host = new URL(redirectUri).hostname;
+    } catch {
+      /* ignore */
+    }
+    return { redirectUri, clientId, usingFallbackClientId, host };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -140,16 +168,34 @@ const VerifyExperience = () => {
     }
     setError(null);
     const redirectUri = getDiscordRedirectUri();
+    const clientId = getDiscordClientId();
     const state = btoa(JSON.stringify({ kind: 'verify', token, action }));
     const q = new URLSearchParams({
-      client_id: getDiscordClientId(),
+      client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'identify guilds',
       state,
       prompt: 'consent',
     });
-    window.location.href = `https://discord.com/oauth2/authorize?${q.toString()}`;
+    const url = `https://discord.com/oauth2/authorize?${q.toString()}`;
+    // eslint-disable-next-line no-console -- intentional: helps users diagnose "Invalid OAuth2 redirect_uri".
+    console.info('[VerifyExperience] Discord OAuth →', {
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      url,
+    });
+    window.location.href = url;
+  };
+
+  const copyRedirectUri = async () => {
+    try {
+      await navigator.clipboard.writeText(oauthDebug.redirectUri);
+      setCopiedUri(true);
+      setTimeout(() => setCopiedUri(false), 1600);
+    } catch {
+      /* ignore */
+    }
   };
 
   const submitDecision = async (action: 'approve' | 'reject', code: string) => {
@@ -449,6 +495,67 @@ const VerifyExperience = () => {
                       <p className="text-[11px] text-muted-foreground text-center">
                         Expires {new Date(r.expires_at).toLocaleString()}
                       </p>
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowDebug((v) => !v)}
+                        className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                      >
+                        <Bug className="h-3.5 w-3.5" />
+                        {showDebug ? 'Hide' : 'Getting "Invalid OAuth2 redirect_uri"? Show what we send.'}
+                      </button>
+                      {showDebug && (
+                        <div className="mt-3 space-y-3 text-[11px]">
+                          <div>
+                            <p className="text-muted-foreground">Exact redirect_uri sent to Discord:</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <code className="break-all rounded bg-black/50 px-1.5 py-0.5 text-zinc-200">
+                                {oauthDebug.redirectUri}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => void copyRedirectUri()}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              >
+                                {copiedUri ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                {copiedUri ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Client ID:</p>
+                            <code className="mt-1 inline-block break-all rounded bg-black/50 px-1.5 py-0.5 text-zinc-200">
+                              {oauthDebug.clientId}
+                            </code>
+                            {oauthDebug.usingFallbackClientId && (
+                              <p className="mt-1 text-amber-300/90">
+                                ⚠ <code>VITE_DISCORD_CLIENT_ID</code> is not set on this deployment, so the app is using
+                                the bundled default. If your Discord app has a different ID, the redirect URLs you added
+                                are on the wrong app — set this env var on Vercel and redeploy.
+                              </p>
+                            )}
+                          </div>
+                          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5 space-y-1.5">
+                            <p className="text-foreground text-[12px] font-medium">
+                              In Discord Developer Portal → OAuth2 → Redirects, paste this URL exactly:
+                            </p>
+                            <code className="block break-all rounded bg-black/50 px-1.5 py-1 text-zinc-200">
+                              {oauthDebug.redirectUri}
+                            </code>
+                            <p className="text-muted-foreground">
+                              No path tokens, no trailing slash. Save changes. The same Client ID above must own this
+                              entry — Discord rejects the URL if it&apos;s on a different app.
+                            </p>
+                            <p className="text-muted-foreground">
+                              Currently signed in via <code className="text-zinc-300">{oauthDebug.host}</code>. If your
+                              Portal entry is on the other host (apex vs www), open this verify link on that host instead
+                              or add both URLs.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : null}
