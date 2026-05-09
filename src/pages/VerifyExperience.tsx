@@ -7,9 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { callExperienceVerify } from '@/lib/callExperienceVerify';
 
 const DISCORD_CLIENT_ID = '1495931923237703792';
 const APPROVE_EXTRAS_KEY = (t: string) => `experience-verify-approve:${t}`;
@@ -40,14 +40,16 @@ interface MemberInfo {
   discord_avatar: string | null;
 }
 
+type VerificationLookupResult = {
+  request: RequestInfo;
+  experience: ExperienceInfo | null;
+  member: MemberInfo | null;
+};
+
 const VerifyExperience = () => {
   const { token } = useParams();
   const [params, setParams] = useSearchParams();
-  const [info, setInfo] = useState<{
-    request: RequestInfo;
-    experience: ExperienceInfo | null;
-    member: MemberInfo | null;
-  } | null>(null);
+  const [info, setInfo] = useState<VerificationLookupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -89,15 +91,15 @@ const VerifyExperience = () => {
   const fetchInfo = async () => {
     setLoading(true);
     setError(null);
-    const { data, error: fnError } = await supabase.functions.invoke('experience-verify', {
-      body: { token },
+    const { data, error: fnError } = await callExperienceVerify<VerificationLookupResult>('lookup', {
+      token: token!,
     });
     setLoading(false);
-    if (fnError || (data as { error?: string })?.error) {
-      setError((data as { error?: string })?.error || fnError?.message || 'This link is not valid.');
+    if (fnError || !data) {
+      setError(fnError || 'This link is not valid.');
       return;
     }
-    setInfo(data as typeof info);
+    setInfo(data);
   };
 
   const startDiscord = (action: 'approve' | 'reject') => {
@@ -194,26 +196,21 @@ const VerifyExperience = () => {
         }
       }
 
-      const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/experience-verify?action=${action}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({
-          token,
-          code,
-          redirectUri,
-          memberRole: memberRoleBody,
-          verifierPosition: verifierPositionBody,
-          verifierReviewText: verifierReviewTextBody,
-          verifierRating: verifierRatingBody,
-        }),
+      const { data: json, error: fnErr } = await callExperienceVerify<{
+        error?: string;
+        status?: string;
+        approver?: string;
+      }>(action, {
+        token,
+        code,
+        redirectUri,
+        memberRole: memberRoleBody,
+        verifierPosition: verifierPositionBody,
+        verifierReviewText: verifierReviewTextBody,
+        verifierRating: verifierRatingBody,
       });
-      const json = (await res.json()) as { error?: string; status?: string; approver?: string };
-      if (!res.ok || json.error) {
-        setError(json.error || 'Could not complete verification.');
+      if (fnErr || !json) {
+        setError(fnErr || 'Could not complete verification.');
       } else {
         setDecisionResult({ status: json.status || action, approver: json.approver || '' });
         fetchInfo();
