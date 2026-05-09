@@ -146,7 +146,7 @@ const ServerDetail = () => {
               </div>
               {server.discord_invite && (
                 <a href={server.discord_invite} target="_blank" rel="noreferrer">
-                  <Button className="gap-2"><ExternalLink className="h-4 w-4" /> Open Discord</Button>
+                  <Button className="gap-2"><ExternalLink className="h-4 w-4" /> Join Discord</Button>
                 </a>
               )}
             </div>

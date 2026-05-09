@@ -24,6 +24,7 @@ interface ServerData {
   name: string;
   description: string | null;
   icon: string | null;
+  banner: string | null;
   member_count: number;
   staff_count: number;
   is_verified: boolean;
@@ -48,7 +49,7 @@ const Servers = () => {
     setLoading(true);
     let query = supabase
       .from('servers')
-      .select('id, name, description, icon, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite');
+      .select('id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite');
 
     if (sortBy === 'featured') {
       query = query.order('is_featured', { ascending: false }).order('member_count', { ascending: false });

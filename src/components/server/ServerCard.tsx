@@ -12,6 +12,7 @@ interface ServerCardProps {
     name: string;
     description: string | null;
     icon: string | null;
+    banner?: string | null;
     member_count: number;
     staff_count: number;
     is_verified: boolean;
@@ -25,6 +26,12 @@ interface ServerCardProps {
 const ServerCard = ({ server }: ServerCardProps) => {
   return (
     <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
+      {server.banner ? (
+        <div className="relative h-28 w-full overflow-hidden border-b border-white/[0.06]">
+          <img src={server.banner} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+        </div>
+      ) : null}
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-14 w-14 rounded-xl ring-2 ring-border group-hover:ring-primary/50 transition-all flex-shrink-0">
@@ -81,7 +88,7 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 {server.discord_invite && (
                   <a href={server.discord_invite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
-                      <ExternalLink className="h-3 w-3" /> Discord
+                      <ExternalLink className="h-3 w-3" /> Join Discord
                     </Button>
                   </a>
                 )}
