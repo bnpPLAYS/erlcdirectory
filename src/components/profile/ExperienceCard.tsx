@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Shield, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { isPendingPlaceholderRole } from '@/lib/experienceConstants';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
 
 interface Experience {
@@ -44,6 +44,10 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
+  const showPendingHeadline = !experience.is_verified && isPendingPlaceholderRole(experience.role);
+  const verifiedStalePlaceholder =
+    experience.is_verified && isPendingPlaceholderRole(experience.role);
+
   const ServerHeader = (
     <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 flex-wrap">
       {experience.server_icon ? (
@@ -69,8 +73,10 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold text-foreground">
-                {experience.role === PENDING_EXPERIENCE_ROLE ? (
+                {showPendingHeadline ? (
                   <span className="text-muted-foreground font-medium">Pending verification</span>
+                ) : verifiedStalePlaceholder ? (
+                  <span>Verified experience</span>
                 ) : (
                   experience.role
                 )}
