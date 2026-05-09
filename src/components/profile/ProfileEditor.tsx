@@ -121,13 +121,13 @@ const profileSchema = z.object({
   ),
 });
 
-/** Shared field chrome — matches site dark glass UI */
+/** Shared field chrome — matches site dark glass UI (neutral white focus, not purple) */
 const editorInput =
-  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] px-4 text-sm shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-violet-400/35 focus-visible:ring-2 focus-visible:ring-violet-400/15';
+  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] px-4 text-sm shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-white/35 focus-visible:ring-2 focus-visible:ring-white/15';
 const editorTextarea =
-  'rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm min-h-[120px] resize-y shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-violet-400/35 focus-visible:ring-2 focus-visible:ring-violet-400/15';
+  'rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm min-h-[120px] resize-y shadow-inner shadow-black/20 placeholder:text-muted-foreground/45 focus-visible:border-white/35 focus-visible:ring-2 focus-visible:ring-white/15';
 const editorSelect =
-  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] shadow-inner shadow-black/20 focus:ring-2 focus:ring-violet-400/15';
+  'h-11 rounded-2xl border border-white/12 bg-white/[0.04] shadow-inner shadow-black/20 ring-offset-0 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30';
 
 const PRESETS = [
   { id: 'mono', label: 'Mono', accent: '#e4e4e7', hint: 'Clean default' },
@@ -186,8 +186,8 @@ function EditorSection({
     >
       <div className="flex items-start gap-3 mb-5">
         {Icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/[0.12] border border-violet-400/25">
-            <Icon className="h-5 w-5 text-violet-200/90" aria-hidden />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] border border-white/15">
+            <Icon className="h-5 w-5 text-white/90" aria-hidden />
           </div>
         )}
         <div className="min-w-0 flex-1 space-y-1">
@@ -460,28 +460,28 @@ const ProfileEditor = ({
         <TabsList className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30">
           <TabsTrigger
             value="general"
-            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
           >
             <UserIcon className="h-4 w-4 shrink-0 opacity-80" />
             General
           </TabsTrigger>
           <TabsTrigger
             value="customize"
-            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
           >
             <Palette className="h-4 w-4 shrink-0 opacity-80" />
             Customize
           </TabsTrigger>
           <TabsTrigger
             value="experience"
-            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
           >
             <Briefcase className="h-4 w-4 shrink-0 opacity-80" />
             Experience
           </TabsTrigger>
           <TabsTrigger
             value="socials"
-            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-violet-500/15 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/10 data-[state=active]:border data-[state=active]:border-violet-400/25 border border-transparent text-muted-foreground transition-all"
+            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
           >
             <Link2 className="h-4 w-4 shrink-0 opacity-80" />
             Socials
@@ -716,7 +716,7 @@ const ProfileEditor = ({
                   className={cn(
                     'rounded-xl border p-3 text-left transition-all hover:border-white/25 hover:bg-white/[0.06]',
                     form.theme_preset === p.id
-                      ? 'border-violet-400/45 bg-violet-500/10 ring-1 ring-violet-400/30 shadow-lg shadow-violet-500/10'
+                      ? 'border-white/40 bg-white/[0.07] ring-1 ring-white/25 shadow-lg shadow-black/40'
                       : 'border-white/10 bg-black/20',
                   )}
                 >
@@ -903,7 +903,7 @@ const ProfileEditor = ({
                   className="flex gap-3 rounded-xl border border-white/10 bg-black/20 p-4 transition-colors hover:border-white/18 hover:bg-white/[0.03]"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] border border-white/10">
-                    <Icon className="h-5 w-5 text-violet-200/85" aria-hidden />
+                    <Icon className="h-5 w-5 text-white/85" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <Label className="text-sm font-medium text-foreground">{label}</Label>
