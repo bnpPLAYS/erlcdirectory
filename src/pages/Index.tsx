@@ -12,16 +12,19 @@ import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
-import directoryPreview from '@/assets/directory-preview.png';
-import homeFeaturePlaceholder from '@/assets/home-features/member-directory.png';
+import heroScreenshot from '@/assets/home-features/public-profile.png';
+import homeFeatureProfileEditor from '@/assets/home-features/profile-editor.png';
+import homeFeatureCreatePost from '@/assets/home-features/create-post.png';
+import homeFeatureConnections from '@/assets/home-features/connections.png';
+import homeFeaturePublicProfile from '@/assets/home-features/public-profile.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { pageHeroEnter } from '@/lib/pageHero';
 import { profileEditorPath } from '@/lib/profilePath';
 
 /**
- * Product tour: one image per row. Drop distinct PNGs into `src/assets/home-features/` and
- * point each `image` at its own import (browse, profile, servers, etc.).
+ * Homepage tour images live in `src/assets/home-features/`. Replace the PNG files in place
+ * (same filenames) when you export new screenshots from the app.
  */
 const PRODUCT_SCREENSHOTS: {
   title: string;
@@ -30,25 +33,32 @@ const PRODUCT_SCREENSHOTS: {
   alt: string;
 }[] = [
   {
-    title: 'Browse members',
+    title: 'Shape your profile',
     description:
-      'Search the directory, open profiles, and compare experience before you reach out—without leaving one long spreadsheet of Discord tags.',
-    image: homeFeaturePlaceholder,
-    alt: 'Screenshot of the member browse experience on www.erlc.directory',
+      'Set pronouns, region, status, and quick emoji—then flesh out bio and skills so people see who you are before they DM you.',
+    image: homeFeatureProfileEditor,
+    alt: 'Profile editor on www.erlc.directory showing General tab and quick emoji row',
   },
   {
-    title: 'Profiles that show the work',
+    title: 'Post hiring, LFW, and updates',
     description:
-      'Each listing can carry skills, bio, and verified server experience so owners see who someone is, not just a username.',
-    image: homeFeaturePlaceholder,
-    alt: 'Screenshot of a member profile with experience on www.erlc.directory',
+      'Structured posts for hiring, looking for work, announcements, and discussion—with optional application links and Discord server requirements.',
+    image: homeFeatureCreatePost,
+    alt: 'Create a post dialog with post type cards and application fields on www.erlc.directory',
   },
   {
-    title: 'Server listings',
+    title: 'Your network',
     description:
-      'Communities publish their server with tags, member reach, and hiring status so staff can find a fit that matches what they want to do.',
-    image: homeFeaturePlaceholder,
-    alt: 'Screenshot of server listings on www.erlc.directory',
+      'Send connection requests from profiles, then manage incoming and sent requests in one place—built for a small, serious directory, not noisy feeds.',
+    image: homeFeatureConnections,
+    alt: 'Your network page with connections tabs on www.erlc.directory',
+  },
+  {
+    title: 'Profiles that prove the work',
+    description:
+      'Verified experience, reviewer notes, and server links sit alongside your bio so owners and staff can trust what they are reading.',
+    image: homeFeaturePublicProfile,
+    alt: 'Public profile with verified experience and badges on www.erlc.directory',
   },
 ];
 
@@ -183,8 +193,8 @@ const Index = () => {
               <div className="relative home-image-pop rounded-2xl bg-white/[0.03] p-2">
                 <div className="rounded-xl overflow-hidden">
                   <img
-                    src={directoryPreview}
-                    alt="Preview of the www.erlc.directory members page"
+                    src={heroScreenshot}
+                    alt="Public profile view on www.erlc.directory"
                     width={1156}
                     height={810}
                     className="block w-full h-auto"
@@ -206,7 +216,7 @@ const Index = () => {
               How it works on the site
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Straight from the app: browsing members, reading a profile, and scanning server listings.
+              Real screens from the directory: editing your profile, posting, connecting, and how you look to visitors.
             </p>
           </div>
 
