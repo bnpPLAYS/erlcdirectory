@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Shield, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle } from 'lucide-react';
+import { Shield, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import logo from '@/assets/logo.png';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { callExperienceVerify } from '@/lib/callExperienceVerify';
+import { cn } from '@/lib/utils';
 
 const DISCORD_CLIENT_ID = '1495931923237703792';
 const APPROVE_EXTRAS_KEY = (t: string) => `experience-verify-approve:${t}`;
@@ -61,7 +62,7 @@ const VerifyExperience = () => {
   const [memberRole, setMemberRole] = useState('');
   const [verifierPosition, setVerifierPosition] = useState('');
   const [verifierReviewText, setVerifierReviewText] = useState('');
-  const [verifierRating, setVerifierRating] = useState<string>('');
+  const [verifierRating, setVerifierRating] = useState<number | null>(null);
 
   const redirectUri = `${window.location.origin}/discord/callback`;
 
@@ -127,21 +128,13 @@ const VerifyExperience = () => {
         setError('Review text is too long (2000 characters max).');
         return;
       }
-      let ratingNum: number | null = null;
-      if (verifierRating) {
-        ratingNum = Number(verifierRating);
-        if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-          setError('Choose a star rating from 1–5, or clear the rating.');
-          return;
-        }
-      }
       sessionStorage.setItem(
         APPROVE_EXTRAS_KEY(token),
         JSON.stringify({
           memberRole: theirRole,
           verifierPosition: pos,
           verifierReviewText: verifierReviewText.trim(),
-          verifierRating: ratingNum,
+          verifierRating,
         }),
       );
     } else {
@@ -393,25 +386,41 @@ const VerifyExperience = () => {
                         </p>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="verifier-rating" className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                           Star rating (optional)
                         </Label>
-                        <select
-                          id="verifier-rating"
-                          value={verifierRating}
-                          onChange={(ev) => setVerifierRating(ev.target.value)}
-                          className="w-full h-10 rounded-xl border border-white/12 bg-white/[0.04] px-3 text-sm"
+                        <div
+                          className="flex flex-wrap items-center gap-0.5"
+                          role="group"
+                          aria-label="Optional rating from 1 to 5 stars"
                         >
-                          <option value="">No rating — text only</option>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <option key={n} value={String(n)}>
-                              {n} star{n === 1 ? '' : 's'}
-                            </option>
-                          ))}
-                        </select>
+                          {[1, 2, 3, 4, 5].map((n) => {
+                            const active = verifierRating !== null && n <= verifierRating;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setVerifierRating((prev) => (prev === n ? null : n))}
+                                className="rounded-lg p-1 text-white/40 hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 transition-colors"
+                                aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                                aria-pressed={active}
+                              >
+                                <Star
+                                  className={cn(
+                                    'h-8 w-8 transition-all duration-150',
+                                    active
+                                      ? 'fill-violet-400/90 text-violet-200 drop-shadow-[0_0_8px_rgba(167,139,250,0.3)]'
+                                      : 'fill-transparent text-white/40',
+                                  )}
+                                  strokeWidth={1.5}
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
                         <p className="text-[11px] text-muted-foreground">
-                          If you have a directory account linked to this Discord, a 1–5 rating also updates their
-                          public reviews.
+                          Tap a star to rate; tap again on the same star to clear. If you have a directory account
+                          linked to this Discord, 1–5 stars also update their public reviews.
                         </p>
                       </div>
                     </div>
