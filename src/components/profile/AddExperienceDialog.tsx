@@ -218,7 +218,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search servers…"
                       className="pl-10 rounded-xl border-white/12 bg-white/[0.04] h-11"
                     />
                   </div>
@@ -277,7 +276,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                       maxLength={600}
                       rows={4}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe your responsibilities, achievements, and impact…"
                       className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"
                     />
                   </div>
@@ -332,7 +330,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                     value={serverName}
                     maxLength={80}
                     onChange={(e) => setServerName(e.target.value)}
-                    placeholder="Who or what was this for?"
                     className="rounded-xl border-white/12 bg-white/[0.04]"
                   />
                 </div>
@@ -342,7 +339,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                     value={role}
                     maxLength={80}
                     onChange={(e) => setRole(e.target.value)}
-                    placeholder="e.g. Freelance Developer, Consultant"
                     className="rounded-xl border-white/12 bg-white/[0.04]"
                   />
                 </div>
@@ -353,7 +349,6 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                     maxLength={600}
                     rows={4}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the work and the outcome…"
                     className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"
                   />
                 </div>
