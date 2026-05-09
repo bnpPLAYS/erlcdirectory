@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
 
 const DiscordCallback = () => {
   const navigate = useNavigate();
@@ -16,72 +17,68 @@ const DiscordCallback = () => {
   useEffect(() => {
     if (loading) return;
 
-    const connectDiscord = async () => {
+    const run = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const state = params.get('state');
 
-      // If this is a verify-experience OAuth round-trip, forward to the verify page
+      // Experience verification: direct Discord OAuth with custom state (not Supabase login)
       if (code && state) {
         try {
-          const decoded = JSON.parse(atob(state));
+          const decoded = JSON.parse(atob(state)) as { kind?: string; token?: string };
           if (decoded?.kind === 'verify' && decoded?.token) {
             const fwd = new URLSearchParams({ code, state });
             navigate(`/verify/${decoded.token}?${fwd.toString()}`, { replace: true });
             return;
           }
-        } catch { /* not a verify state, fall through */ }
+        } catch {
+          /* Supabase PKCE state is not our verify payload — continue to login flow */
+        }
       }
 
-      const expectedState = window.localStorage.getItem('discord_oauth_state');
-      if (!code || !state || state !== expectedState) {
+      if (!code) {
         setStatus('error');
-        setMessage('Discord did not return a valid connection request. Try again.');
+        setMessage('Missing authorization code. Try signing in again.');
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('discord-oauth', {
-        body: {
-          code,
-          redirectUri: `${window.location.origin}/discord/callback`,
-          appRedirectTo: window.location.origin,
-        },
-      });
+      let {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      window.localStorage.removeItem('discord_oauth_state');
+      if (!session) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setStatus('error');
+          setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
+          return;
+        }
+        ({
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession());
+      }
 
-      if (error) {
+      if (sessionError || !session) {
         setStatus('error');
-        const err = error as Error;
-        const msg = err.message || 'Discord could not be connected.';
-        const isFetchFail =
-          err.name === 'FunctionsFetchError' || /send a request to the Edge Function/i.test(msg);
-        const hint = isFetchFail
-          ? ' Deploy the discord-oauth Edge Function on this Supabase project (and set DISCORD_* secrets). Turn off ad blockers for this site. In the browser Network tab, check the request to …/functions/v1/discord-oauth.'
-          : '';
-        setMessage(msg + (hint ? ` ${hint}` : ''));
+        setMessage(sessionError?.message || 'No session after sign-in.');
         return;
       }
 
-      const setupUrl = `${window.location.origin}/profile/me?edit=1&setup=1`;
-      const isNew = !!data?.isNewProfile;
+      const { error: syncError } = await syncDiscordProfileFromSession(session);
+      if (syncError) {
+        setStatus('error');
+        setMessage(syncError.message || 'Could not update your profile.');
+        return;
+      }
 
       setStatus('success');
-      setMessage(isNew ? 'Welcome! Setting up your profile...' : 'Discord is connected. Signing you in...');
-      if (data?.actionLink) {
-        if (isNew) {
-          const url = new URL(data.actionLink);
-          url.searchParams.set('redirect_to', setupUrl);
-          window.location.href = url.toString();
-        } else {
-          window.location.href = data.actionLink;
-        }
-        return;
-      }
-      setTimeout(() => navigate(isNew ? '/profile/me?edit=1&setup=1' : '/'), 1200);
+      setMessage('Signed in with Discord. Redirecting…');
+      setTimeout(() => navigate('/', { replace: true }), 600);
     };
 
-    connectDiscord();
+    void run();
   }, [loading, navigate]);
 
   const Icon = status === 'loading' ? Loader2 : status === 'success' ? CheckCircle2 : XCircle;
@@ -92,7 +89,11 @@ const DiscordCallback = () => {
       <main className="container mx-auto px-4 py-16">
         <Card className="mx-auto max-w-md border-border/60">
           <CardContent className="p-8 text-center">
-            <Icon className={`mx-auto mb-4 h-12 w-12 ${status === 'loading' ? 'animate-spin text-primary' : status === 'success' ? 'text-success' : 'text-destructive'}`} />
+            <Icon
+              className={`mx-auto mb-4 h-12 w-12 ${
+                status === 'loading' ? 'animate-spin text-primary' : status === 'success' ? 'text-success' : 'text-destructive'
+              }`}
+            />
             <h1 className="mb-2 text-2xl font-bold">Discord Connection</h1>
             <p className="mb-6 text-sm text-muted-foreground">{message}</p>
             {status === 'error' && (

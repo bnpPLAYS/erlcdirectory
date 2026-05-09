@@ -101,19 +101,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithDiscord = async () => {
-    const state = crypto.randomUUID();
-    const redirectUri = `${window.location.origin}/discord/callback`;
-    const params = new URLSearchParams({
-      client_id: '1495931923237703792',
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'identify email guilds',
-      state,
-      prompt: 'consent',
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: {
+        redirectTo: `${window.location.origin}/discord/callback`,
+        scopes: 'identify email guilds',
+      },
     });
-
-    window.localStorage.setItem('discord_oauth_state', state);
-    window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+    if (error) {
+      console.error(error);
+    }
   };
 
   const signOut = async () => {
