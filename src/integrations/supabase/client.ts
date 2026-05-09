@@ -16,6 +16,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storageKey: PROJECT_REF ? `sb-${PROJECT_REF}-auth-token` : 'sb-auth-token',
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    // Manual exchange in DiscordCallback — auto-detect can strip ?code= before React reads it (PKCE).
+    detectSessionInUrl: false,
   },
 });

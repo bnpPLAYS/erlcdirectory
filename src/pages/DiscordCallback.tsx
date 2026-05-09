@@ -15,7 +15,28 @@ function readOAuthParams() {
       : null;
   const code = search.get('code') ?? hash?.get('code') ?? null;
   const state = search.get('state') ?? hash?.get('state') ?? null;
-  return { code, state };
+  const oauthError = search.get('error') ?? hash?.get('error') ?? null;
+  const oauthErrorDesc = search.get('error_description') ?? hash?.get('error_description') ?? null;
+  return { code, state, oauthError, oauthErrorDesc };
+}
+
+/** Clear OAuth params from address bar without reload (code must not be reused). */
+function stripOAuthParamsFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+  url.searchParams.delete('error');
+  url.searchParams.delete('error_description');
+  if (url.hash && url.hash.length > 1) {
+    const h = new URLSearchParams(url.hash.slice(1));
+    h.delete('code');
+    h.delete('state');
+    h.delete('error');
+    h.delete('error_description');
+    const rest = h.toString();
+    url.hash = rest ? `#${rest}` : '';
+  }
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
 }
 
 const DiscordCallback = () => {
@@ -47,17 +68,28 @@ const DiscordCallback = () => {
         console.warn('DiscordCallback profile sync threw:', e);
       }
 
+      stripOAuthParamsFromUrl();
+
       if (!cancelled) {
         setStatus('success');
         setMessage('Signed in. Redirecting…');
-        // Full navigation so AuthProvider reloads session from storage (fixes stale React state).
         window.location.replace(`${window.location.origin}/`);
       }
       return true;
     };
 
     void (async () => {
-      const { code, state } = readOAuthParams();
+      const { code, state, oauthError, oauthErrorDesc } = readOAuthParams();
+
+      if (oauthError) {
+        const detail = oauthErrorDesc ? decodeURIComponent(oauthErrorDesc.replace(/\+/g, ' ')) : oauthError;
+        if (!cancelled) {
+          setStatus('error');
+          setMessage(`Discord: ${detail}`);
+        }
+        stripOAuthParamsFromUrl();
+        return;
+      }
 
       if (code && state) {
         try {
@@ -68,26 +100,27 @@ const DiscordCallback = () => {
             return;
           }
         } catch {
-          /* Supabase PKCE state */
+          /* Supabase PKCE sign-in */
         }
       }
 
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
+      } = supabase.auth.onAuthStateChange((event, sess) => {
         if (cancelled || finished) return;
-        if (!session?.user) return;
+        if (!sess?.user) return;
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
           void finishWithSession();
         }
       });
 
-      for (let i = 0; i < 100 && !cancelled && !finished; i++) {
-        if (await finishWithSession()) break;
-        await new Promise((r) => setTimeout(r, 50));
+      // Existing session (already logged in)
+      if (await finishWithSession()) {
+        subscription.unsubscribe();
+        return;
       }
 
-      if (!finished && !cancelled && code) {
+      if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           const {
@@ -101,20 +134,31 @@ const DiscordCallback = () => {
           }
           if (!cancelled) {
             setStatus('error');
-            setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
+            setMessage(
+              exchangeError.message.includes('code verifier')
+                ? 'Sign-in session expired or started on a different device. Try signing in again from the Auth page.'
+                : exchangeError.message || 'Could not complete Discord sign-in.',
+            );
           }
           subscription.unsubscribe();
           return;
         }
+        finished = false;
         await finishWithSession();
+        subscription.unsubscribe();
+        return;
+      }
+
+      // No code: wait for async edge cases (another tab, slow storage)
+      for (let i = 0; i < 120 && !cancelled && !finished; i++) {
+        if (await finishWithSession()) break;
+        await new Promise((r) => setTimeout(r, 100));
       }
 
       if (!finished && !cancelled) {
         setStatus('error');
         setMessage(
-          code
-            ? 'Could not establish a session. Try signing in again from the Auth page.'
-            : 'Missing authorization code. Try signing in again.',
+          'No authorization returned from Discord. Confirm redirect URL matches Supabase and Discord settings, then try again.',
         );
       }
 
