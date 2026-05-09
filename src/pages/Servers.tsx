@@ -18,9 +18,11 @@ import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { useAuth } from '@/hooks/useAuth';
+import { distinctStaffCountByGuild } from '@/lib/serverStaffCount';
 
 interface ServerData {
   id: string;
+  guild_id: string | null;
   name: string;
   description: string | null;
   icon: string | null;
@@ -52,7 +54,7 @@ const Servers = () => {
     let query = supabase
       .from('servers')
       .select(
-        'id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite',
+        'id, guild_id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite',
       );
 
     if (sortBy === 'featured') {
@@ -65,9 +67,46 @@ const Servers = () => {
 
     const { data, error } = await query.limit(50);
 
-    if (!error && data) {
-      setServers(data);
+    if (error || !data) {
+      setLoading(false);
+      return;
     }
+
+    const guildIds = [...new Set(data.map((s) => s.guild_id?.trim()).filter(Boolean))] as string[];
+
+    if (guildIds.length === 0) {
+      setServers(data as ServerData[]);
+      setLoading(false);
+      return;
+    }
+
+    let counts: Map<string, number> | null = null;
+
+    const { data: rpcRows, error: rpcErr } = await supabase.rpc('staff_counts_for_discord_guilds', {
+      p_guild_ids: guildIds,
+    });
+
+    if (!rpcErr && rpcRows) {
+      counts = new Map(
+        (rpcRows as { guild_id: string; cnt: number }[]).map((r) => [r.guild_id.trim(), Number(r.cnt) || 0]),
+      );
+    } else {
+      const { data: expRows, error: expErr } = await supabase
+        .from('experiences')
+        .select('guild_id, profile_id')
+        .in('guild_id', guildIds);
+
+      if (!expErr && expRows) counts = distinctStaffCountByGuild(expRows);
+    }
+
+    const merged = (data as ServerData[]).map((s) => {
+      const gid = s.guild_id?.trim();
+      if (!gid) return { ...s, staff_count: s.staff_count ?? 0 };
+      if (counts !== null) return { ...s, staff_count: counts.get(gid) ?? 0 };
+      return { ...s, staff_count: s.staff_count ?? 0 };
+    });
+
+    setServers(merged);
     setLoading(false);
   }, [sortBy]);
 
