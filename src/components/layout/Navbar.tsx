@@ -80,7 +80,7 @@ const Navbar = () => {
                 <div className="hidden sm:flex flex-col items-start leading-tight">
                   <span className="text-sm font-bold tracking-tight">ER:LC Directory</span>
                   <span className="text-[10px] text-muted-foreground font-medium">
-                    Staff &amp; community network
+                    Staff & community network
                   </span>
                 </div>
               </Link>
