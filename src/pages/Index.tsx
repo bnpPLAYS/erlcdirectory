@@ -4,9 +4,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
   Users,
-  Briefcase,
-  FileText,
-  Handshake,
   Pencil,
   Monitor,
   Sparkles,
@@ -27,16 +24,6 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import directoryPreview from '@/assets/directory-preview.png';
 import SiteFooter from '@/components/layout/SiteFooter';
-import { cn } from '@/lib/utils';
-
-const HEADLINES = [
-  'Build your portfolio on erlc.directory',
-  'Make connections on erlc.directory',
-  'Find your next ER:LC role on erlc.directory',
-  'Get verified experience on erlc.directory',
-  'Hire trusted staff on erlc.directory',
-  'Show your work on erlc.directory',
-];
 
 interface Profile {
   id: string;
@@ -81,37 +68,14 @@ const FEATURE_CARDS: { icon: LucideIcon; title: string; desc: string }[] = [
   },
 ];
 
-function Pill({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-2 rounded-full border border-white/12',
-        'bg-white/[0.04] px-3.5 py-2 text-sm text-muted-foreground',
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0 text-foreground/80" strokeWidth={1.75} aria-hidden />
-      {children}
-    </span>
-  );
-}
-
 const Index = () => {
   const { user, profile } = useAuth();
   const [featuredProfiles, setFeaturedProfiles] = useState<Profile[]>([]);
   const [topServers, setTopServers] = useState<ServerRow[]>([]);
   const [stats, setStats] = useState({ profiles: 0, servers: 0 });
-  const [headlineIndex, setHeadlineIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-
-    const last = Number(sessionStorage.getItem('homeHeadlineIdx') ?? '-1');
-    let next = Math.floor(Math.random() * HEADLINES.length);
-    if (HEADLINES.length > 1 && next === last) {
-      next = (next + 1) % HEADLINES.length;
-    }
-    sessionStorage.setItem('homeHeadlineIdx', String(next));
-    setHeadlineIndex(next);
 
     const fetchFeaturedData = async () => {
       const [profilesRes, serversRes] = await Promise.all([
@@ -178,18 +142,8 @@ const Index = () => {
               <h1 className="text-4xl sm:text-5xl lg:text-[2.75rem] xl:text-6xl font-bold tracking-tight text-foreground leading-[1.08] mb-5">
                 erlc.directory
               </h1>
-              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
                 Hire staff, post resumes and portfolios, connect with friends.
-              </p>
-
-              <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-6">
-                <Pill icon={Briefcase}>Hire</Pill>
-                <Pill icon={FileText}>Resumes &amp; portfolios</Pill>
-                <Pill icon={Handshake}>Connect</Pill>
-              </div>
-
-              <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto lg:mx-0">
-                {HEADLINES[headlineIndex]}
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-10">
