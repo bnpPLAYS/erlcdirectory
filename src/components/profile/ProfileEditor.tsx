@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProfilePreviewCard from './ProfilePreviewCard';
@@ -56,11 +56,25 @@ interface ProfileLike {
   social_links: Record<string, string> | null;
 }
 
+const EDITOR_TABS = ['general', 'customize', 'experience', 'socials'] as const;
+type EditorTab = (typeof EDITOR_TABS)[number];
+
+function parseEditorTab(t: string | undefined): EditorTab {
+  if (t && (EDITOR_TABS as readonly string[]).includes(t)) return t as EditorTab;
+  return 'general';
+}
+
 interface Props {
   profile: ProfileLike;
   experiences: Experience[];
   onSaved: () => void;
   onCancel: () => void;
+  /** Deep-link from navbar+: `experience` */
+  initialTab?: string;
+  /** Open Add experience dialog on mount (URL `add=1`) */
+  openAddExperienceOnMount?: boolean;
+  /** Clear `add` from URL after opening dialog */
+  onConsumedAddDeepLink?: () => void;
 }
 
 const profileSchema = z.object({
@@ -89,7 +103,15 @@ const PRESETS = [
   { id: 'lilac', label: 'Lilac', accent: '#d6c2ff' },
 ];
 
-const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
+const ProfileEditor = ({
+  profile,
+  experiences,
+  onSaved,
+  onCancel,
+  initialTab,
+  openAddExperienceOnMount,
+  onConsumedAddDeepLink,
+}: Props) => {
   const [form, setForm] = useState({
     display_name: profile.display_name || '',
     bio: profile.bio || '',
@@ -112,6 +134,15 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
   const [saving, setSaving] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<EditorTab>(() => parseEditorTab(initialTab));
+
+  useEffect(() => {
+    if (!openAddExperienceOnMount) return;
+    setAddOpen(true);
+    onConsumedAddDeepLink?.();
+    // Intentionally omit onConsumedAddDeepLink from deps to avoid re-firing when parent passes a new fn each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAddExperienceOnMount]);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -288,7 +319,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
       </Card>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
-      <Tabs defaultValue="general" className="w-full min-w-0">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EditorTab)} className="w-full min-w-0">
         <TabsList className="glass">
           <TabsTrigger value="general" className="gap-2"><UserIcon className="h-4 w-4" />General</TabsTrigger>
           <TabsTrigger value="customize" className="gap-2"><Palette className="h-4 w-4" />Customize</TabsTrigger>

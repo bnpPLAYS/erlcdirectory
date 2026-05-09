@@ -104,15 +104,17 @@ const Navbar = () => {
                 ))}
               </div>
 
-              {user && (
-                <Link to="/posts" className="hidden md:block">
-                  <button
-                    className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
-                    aria-label="Create"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </Link>
+              {user && profile?.id && (
+                <button
+                  type="button"
+                  className="hidden md:inline-flex h-9 w-9 rounded-full items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
+                  aria-label="Add experience"
+                  onClick={() =>
+                    navigate(`/profile/${profile.id}?edit=1&tab=experience&add=1`)
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               )}
 
               <button
@@ -256,6 +258,19 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ))}
+              {user && profile?.id && (
+                <Button
+                  variant="secondary"
+                  className="w-full justify-start gap-3 mt-1"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate(`/profile/${profile.id}?edit=1&tab=experience&add=1`);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add experience
+                </Button>
+              )}
               {!user && (
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full mt-2">Sign in</Button>
