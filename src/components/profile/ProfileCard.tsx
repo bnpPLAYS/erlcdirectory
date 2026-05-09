@@ -7,6 +7,7 @@ import SkillBadge from '@/components/ui/skill-badge';
 import { profilePath } from '@/lib/profilePath';
 import { experienceRoleDisplay } from '@/lib/experienceConstants';
 import { cn } from '@/lib/utils';
+import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 
 interface ExperiencePreview {
   id: string;
@@ -67,9 +68,6 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                 {profile.is_featured && (
                   <Crown className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
                 )}
-                {profile.is_verified && (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
-                )}
               </div>
 
               <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -87,7 +85,10 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                   </Badge>
                 )}
                 {profile.is_verified && (
-                  <Badge className="badge-verified text-[10px] px-2 py-0 gap-1 rounded-md">
+                  <Badge
+                    className="badge-verified text-[10px] px-2 py-0 gap-1 rounded-md"
+                    title={DIRECTORY_STAFF_VERIFIED_TITLE}
+                  >
                     <CheckCircle2 className="h-3 w-3" /> Verified
                   </Badge>
                 )}

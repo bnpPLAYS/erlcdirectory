@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase, Shield } from 'lucide-react';
+import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
 import { profilePath } from '@/lib/profilePath';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import ReviewsSection from '@/components/profile/ReviewsSection';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
+import { useAuth } from '@/hooks/useAuth';
+import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 
 interface GuildExperienceRow {
   id: string;
@@ -70,6 +74,8 @@ interface CoworkerRow {
 
 const ServerDetail = () => {
   const { id } = useParams();
+  const { profile: meProfile } = useAuth();
+  const isStaffSiteOwner = isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null);
   const [server, setServer] = useState<ServerRow | null>(null);
   const [coworkers, setCoworkers] = useState<CoworkerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +175,29 @@ const ServerDetail = () => {
   const joinHref = normalizeDiscordInvite(server.discord_invite);
   const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
 
+  const toggleDirectoryVerified = async () => {
+    if (!server) return;
+    const next = !server.is_verified;
+    let { error } = await supabase.rpc('site_owner_set_server_verified', {
+      p_server_id: server.id,
+      p_is_verified: next,
+    });
+    const msg = error?.message ?? '';
+    const rpcUnavailable =
+      !!error &&
+      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_server_verified/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('servers').update({ is_verified: next }).eq('id', server.id));
+    }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(next ? 'Verify badge granted' : 'Verify badge removed');
+    setServer({ ...server, is_verified: next });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -201,7 +230,11 @@ const ServerDetail = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{server.name}</h1>
-                  {server.is_verified && <CheckCircle2 className="h-5 w-5 text-verified" />}
+                  {server.is_verified && (
+                    <Badge className="badge-verified text-[10px] px-2 py-0.5 shrink-0" title={DIRECTORY_STAFF_VERIFIED_TITLE}>
+                      Verified
+                    </Badge>
+                  )}
                   {server.is_hiring && <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/5">Hiring</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
@@ -210,11 +243,27 @@ const ServerDetail = () => {
                   <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {staffListedCount} work here</span>
                 </div>
               </div>
-              {joinHref && (
-                <a href={joinHref} target="_blank" rel="noopener noreferrer">
-                  <Button className="gap-2"><ExternalLink className="h-4 w-4" /> Join Discord</Button>
-                </a>
-              )}
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0 md:self-end">
+                {isStaffSiteOwner && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={server.is_verified ? 'outline' : 'secondary'}
+                    className="gap-2"
+                    onClick={() => void toggleDirectoryVerified()}
+                  >
+                    <Shield className="h-4 w-4" />
+                    {server.is_verified ? 'Remove verify badge' : 'Grant verify badge'}
+                  </Button>
+                )}
+                {joinHref && (
+                  <a href={joinHref} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                    <Button className="gap-2 w-full sm:w-auto">
+                      <ExternalLink className="h-4 w-4" /> Join Discord
+                    </Button>
+                  </a>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
