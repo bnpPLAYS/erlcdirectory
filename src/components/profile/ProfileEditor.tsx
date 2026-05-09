@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
-import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { isPendingPlaceholderRole } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
 import { COUNTY_OPTIONS, normalizeStoredCounty } from '@/lib/ukCounties';
@@ -782,7 +782,7 @@ const ProfileEditor = ({
                   <Field label="Position">
                     {e.guild_id && !e.is_verified ? (
                       <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-muted-foreground">
-                        {e.role === PENDING_EXPERIENCE_ROLE
+                        {isPendingPlaceholderRole(e.role)
                           ? 'An admin sets your title when they approve the verification link.'
                           : e.role}
                       </div>
@@ -882,7 +882,7 @@ const ProfileEditor = ({
               : null
           }
           onVerified={() => {
-            setExps((prev) => prev.map((x) => (x.id === verifyTarget.id ? { ...x, is_verified: true } : x)));
+            void refreshExperiences();
           }}
         />
       )}
