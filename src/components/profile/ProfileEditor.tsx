@@ -25,8 +25,6 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import ProfilePreviewCard from './ProfilePreviewCard';
-
 const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -455,7 +453,7 @@ const ProfileEditor = ({
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
+      <div className="w-full min-w-0">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EditorTab)} className="w-full min-w-0">
         <TabsList className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30">
           <TabsTrigger
@@ -920,25 +918,6 @@ const ProfileEditor = ({
           </EditorSection>
         </TabsContent>
       </Tabs>
-
-      <aside className="hidden lg:block sticky top-20">
-        <ProfilePreviewCard
-          discord_avatar={profile.discord_avatar ?? null}
-          discord_username={profile.discord_username ?? null}
-          is_verified={(profile as any).is_verified}
-          display_name={form.display_name}
-          bio={form.bio}
-          location={form.location}
-          timezone={form.timezone}
-          pronouns={form.pronouns.trim()}
-          status={form.status}
-          availability={form.availability}
-          banner_url={form.banner_url}
-          accent_color={form.accent_color}
-          skills={skills}
-          social_links={socials}
-        />
-      </aside>
       </div>
 
       {verifyTarget && (
