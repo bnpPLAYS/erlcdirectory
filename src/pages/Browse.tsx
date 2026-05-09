@@ -1,20 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Users, SlidersHorizontal, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import Navbar from '@/components/layout/Navbar';
+import SiteFooter from '@/components/layout/SiteFooter';
 import ProfileCard from '@/components/profile/ProfileCard';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import logo from '@/assets/logo.png';
+
+type SortMode = 'newest' | 'top_rated' | 'most_members' | 'most_experience' | 'az';
 
 interface Profile {
   id: string;
@@ -26,6 +25,7 @@ interface Profile {
   rating: number;
   review_count: number;
   skills: string[];
+  created_at: string;
   experiences?: Array<{
     id: string;
     role: string;
@@ -33,191 +33,248 @@ interface Profile {
     server_icon: string | null;
     is_verified: boolean;
     guild_id: string | null;
+    start_date: string;
     member_count?: number | null;
   }>;
   total_members?: number;
+}
+
+const SORT_OPTIONS: { id: SortMode; label: string }[] = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'top_rated', label: 'Top Rated' },
+  { id: 'most_members', label: 'Most Members' },
+  { id: 'most_experience', label: 'Most Experience' },
+  { id: 'az', label: 'A–Z' },
+];
+
+function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
+  const copy = [...list];
+  switch (mode) {
+    case 'newest':
+      return copy.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+    case 'top_rated':
+      return copy.sort((a, b) => {
+        if (!!a.is_featured !== !!b.is_featured) return a.is_featured ? -1 : 1;
+        if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+        return (b.review_count || 0) - (a.review_count || 0);
+      });
+    case 'most_members':
+      return copy.sort((a, b) => (b.total_members ?? 0) - (a.total_members ?? 0));
+    case 'most_experience':
+      return copy.sort(
+        (a, b) => (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0),
+      );
+    case 'az':
+      return copy.sort((a, b) =>
+        (a.display_name || 'zzz').localeCompare(b.display_name || 'zzz', undefined, {
+          sensitivity: 'base',
+        }),
+      );
+    default:
+      return copy;
+  }
 }
 
 const Browse = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('rating');
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   useEffect(() => {
     fetchProfiles();
-  }, [sortBy]);
+  }, []);
 
   const fetchProfiles = async () => {
     setLoading(true);
-    let query = supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills');
+      .select(
+        'id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills, created_at',
+      )
+      .limit(150);
 
-    if (sortBy === 'rating') {
-      // Featured pinned to top, then highest rated
-      query = query
-        .order('is_featured', { ascending: false })
-        .order('rating', { ascending: false })
-        .order('review_count', { ascending: false });
-    } else if (sortBy === 'newest') {
-      query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
+    if (error || !data) {
+      setProfiles([]);
+      setLoading(false);
+      return;
     }
 
-    const { data, error } = await query.limit(50);
+    const ids = data.map((p) => p.id);
+    const { data: exps } = await supabase
+      .from('experiences')
+      .select(
+        'id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date',
+      )
+      .in('profile_id', ids);
 
-    if (!error && data) {
-      // Fetch experiences for these profiles
-      const ids = data.map((p) => p.id);
-      const { data: exps } = await supabase
-        .from('experiences')
-        .select('id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date')
-        .in('profile_id', ids)
-        .order('is_verified', { ascending: false })
-        .order('start_date', { ascending: false });
+    const guildIds = [...new Set((exps || []).map((e) => e.guild_id).filter(Boolean) as string[])];
+    const { data: serverRows } = guildIds.length
+      ? await supabase.from('servers').select('guild_id, member_count').in('guild_id', guildIds)
+      : { data: [] as { guild_id: string; member_count: number | null }[] };
 
-      // Fetch server member counts by guild_id
-      const guildIds = [...new Set((exps || []).map((e) => e.guild_id).filter(Boolean) as string[])];
-      const { data: serverRows } = guildIds.length
-        ? await supabase.from('servers').select('guild_id, member_count').in('guild_id', guildIds)
-        : { data: [] as any[] };
-      const memberByGuild = new Map<string, number>();
-      (serverRows || []).forEach((s: any) => s.guild_id && memberByGuild.set(s.guild_id, s.member_count || 0));
+    const memberByGuild = new Map<string, number>();
+    (serverRows || []).forEach((s) => {
+      if (s.guild_id) memberByGuild.set(s.guild_id, s.member_count ?? 0);
+    });
 
-      const enriched = data.map((p: any) => {
-        const userExps = (exps || []).filter((e) => e.profile_id === p.id);
-        const total = userExps.reduce(
-          (sum, e) => sum + (e.guild_id ? memberByGuild.get(e.guild_id) || 0 : 0),
-          0
-        );
-        return {
-          ...p,
-          experiences: userExps.map((e) => ({
-            id: e.id,
-            role: e.role,
-            server_name: e.server_name,
-            server_icon: e.server_icon,
-            is_verified: e.is_verified,
-            member_count: e.guild_id ? memberByGuild.get(e.guild_id) || 0 : 0,
-          })),
-          total_members: total,
-        };
-      });
+    const enriched: Profile[] = data.map((p) => {
+      let userExps = (exps || []).filter((e) => e.profile_id === p.id);
+      userExps.sort(
+        (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
+      );
 
-      setProfiles(enriched);
-    }
+      const total = userExps.reduce(
+        (sum, e) => sum + (e.guild_id ? memberByGuild.get(e.guild_id) ?? 0 : 0),
+        0,
+      );
+
+      return {
+        ...p,
+        created_at: p.created_at,
+        experiences: userExps.map((e) => ({
+          id: e.id,
+          role: e.role,
+          server_name: e.server_name,
+          server_icon: e.server_icon,
+          is_verified: e.is_verified,
+          guild_id: e.guild_id,
+          start_date: e.start_date,
+          member_count: e.guild_id ? memberByGuild.get(e.guild_id) ?? 0 : 0,
+        })),
+        total_members: total,
+      };
+    });
+
+    setProfiles(enriched);
     setLoading(false);
   };
 
-  const filteredProfiles = profiles.filter(profile => {
-    const matchesSearch = !searchQuery || 
-      profile.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      profile.bio?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSkill = !selectedSkill || profile.skills?.includes(selectedSkill);
-    
-    return matchesSearch && matchesSkill;
-  });
+  const filteredAndSorted = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = profiles;
 
-  const allSkills = [...new Set(profiles.flatMap(p => p.skills || []))];
+    if (verifiedOnly) {
+      list = list.filter((p) => p.is_verified);
+    }
+
+    if (q) {
+      list = list.filter((profile) => {
+        const nameMatch = profile.display_name?.toLowerCase().includes(q);
+        const bioMatch = profile.bio?.toLowerCase().includes(q);
+        const skillMatch = profile.skills?.some((s) => s.toLowerCase().includes(q));
+        const expMatch = profile.experiences?.some(
+          (e) =>
+            e.role.toLowerCase().includes(q) || e.server_name.toLowerCase().includes(q),
+        );
+        return !!(nameMatch || bioMatch || skillMatch || expMatch);
+      });
+    }
+
+    return sortProfiles(list, sortMode);
+  }, [profiles, searchQuery, verifiedOnly, sortMode]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      <section className="py-8 md:py-12">
-        <div className="container mx-auto px-4">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <div className="w-14 h-14 mx-auto mb-6 rounded-xl border border-border/60 bg-secondary/40 flex items-center justify-center">
-              <Users className="h-6 w-6 text-foreground" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Browse Members</h1>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Find ER:LC staff, applicants, and server owners with real profile details.
-            </p>
-          </div>
 
-          {/* Search & Filters */}
-          <div className="max-w-4xl mx-auto mb-8">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <main className="relative z-10">
+        <div className="min-h-screen pt-20 lg:pt-32 pb-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            {/* Hero */}
+            <header className="text-center mb-10 lg:mb-12 animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <img
+                src={logo}
+                alt=""
+                className="logo-mark mx-auto mb-6 h-14 w-14 object-contain sm:h-16 sm:w-16"
+                width={64}
+                height={64}
+                decoding="async"
+                aria-hidden
+              />
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
+                Browse Professionals
+              </h1>
+              <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+                Discover talented staff, developers, and designers in the ER:LC community.
+              </p>
+            </header>
+
+            {/* Search */}
+            <div className="max-w-4xl mx-auto mb-6">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="Search members by name, bio, or skills..."
+                  placeholder="Search by name, skills, or experience…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="h-12 pl-12 rounded-xl border-white/10 bg-white/[0.04] text-base placeholder:text-muted-foreground/70 focus-visible:ring-primary/30"
                 />
               </div>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rating">Highest Rated</SelectItem>
-                  <SelectItem value="newest">Newest</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            {/* Skill filters */}
-            {allSkills.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                <Badge
-                  variant={selectedSkill === null ? 'default' : 'outline'}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedSkill(null)}
+            {/* Sort pills */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+              {SORT_OPTIONS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSortMode(id)}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    sortMode === id
+                      ? 'bg-white text-black shadow-sm'
+                      : 'border border-white/12 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
+                  )}
                 >
-                  All
-                </Badge>
-                {allSkills.slice(0, 10).map((skill) => (
-                  <Badge
-                    key={skill}
-                    variant={selectedSkill === skill ? 'default' : 'outline'}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedSkill(skill)}
-                  >
-                    {skill}
-                  </Badge>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Verified only */}
+            <div className="flex items-center justify-center gap-3 mb-10">
+              <Switch id="verified-only" checked={verifiedOnly} onCheckedChange={setVerifiedOnly} />
+              <Label htmlFor="verified-only" className="text-sm text-muted-foreground cursor-pointer">
+                Verified only
+              </Label>
+            </div>
+
+            {/* Grid */}
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="h-72 animate-pulse border-white/10 bg-white/[0.03]" />
                 ))}
               </div>
+            ) : filteredAndSorted.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+                {filteredAndSorted.map((profile) => (
+                  <ProfileCard key={profile.id} profile={profile} />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-dashed border-white/15 max-w-2xl mx-auto bg-white/[0.02]">
+                <CardContent className="p-12 text-center">
+                  <User className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
+                  <h3 className="text-xl font-semibold mb-2">No members match</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Try another search or turn off filters.
+                  </p>
+                  <Link to="/auth">
+                    <Button>Create profile</Button>
+                  </Link>
+                </CardContent>
+              </Card>
             )}
           </div>
-
-          {/* Results */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="h-64 animate-pulse bg-muted" />
-              ))}
-            </div>
-          ) : filteredProfiles.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProfiles.map((profile) => (
-                <ProfileCard key={profile.id} profile={profile} />
-              ))}
-            </div>
-          ) : (
-            <Card className="border-dashed max-w-2xl mx-auto">
-              <CardContent className="p-12 text-center">
-                <User className="h-16 w-16 mx-auto mb-6 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No members yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  Create the first profile so server owners know who you are and what you can do.
-                </p>
-                <Link to="/auth">
-                  <Button className="gap-2">
-                    Create Profile
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          )}
         </div>
-      </section>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 };
