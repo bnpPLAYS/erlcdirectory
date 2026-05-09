@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import heroScreenshot from '@/assets/home-features/public-profile.png';
 import homeFeatureProfileEditor from '@/assets/home-features/profile-editor.png';
+import homeFeatureBrowseMembers from '@/assets/home-features/member-directory.png';
 import homeFeatureCreatePost from '@/assets/home-features/create-post.png';
 import homeFeatureConnections from '@/assets/home-features/connections.png';
 import homeFeaturePublicProfile from '@/assets/home-features/public-profile.png';
@@ -23,8 +24,11 @@ import { pageHeroEnter } from '@/lib/pageHero';
 import { profileEditorPath } from '@/lib/profilePath';
 
 /**
- * Homepage tour images live in `src/assets/home-features/`. Replace the PNG files in place
- * (same filenames) when you export new screenshots from the app.
+ * Homepage feature screenshots: each row pairs copy with a PNG in `src/assets/home-features/`.
+ * Replace files in place (keep filenames) after exporting from www.erlc.directory.
+ *
+ * - member-directory.png → Browse Members grid (search, filters, profile cards)
+ * - create-post.png → Create a post dialog (hiring / LFW / announcement / discussion)
  */
 const PRODUCT_SCREENSHOTS: {
   title: string;
@@ -38,6 +42,13 @@ const PRODUCT_SCREENSHOTS: {
       'Set pronouns, region, status, and quick emoji—then flesh out bio and skills so people see who you are before they DM you.',
     image: homeFeatureProfileEditor,
     alt: 'Profile editor on www.erlc.directory showing General tab and quick emoji row',
+  },
+  {
+    title: 'Browse members',
+    description:
+      'Search by name, bio, or skills; filter by role tags; sort featured listings—then open a profile card to see verified experience before you connect.',
+    image: homeFeatureBrowseMembers,
+    alt: 'Browse Members directory with search, filters, and profile cards on www.erlc.directory',
   },
   {
     title: 'Post hiring, LFW, and updates',
@@ -216,7 +227,7 @@ const Index = () => {
               How it works on the site
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Real screens from the directory: editing your profile, posting, connecting, and how you look to visitors.
+              Real screens from the directory: profile editing, browse, posts, connections, and how visitors see you.
             </p>
           </div>
 
