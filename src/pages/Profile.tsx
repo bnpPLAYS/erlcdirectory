@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
+import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 
 interface ProfileData {
   id: string;
@@ -83,6 +84,7 @@ const Profile = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+  const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
 
   useEffect(() => {
     setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
@@ -373,11 +375,22 @@ const Profile = () => {
                       {profile.timezone && (
                         <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</span>
                       )}
-                      {profile.discord_username && (
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                          @{profile.discord_username}
-                        </span>
-                      )}
+                      {profile.discord_username &&
+                        (discordProfileHref ? (
+                          <a
+                            href={discordProfileHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open Discord profile"
+                            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                          >
+                            @{profile.discord_username}
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            @{profile.discord_username}
+                          </span>
+                        ))}
                     </div>
                   </div>
 
