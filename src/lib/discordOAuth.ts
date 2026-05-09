@@ -1,17 +1,36 @@
+import { getPublicSiteOrigin } from '@/lib/publicSiteUrl';
+
 /**
- * Discord OAuth for this app uses redirect `/discord/callback` on the same origin
- * as the site, unless VITE_DISCORD_REDIRECT_URI is set (must match Discord Portal exactly).
+ * Discord OAuth uses **one** redirect URL per environment: `{origin}/discord/callback`.
+ * It must match Discord Developer Portal exactly — never vary by `/verify/:token` or other paths.
  *
- * Experience verification uses the same redirect as Supabase sign-in so one URL can be whitelisted.
+ * - Optional `VITE_DISCORD_REDIRECT_URI` overrides everything (must match Portal).
+ * - Otherwise we use the same canonical origin as public links (`getPublicSiteOrigin`), so preview
+ *   hosts (*.vercel.app) still OAuth against `https://www.erlc.directory/discord/callback` — no extra
+ *   Discord redirects per deployment URL.
+ * - If `VITE_DISABLE_CANONICAL_HOST_REDIRECT=true` on a Vercel preview, we keep OAuth on the preview
+ *   origin so sessionStorage and PKCE stay same-origin (add that preview `/discord/callback` once in Discord).
  */
 export function getDiscordRedirectUri(): string {
   const explicit = import.meta.env.VITE_DISCORD_REDIRECT_URI?.trim();
   if (explicit) {
     return explicit.replace(/\/+$/, '');
   }
+
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/discord/callback`;
+    if (
+      import.meta.env.VITE_DISABLE_CANONICAL_HOST_REDIRECT === 'true' &&
+      window.location.hostname.endsWith('.vercel.app')
+    ) {
+      return `${window.location.origin}/discord/callback`;
+    }
+
+    const origin = getPublicSiteOrigin();
+    if (origin) {
+      return `${origin}/discord/callback`;
+    }
   }
+
   return 'http://localhost:5173/discord/callback';
 }
 
