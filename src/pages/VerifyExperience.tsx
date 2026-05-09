@@ -367,7 +367,7 @@ const VerifyExperience = () => {
                           <option value="">No rating — text only</option>
                           {[1, 2, 3, 4, 5].map((n) => (
                             <option key={n} value={String(n)}>
-                              {n} — {n === 5 ? 'Excellent' : n === 1 ? 'Poor' : '…'}
+                              {n} star{n === 1 ? '' : 's'}
                             </option>
                           ))}
                         </select>
