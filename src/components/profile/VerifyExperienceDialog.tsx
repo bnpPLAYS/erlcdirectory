@@ -158,22 +158,17 @@ const VerifyExperienceDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent fullscreen className="glass-strong p-0 gap-0 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Verify experience</h2>
-              <p className="text-xs text-muted-foreground">
-                Pick the Discord server this experience is from. We'll generate a one-time link for an admin to approve.
-                {serverNameHint && <span className="block mt-0.5">For: <strong>{serverNameHint}</strong></span>}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 border-b border-white/10 px-6 py-4 pl-14 shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
+            <Shield className="h-5 w-5 text-primary" />
           </div>
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="Close">
-            <X className="h-5 w-5" />
-          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">Verify experience</h2>
+            <p className="text-xs text-muted-foreground">
+              Pick the Discord server this experience is from. We'll generate a one-time link for an admin to approve.
+              {serverNameHint && <span className="block mt-0.5">For: <strong>{serverNameHint}</strong></span>}
+            </p>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">

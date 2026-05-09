@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Briefcase, Search, Server as ServerIcon, RefreshCw, Shield } from 'lucide-react';
+import { Plus, Briefcase, Search, Server as ServerIcon, RefreshCw, Shield } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -161,19 +161,14 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
         className="glass-strong p-0 gap-0 overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
-              <Briefcase className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Create an opening</h2>
-              <p className="text-xs text-muted-foreground">Linked to a Discord server you belong to.</p>
-            </div>
+        <div className="flex items-center gap-3 border-b border-white/10 px-6 py-4 pl-14 shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
+            <Briefcase className="h-5 w-5 text-primary" />
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close">
-            <X className="h-5 w-5" />
-          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">Create an opening</h2>
+            <p className="text-xs text-muted-foreground">Linked to a Discord server you belong to.</p>
+          </div>
         </div>
 
         {/* Body */}

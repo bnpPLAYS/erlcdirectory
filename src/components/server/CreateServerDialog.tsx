@@ -75,14 +75,9 @@ const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
         </Button>
       </DialogTrigger>
       <DialogContent fullscreen className="glass-strong p-0 gap-0 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0">
-          <div>
-            <h2 className="text-lg font-semibold">List your server</h2>
-            <p className="text-xs text-muted-foreground">Share what your community is about so the right people can find you.</p>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close">
-            <span aria-hidden>×</span>
-          </Button>
+        <div className="border-b border-white/10 px-6 py-4 pl-14 shrink-0">
+          <h2 className="text-lg font-semibold">List your server</h2>
+          <p className="text-xs text-muted-foreground">Share what your community is about so the right people can find you.</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-5">
