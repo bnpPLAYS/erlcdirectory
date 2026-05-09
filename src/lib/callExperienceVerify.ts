@@ -12,10 +12,30 @@ function fnErrorPayload(data: unknown): string | null {
   return null;
 }
 
-function experienceVerifyUrl(action: string): string {
-  const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
-  if (!base) throw new Error('Missing VITE_SUPABASE_URL');
-  return `${base}/functions/v1/experience-verify?action=${encodeURIComponent(action)}`;
+function messagePayload(data: unknown): string | null {
+  if (data && typeof data === 'object' && 'message' in data) {
+    const m = (data as { message: unknown }).message;
+    if (typeof m === 'string' && m.length) return m;
+  }
+  return null;
+}
+
+/** Prefer VITE_SUPABASE_URL; fall back to project ref so a mistyped URL does not break verify. */
+function candidateSupabaseBases(): string[] {
+  const fromUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, '') || '';
+  const ref = import.meta.env.VITE_SUPABASE_PROJECT_ID?.trim();
+  const fromRef = ref ? `https://${ref}.supabase.co` : '';
+  const out: string[] = [];
+  if (fromUrl) out.push(fromUrl);
+  if (fromRef && !out.includes(fromRef)) out.push(fromRef);
+  if (out.length === 0) {
+    throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_PROJECT_ID');
+  }
+  return out;
+}
+
+function experienceVerifyUrl(base: string, action: string): string {
+  return `${base.replace(/\/$/, '')}/functions/v1/experience-verify?action=${encodeURIComponent(action)}`;
 }
 
 function anonHeaders(): Record<string, string> {
@@ -28,20 +48,37 @@ function anonHeaders(): Record<string, string> {
   };
 }
 
+const NOT_DEPLOYED_HINT =
+  'The verification endpoint returned 404. In the Supabase dashboard, deploy the Edge Function named experience-verify for this project, then redeploy the site. Also confirm VITE_SUPABASE_URL (or VITE_SUPABASE_PROJECT_ID) in Vercel matches that project.';
+
+function isDefiniteBusinessRejection(message: string): boolean {
+  return (
+    message.includes('verification link is not valid') ||
+    message.includes('Missing or invalid token') ||
+    message.includes('This request is already') ||
+    message.includes('Missing Discord authorization')
+  );
+}
+
 async function parseRes(res: Response): Promise<{ data: unknown; error: string | null }> {
   const text = await res.text();
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
+    if (res.status === 404) {
+      return { data: null, error: NOT_DEPLOYED_HINT };
+    }
     return {
       data: null,
-      error: `Verification service returned an unexpected response (${res.status}).`,
+      error: `Verification service returned a non-JSON response (${res.status}).`,
     };
   }
-  const err = fnErrorPayload(json);
+  const err = fnErrorPayload(json) || (!res.ok ? messagePayload(json) : null);
   if (!res.ok || err) {
-    return { data: null, error: err || `Verification request failed (${res.status}).` };
+    if (err) return { data: null, error: err };
+    if (res.status === 404) return { data: null, error: NOT_DEPLOYED_HINT };
+    return { data: null, error: `Verification request failed (${res.status}).` };
   }
   return { data: json, error: null };
 }
@@ -50,12 +87,18 @@ async function directHttp(
   action: 'lookup' | 'approve' | 'reject',
   body: Record<string, unknown>,
 ): Promise<{ data: unknown; error: string | null }> {
-  const res = await fetch(experienceVerifyUrl(action), {
-    method: 'POST',
-    headers: anonHeaders(),
-    body: JSON.stringify(body),
-  });
-  return parseRes(res);
+  let last: { data: unknown; error: string | null } = { data: null, error: null };
+  for (const base of candidateSupabaseBases()) {
+    const res = await fetch(experienceVerifyUrl(base, action), {
+      method: 'POST',
+      headers: anonHeaders(),
+      body: JSON.stringify(body),
+    });
+    last = await parseRes(res);
+    if (!last.error && last.data !== null) return last;
+    if (last.error && isDefiniteBusinessRejection(last.error)) return last;
+  }
+  return last;
 }
 
 async function proxiedHttp(

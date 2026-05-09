@@ -12,7 +12,14 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
-  const supabaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
+  const ref = process.env.VITE_SUPABASE_PROJECT_ID?.trim();
+  const supabaseUrl = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    (ref ? `https://${ref}.supabase.co` : '')
+  )
+    .trim()
+    .replace(/\/$/, '');
   const anonKey =
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
