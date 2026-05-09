@@ -54,6 +54,8 @@ interface ProfileLike {
   theme_preset?: string | null;
   discord_username?: string | null;
   discord_avatar?: string | null;
+  dm_website_updates?: boolean | null;
+  dm_experience_status_updates?: boolean | null;
   skills: string[];
   social_links: Record<string, string> | null;
 }
@@ -135,6 +137,8 @@ const ProfileEditor = ({
   const [verifyBusyId, setVerifyBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>(() => parseEditorTab(initialTab));
+  const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(!!profile.dm_website_updates);
+  const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -265,6 +269,8 @@ const ProfileEditor = ({
           theme_preset: form.theme_preset || 'mono',
           skills: filteredSkills,
           social_links: cleanedSocials,
+          dm_website_updates: dmWebsiteUpdates,
+          dm_experience_status_updates: dmExperienceUpdates,
         })
         .eq('id', profile.id);
       if (error) throw error;
@@ -438,6 +444,32 @@ const ProfileEditor = ({
               <Field label="Website" className="md:col-span-2">
                 <Input value={form.website} maxLength={200} onChange={(e) => update('website', e.target.value)} placeholder="https://example.com" />
               </Field>
+              <div className="md:col-span-2 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Discord notifications
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  The directory bot can DM you only if you opt in and share a server with it.
+                </p>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">Website updates</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Occasional messages about the site (sent by staff from the panel).
+                    </p>
+                  </div>
+                  <Switch checked={dmWebsiteUpdates} onCheckedChange={(c) => setDmWebsiteUpdates(!!c)} />
+                </div>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">Experience verification</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      When a pending verification is approved or declined.
+                    </p>
+                  </div>
+                  <Switch checked={dmExperienceUpdates} onCheckedChange={(c) => setDmExperienceUpdates(!!c)} />
+                </div>
+              </div>
               <Field label="Bio" className="md:col-span-2">
                 <Textarea value={form.bio} maxLength={500} rows={4} onChange={(e) => update('bio', e.target.value)} placeholder="Tell servers what you bring." />
                 <p className="text-xs text-muted-foreground mt-1">{form.bio.length}/500</p>

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.dev-login]
 verify_jwt = false
+
+[functions.website-dm-broadcast]
+verify_jwt = true
