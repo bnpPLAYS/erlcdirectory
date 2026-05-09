@@ -37,6 +37,7 @@ import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
 import { COUNTY_OPTIONS, normalizeStoredCounty } from '@/lib/ukCounties';
+import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 
 interface Experience {
   id: string;
@@ -317,26 +318,39 @@ const ProfileEditor = ({
     }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const baseProfileUpdate = {
+        display_name: filteredForm.display_name || null,
+        bio: filteredForm.bio || null,
+        location: filteredForm.location || null,
+        timezone: filteredForm.timezone || null,
+        pronouns: filteredForm.pronouns || null,
+        status: filteredForm.status || null,
+        availability: filteredForm.availability || null,
+        website: null,
+        banner_url: filteredForm.banner_url || null,
+        accent_color: form.accent_color || null,
+        theme_preset: form.theme_preset || 'mono',
+        skills: filteredSkills,
+        social_links: {},
+      };
+      const dmPrefs = {
+        dm_website_updates: dmWebsiteUpdates,
+        dm_experience_status_updates: dmExperienceUpdates,
+      };
+
+      let { error } = await supabase
         .from('profiles')
-        .update({
-          display_name: filteredForm.display_name || null,
-          bio: filteredForm.bio || null,
-          location: filteredForm.location || null,
-          timezone: filteredForm.timezone || null,
-          pronouns: filteredForm.pronouns || null,
-          status: filteredForm.status || null,
-          availability: filteredForm.availability || null,
-          website: null,
-          banner_url: filteredForm.banner_url || null,
-          accent_color: form.accent_color || null,
-          theme_preset: form.theme_preset || 'mono',
-          skills: filteredSkills,
-          social_links: {},
-          dm_website_updates: dmWebsiteUpdates,
-          dm_experience_status_updates: dmExperienceUpdates,
-        })
+        .update({ ...baseProfileUpdate, ...dmPrefs })
         .eq('id', profile.id);
+
+      if (error && isProfileDmPrefsSchemaError(error.message)) {
+        ({ error } = await supabase.from('profiles').update(baseProfileUpdate).eq('id', profile.id));
+        if (!error) {
+          toast.warning(
+            'Profile saved. Discord DM preferences need the latest database migration on your Supabase project.',
+          );
+        }
+      }
       if (error) throw error;
 
       // Experiences
