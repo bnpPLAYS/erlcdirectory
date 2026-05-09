@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MessageSquare, MapPin, Pencil, Clock, Star, ExternalLink, Shield, ShieldCheck, Crown } from 'lucide-react';
+import { ArrowLeft, Briefcase, MessageSquare, MapPin, Pencil, Clock, Star, Shield, ShieldCheck, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,7 +40,6 @@ interface ProfileData {
   banner_url: string | null;
   accent_color: string | null;
   theme_preset: string | null;
-  social_links: Record<string, string> | null;
 }
 
 interface Experience {
@@ -183,9 +182,6 @@ const Profile = () => {
 
   const accent = profile.accent_color || '#ffffff';
   const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
-  const socialEntries = profile.social_links
-    ? Object.entries(profile.social_links).filter(([, v]) => v)
-    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -338,16 +334,10 @@ const Profile = () => {
                       {profile.timezone && (
                         <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</span>
                       )}
-                      {profile.discord_id && (
-                        <a
-                          href={`https://discord.com/users/${profile.discord_id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-                          title="Open in Discord"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" /> @{profile.discord_username || 'discord'}
-                        </a>
+                      {profile.discord_username && (
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          @{profile.discord_username}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -396,25 +386,6 @@ const Profile = () => {
                       </div>
                     )}
 
-                    {socialEntries.length > 0 && (
-                      <div className="pt-4 border-t border-white/10">
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Connect</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {socialEntries.map(([k, v]) => (
-                            <a
-                              key={k}
-                              href={v}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs px-2.5 py-1.5 rounded-md glass glass-hover capitalize flex items-center gap-1.5"
-                              style={{ borderLeft: `2px solid ${accent}80` }}
-                            >
-                              {k.replace('_', ' ')}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </aside>

@@ -8,8 +8,6 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 const SiteFooter = ({ className }: { className?: string }) => {
   const { user, profile } = useAuth();
-  const discordCommunity =
-    import.meta.env.VITE_DISCORD_COMMUNITY_URL?.trim() || 'https://discord.com';
 
   return (
     <footer
@@ -114,16 +112,6 @@ const SiteFooter = ({ className }: { className?: string }) => {
                 <Link to="/docs" className="hover:text-white transition-colors">
                   Docs
                 </Link>
-              </li>
-              <li>
-                <a
-                  href={discordCommunity}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Discord
-                </a>
               </li>
               <li>
                 <Link to="/contact" className="hover:text-white transition-colors">

@@ -418,17 +418,6 @@ const Posts = () => {
                             >
                               {post.profiles?.display_name || 'Discord member'}
                             </Link>
-                            {post.profiles?.discord_id && (
-                              <a
-                                href={`https://discord.com/users/${post.profiles.discord_id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="hover:text-foreground inline-flex items-center gap-1"
-                                title="Open author in Discord"
-                              >
-                                <ExternalLink className="h-3 w-3" /> Discord
-                              </a>
-                            )}
                             {post.servers?.discord_invite && (
                               <a
                                 href={post.servers.discord_invite}

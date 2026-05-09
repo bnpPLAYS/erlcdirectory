@@ -187,18 +187,6 @@ const ServerDetail = () => {
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{c.role}{c.is_current ? ' • current' : ''}</p>
                         </div>
-                        {c.profile?.discord_id && (
-                          <a
-                            href={`https://discord.com/users/${c.profile.discord_id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                            title="Open in Discord"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        )}
                       </Link>
                     </CardContent>
                   </Card>
