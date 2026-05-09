@@ -255,7 +255,7 @@ const Profile = () => {
                       className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
                       style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
                     >
-                      <AvatarImage src={profile.discord_avatar || undefined} />
+                      <AvatarImage src={profile.discord_avatar || undefined} loading="eager" fetchPriority="high" />
                       <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
                     </Avatar>
                   </div>

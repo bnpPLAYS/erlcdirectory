@@ -136,7 +136,7 @@ const Navbar = () => {
                     )}
                   >
                     <Avatar className="h-8 w-8 ring-1 ring-white/15">
-                      <AvatarImage src={profile?.discord_avatar || undefined} />
+                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
                       <AvatarFallback className="text-xs bg-secondary">
                         {profile?.display_name?.[0] || 'U'}
                       </AvatarFallback>
@@ -155,7 +155,7 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={profile?.discord_avatar || undefined} />
+                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
                       <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
