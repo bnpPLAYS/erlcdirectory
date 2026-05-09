@@ -25,10 +25,25 @@ export function getDiscordRedirectUri(): string {
       return `${window.location.origin}/discord/callback`;
     }
 
+    const host = window.location.hostname.toLowerCase();
+
+    // Discord matches redirect_uri exactly. Use the same origin the user is on for apex vs www so it
+    // matches Developer Portal entries (many teams only register one of erlc.directory / www.erlc.directory).
+    if (host === 'erlc.directory' || host === 'www.erlc.directory') {
+      return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
+    }
+
+    if (host.endsWith('.vercel.app')) {
+      const origin = getPublicSiteOrigin();
+      if (origin) return `${origin}/discord/callback`;
+    }
+
     const origin = getPublicSiteOrigin();
     if (origin) {
       return `${origin}/discord/callback`;
     }
+
+    return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
   }
 
   return 'http://localhost:5173/discord/callback';
