@@ -346,7 +346,6 @@ const VerifyExperience = () => {
                           id="member-role"
                           value={memberRole}
                           onChange={(ev) => setMemberRole(ev.target.value)}
-                          placeholder="e.g. Patrol Officer, Staff, Lead Developer"
                           maxLength={80}
                           className="rounded-xl border-white/12 bg-white/[0.04]"
                         />
@@ -362,7 +361,6 @@ const VerifyExperience = () => {
                           id="verifier-position"
                           value={verifierPosition}
                           onChange={(ev) => setVerifierPosition(ev.target.value)}
-                          placeholder="e.g. Owner, Director, Head Administrator"
                           maxLength={160}
                           className="rounded-xl border-white/12 bg-white/[0.04]"
                         />
@@ -375,7 +373,6 @@ const VerifyExperience = () => {
                           id="verifier-review"
                           value={verifierReviewText}
                           onChange={(ev) => setVerifierReviewText(ev.target.value)}
-                          placeholder="Brief feedback on working with this member…"
                           maxLength={2000}
                           rows={4}
                           className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"

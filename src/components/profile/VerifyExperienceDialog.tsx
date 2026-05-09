@@ -386,7 +386,6 @@ const VerifyExperienceDialog = ({
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search your Discord servers…"
                     className="rounded-xl"
                   />
                   <Button size="sm" variant="secondary" onClick={loadGuilds} className="gap-1.5 rounded-full shrink-0">

@@ -584,7 +584,6 @@ const ProfileEditor = ({
                         value={e.role}
                         maxLength={80}
                         onChange={(ev) => updateExp(e.id, { role: ev.target.value })}
-                        placeholder="e.g. Patrol Officer, Staff"
                       />
                     )}
                   </Field>
