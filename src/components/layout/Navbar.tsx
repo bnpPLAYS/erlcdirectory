@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Search,
   Menu,
   X,
   Users,
@@ -13,6 +12,7 @@ import {
   Pencil,
   Plus,
   ChevronDown,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,7 +28,6 @@ import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
@@ -43,7 +42,6 @@ const Navbar = () => {
       .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
-
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
     { path: '/servers', label: 'Servers', icon: Building2 },
@@ -56,24 +54,46 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <div className="flex-1 flex items-center">
-            <nav className="flex items-center gap-1">
-              <Link to="/" className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-secondary transition-colors">
-                <img src={logo} alt="ERLC Directory logo" className="w-6 h-6 object-contain" width={24} height={24} />
-                <span className="hidden sm:inline text-sm font-bold tracking-tight">ERLC Directory</span>
+      <div className="h-24" aria-hidden />
+
+      <header className="fixed top-0 inset-x-0 z-50 px-4 pt-4 pointer-events-none">
+        <div className="max-w-6xl mx-auto flex items-start justify-between gap-3">
+          <div className="flex-1 flex justify-center min-w-0">
+            <nav
+              className={cn(
+                'pointer-events-auto flex items-center gap-0.5 rounded-full px-2 py-1.5',
+                'glass-strong liquid-edge shadow-2xl max-w-full',
+              )}
+            >
+              <Link
+                to="/"
+                className="flex items-center gap-2.5 pl-3 pr-3 py-1.5 rounded-full hover:bg-white/5 transition-colors shrink-0"
+              >
+                <img
+                  src={logo}
+                  alt=""
+                  className="logo-mark w-6 h-6 object-contain"
+                  width={24}
+                  height={24}
+                  aria-hidden
+                />
+                <div className="hidden sm:flex flex-col items-start leading-tight">
+                  <span className="text-sm font-bold tracking-tight">ER:LC Directory</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Staff &amp; community network
+                  </span>
+                </div>
               </Link>
 
-              <div className="hidden md:flex items-center gap-1 ml-2">
+              <div className="hidden md:flex items-center gap-0.5 ml-1">
                 {visibleLinks.map(({ path, label, icon: Icon }) => (
                   <Link key={path} to={path}>
                     <button
                       className={cn(
-                        'h-9 px-3 rounded-md inline-flex items-center justify-center gap-1.5 text-sm transition-colors',
+                        'h-9 px-3 rounded-full inline-flex items-center justify-center gap-1.5 text-sm transition-colors',
                         isActive(path)
-                          ? 'bg-secondary text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
+                          ? 'bg-white/12 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
                       )}
                       aria-label={label}
                     >
@@ -87,7 +107,7 @@ const Navbar = () => {
               {user && (
                 <Link to="/posts" className="hidden md:block">
                   <button
-                    className="h-9 w-9 rounded-md inline-flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
+                    className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
                     aria-label="Create"
                   >
                     <Plus className="h-4 w-4" />
@@ -96,7 +116,7 @@ const Navbar = () => {
               )}
 
               <button
-                className="md:hidden h-9 w-9 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="md:hidden h-9 w-9 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle menu"
               >
@@ -105,12 +125,17 @@ const Navbar = () => {
             </nav>
           </div>
 
-          <div>
+          <div className="pointer-events-auto shrink-0">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="border border-border rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2 hover:bg-secondary transition-colors">
-                    <Avatar className="h-8 w-8 ring-1 ring-border">
+                  <button
+                    className={cn(
+                      'glass-strong liquid-edge rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2',
+                      'hover:bg-white/5 transition-colors shadow-2xl',
+                    )}
+                  >
+                    <Avatar className="h-8 w-8 ring-1 ring-white/15">
                       <AvatarImage src={profile?.discord_avatar || undefined} />
                       <AvatarFallback className="text-xs bg-secondary">
                         {profile?.display_name?.[0] || 'U'}
@@ -127,7 +152,7 @@ const Navbar = () => {
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={profile?.discord_avatar || undefined} />
@@ -140,7 +165,7 @@ const Navbar = () => {
                       </span>
                     </div>
                   </div>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                     <Link to={`/profile/${profile?.id}`}>
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
@@ -178,7 +203,7 @@ const Navbar = () => {
                       </div>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-white/10" />
                   {isAdmin && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                       <Link to="/staff">
@@ -204,7 +229,12 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <button className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity">
+                <button
+                  className={cn(
+                    'glass-strong liquid-edge rounded-full px-4 py-2 text-sm font-medium',
+                    'hover:bg-white/10 transition-colors shadow-2xl',
+                  )}
+                >
                   Sign in
                 </button>
               </Link>
@@ -212,9 +242,8 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background px-4 py-3 animate-in">
+          <div className="md:hidden mt-3 mx-auto max-w-sm pointer-events-auto glass-strong rounded-2xl p-3 animate-in shadow-2xl border border-white/10">
             <div className="flex flex-col gap-1">
               {visibleLinks.map(({ path, label, icon: Icon }) => (
                 <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}>
