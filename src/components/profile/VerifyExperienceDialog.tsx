@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
+import { VERIFICATION_LINK_HOURS } from '@/lib/experienceVerificationLink';
 import { buildVerifyExperienceUrl } from '@/lib/publicSiteUrl';
 import { cn } from '@/lib/utils';
 
@@ -86,7 +87,7 @@ const VerifyExperienceDialog = ({
     try {
       const token =
         crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const expires = new Date(Date.now() + VERIFICATION_LINK_HOURS * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('experience_verification_requests')
         .insert({

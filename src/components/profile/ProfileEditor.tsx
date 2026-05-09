@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon, RefreshCw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProfilePreviewCard from './ProfilePreviewCard';
 
@@ -19,6 +19,8 @@ import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
+import { cn } from '@/lib/utils';
 
 interface Experience {
   id: string;
@@ -130,6 +132,7 @@ const ProfileEditor = ({
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<Experience | null>(null);
+  const [verifyBusyId, setVerifyBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>(() => parseEditorTab(initialTab));
 
@@ -169,6 +172,39 @@ const ProfileEditor = ({
   const deleteExp = (id: string) => {
     setExps(exps.filter((e) => e.id !== id));
     if (!newExpKeys.has(id)) setRemovedExpIds((r) => [...r, id]);
+  };
+
+  /** Server-linked: copy link in place. No guild: open picker dialog. */
+  const copyVerifyLinkForExperience = async (e: Experience, forceNew: boolean) => {
+    if (!e.guild_id) {
+      setVerifyTarget(e);
+      return;
+    }
+    setVerifyBusyId(e.id);
+    try {
+      const result = await ensureVerificationLink({
+        experienceId: e.id,
+        profileId: profile.id,
+        guild: { id: e.guild_id, name: e.server_name, icon: e.server_icon },
+        forceNew,
+      });
+      if ('error' in result) {
+        toast.error(result.error);
+        return;
+      }
+      const ok = await copyTextToClipboard(result.url);
+      if (ok) {
+        toast.success(
+          forceNew
+            ? 'New verification link copied (valid 24 hours).'
+            : 'Verification link copied (valid 24 hours).',
+        );
+      } else {
+        toast.error('Could not copy automatically. Your browser may have blocked clipboard access.');
+      }
+    } finally {
+      setVerifyBusyId(null);
+    }
   };
 
   const handleSave = async () => {
@@ -539,14 +575,33 @@ const ProfileEditor = ({
                       {e.is_verified ? (
                         <Badge className="badge-verified gap-1"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setVerifyTarget(e)}
-                          className="gap-2"
-                        >
-                          <Shield className="h-4 w-4" /> Verify with admin
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={verifyBusyId === e.id}
+                            onClick={() => void copyVerifyLinkForExperience(e, false)}
+                            className="gap-2"
+                            title="Copy a verification link (valid 24 hours)"
+                          >
+                            <Shield className="h-4 w-4" /> Verify
+                          </Button>
+                          {e.guild_id ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={verifyBusyId === e.id}
+                              onClick={() => void copyVerifyLinkForExperience(e, true)}
+                              className="rounded-full px-2.5 border-white/15"
+                              title="New verification link (24 hours)"
+                              aria-label="Generate new verification link"
+                            >
+                              <RefreshCw className={cn('h-4 w-4', verifyBusyId === e.id && 'animate-spin')} />
+                            </Button>
+                          ) : null}
+                        </>
                       )}
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => deleteExp(e.id)} className="gap-2 text-destructive hover:text-destructive">
