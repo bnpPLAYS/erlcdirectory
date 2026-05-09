@@ -179,11 +179,25 @@ const Profile = () => {
     const p_is_verified = field === 'is_verified' ? newVal : profile.is_verified;
     const p_is_featured = field === 'is_featured' ? newVal : profile.is_featured;
 
-    const { error } = await supabase.rpc('site_owner_set_profile_flags', {
+    let { error } = await supabase.rpc('site_owner_set_profile_flags', {
       p_profile_id: profile.id,
       p_is_verified,
       p_is_featured,
     });
+
+    const msg = error?.message ?? '';
+    const rpcUnavailable =
+      !!error &&
+      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_profile_flags/i.test(msg));
+
+    if (rpcUnavailable) {
+      ({ error } = await supabase
+        .from('profiles')
+        .update(field === 'is_verified' ? { is_verified: newVal } : { is_featured: newVal })
+        .eq('id', profile.id));
+    }
+
     if (error) {
       toast.error('Failed: ' + error.message);
       return;
