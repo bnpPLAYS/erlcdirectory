@@ -52,7 +52,14 @@ const DiscordCallback = () => {
 
       if (error) {
         setStatus('error');
-        setMessage(error.message || 'Discord could not be connected.');
+        const err = error as Error;
+        const msg = err.message || 'Discord could not be connected.';
+        const isFetchFail =
+          err.name === 'FunctionsFetchError' || /send a request to the Edge Function/i.test(msg);
+        const hint = isFetchFail
+          ? ' Deploy the discord-oauth Edge Function on this Supabase project (and set DISCORD_* secrets). Turn off ad blockers for this site. In the browser Network tab, check the request to …/functions/v1/discord-oauth.'
+          : '';
+        setMessage(msg + (hint ? ` ${hint}` : ''));
         return;
       }
 

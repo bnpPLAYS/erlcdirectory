@@ -1,5 +1,11 @@
 project_id = "quixgplhredovuliauew"
 
+[functions.discord-oauth]
+verify_jwt = false
+
+[functions.discord-guilds]
+verify_jwt = false
+
 [functions.experience-verify]
 verify_jwt = false
 
