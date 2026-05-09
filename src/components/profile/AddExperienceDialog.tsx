@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Server as ServerIcon, UserCheck, Search, RefreshCw, Shield, Users, Sparkles, Globe } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -52,9 +52,12 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
   const [serverName, setServerName] = useState('');
 
   const [saving, setSaving] = useState(false);
+  /** Blocks double-submits before React re-renders `saving` (double-clicks, fast taps). */
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
+      submitLockRef.current = false;
       setStep('pick');
       setSelectedGuild(null);
       setRole('');
@@ -89,6 +92,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
   const canSubmitDirect = serverName.trim().length > 0 && role.trim().length > 0 && !!startDate;
 
   const submit = async (kind: 'server' | 'direct') => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setSaving(true);
     try {
       const descF = filterPlaintext(description.trim());
@@ -117,7 +122,18 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
         payload.server_name = directNameF.text.slice(0, 80);
       }
       const { error } = await supabase.from('experiences').insert(payload);
-      if (error) throw error;
+      if (error) {
+        // Unique index on (profile_id, guild_id) for server-linked rows — catch racing double-submits.
+        const code = (error as { code?: string }).code;
+        const msg = String((error as { message?: string }).message ?? '');
+        if (code === '23505' || /duplicate key|unique constraint/i.test(msg)) {
+          toast.info('That Discord server is already on your experience list.');
+          onCreated();
+          onOpenChange(false);
+          return;
+        }
+        throw error;
+      }
       toast.success('Experience added');
       onCreated();
       onOpenChange(false);
@@ -125,6 +141,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
       toast.error(e?.message || 'Could not save experience');
     } finally {
       setSaving(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -145,6 +162,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
             </DialogHeader>
             <div className="grid md:grid-cols-2 gap-5 mt-6">
               <button
+                type="button"
                 onClick={() => setStep('server')}
                 className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
               >
@@ -165,6 +183,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               </button>
 
               <button
+                type="button"
                 onClick={() => setStep('direct')}
                 className="group text-left rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] hover:border-white/30 hover:from-white/[0.08] p-7 transition-all duration-200 hover:-translate-y-0.5"
               >
@@ -295,7 +314,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                   </label>
 
                   <Button
-                    onClick={() => submit('server')}
+                    type="button"
+                    onClick={() => void submit('server')}
                     disabled={!canSubmitServer || saving}
                     className="w-full rounded-full h-11 font-medium"
                   >
@@ -306,7 +326,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
             </div>
 
             <div className="flex pt-2">
-              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
+              <Button type="button" variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" /> Back to experience types
               </Button>
             </div>
@@ -368,7 +388,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                 </label>
 
                 <Button
-                  onClick={() => submit('direct')}
+                  type="button"
+                  onClick={() => void submit('direct')}
                   disabled={!canSubmitDirect || saving}
                   className="w-full rounded-full h-11 font-medium"
                 >
@@ -378,7 +399,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
             </Card>
 
             <div className="flex pt-2">
-              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
+              <Button type="button" variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" /> Back to experience types
               </Button>
             </div>
