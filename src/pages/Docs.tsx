@@ -6,10 +6,10 @@ import {
   Building2,
   FileText,
   Users,
-  MessageSquare,
   ShieldCheck,
   Sparkles,
   Search,
+  BadgeCheck,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
@@ -39,37 +39,43 @@ const SECTION_DATA: Omit<Section, 'body'>[] = [
     id: 'introduction',
     title: 'Introduction',
     icon: BookOpen,
-    toc: ['What is www.erlc.directory?', 'Who it’s for'],
+    toc: ['What is ERLC Directory?', 'Who it’s for', 'Major areas of the site'],
   },
   {
     id: 'getting-started',
     title: 'Getting started',
     icon: Sparkles,
-    toc: ['Discord sign-in', 'First-time checklist'],
+    toc: ['Discord sign-in', 'Terms & first login', 'Staying signed in'],
   },
   {
     id: 'profiles',
-    title: 'Profiles',
+    title: 'Profiles & directory',
     icon: UserCircle,
-    toc: ['Editing your profile', 'Experience & verification'],
+    toc: ['Member Directory', 'Your profile URL', 'Editing your profile', 'Reviews'],
   },
   {
-    id: 'servers-openings',
-    title: 'Servers & openings',
+    id: 'experience-verification',
+    title: 'Experience & verification',
+    icon: BadgeCheck,
+    toc: ['Adding experience', 'Verification links', 'What verifiers do'],
+  },
+  {
+    id: 'servers-posts',
+    title: 'Servers & posts',
     icon: Building2,
-    toc: ['Listing a server', 'Posting an opening'],
+    toc: ['Servers list & detail', 'Posts — types & actions'],
   },
   {
     id: 'connections-messages',
     title: 'Connections & messages',
     icon: Users,
-    toc: ['Connection requests', 'Messages'],
+    toc: ['Connection requests', 'Messages inbox'],
   },
   {
-    id: 'trust-safety',
-    title: 'Trust & safety',
+    id: 'trust-account',
+    title: 'Trust, staff & account',
     icon: ShieldCheck,
-    toc: ['Text filtering', 'Terms & privacy'],
+    toc: ['Text filtering', 'Staff tools', 'Legal', 'Troubleshooting'],
   },
 ];
 
@@ -85,20 +91,46 @@ const Docs = () => {
           meta.id === 'introduction' ? (
             <>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="introduction-what">
-                What is www.erlc.directory?
+                What is ERLC Directory?
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                www.erlc.directory is a staff-focused directory for Emergency Response: Liberty County communities—profiles, verified experience,
-                server listings, openings, and lightweight networking between members.
+                ERLC Directory (<Link to="/" className="text-primary underline-offset-2 hover:underline">www.erlc.directory</Link>) is a
+                staff-focused directory for Emergency Response: Liberty County communities. It brings together member profiles with verified
+                server experience, server listings, structured community posts (hiring, looking for work, announcements, discussion), and light
+                networking through connections and direct messages.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="introduction-who">
                 Who it’s for
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Players building a credible staff résumé, server owners hiring or showcasing culture, and contributors who want clear proof of roles without noisy spreadsheets.
+                Staff members building a credible résumé, server owners who want hiring and culture visible in one place, and players who need
+                clear proof of roles—without spreadsheets or fragmented Discord bios alone.
               </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="introduction-areas">
+                Major areas of the site
+              </h3>
+              <ul className="mt-3 list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
+                <li>
+                  <strong className="text-foreground">Home</strong> — Overview and entry points into the directory.
+                </li>
+                <li>
+                  <strong className="text-foreground">Members</strong> — Browse public profiles and open someone’s page.
+                </li>
+                <li>
+                  <strong className="text-foreground">Servers</strong> — Explore ER:LC communities; open a server for description, invite,
+                  and members who work there.
+                </li>
+                <li>
+                  <strong className="text-foreground">Posts</strong> — Community board with filters by post type and server context where
+                  relevant.
+                </li>
+                <li>
+                  <strong className="text-foreground">Messages</strong> — Conversations with people you’re connected with (when signed in).
+                </li>
+              </ul>
               <Tip>
-                Use the same Discord account consistently—your profile links to your Discord identity for trust and faster onboarding.
+                Sign in with <strong className="text-foreground">Discord</strong> so your profile ties to your real Discord identity—used for
+                trust, server verification, and hiring flows.
               </Tip>
             </>
           ) : meta.id === 'getting-started' ? (
@@ -107,51 +139,151 @@ const Docs = () => {
                 Discord sign-in
               </h3>
               <ol className="mt-3 list-decimal pl-5 space-y-2 text-muted-foreground leading-relaxed">
-                <li>Open <Link to="/auth" className="text-primary underline-offset-2 hover:underline">Sign in</Link>.</li>
-                <li>Authorize Discord with the requested scopes (identity, email, guild list where needed).</li>
-                <li>Accept the in-app Terms & Privacy prompt on first login for new accounts.</li>
+                <li>
+                  Open <Link to="/auth" className="text-primary underline-offset-2 hover:underline">Sign in</Link> from the navigation menu.
+                </li>
+                <li>
+                  Approve Discord OAuth. The app requests identity-related scopes so we can attach your Discord username, avatar, and (where
+                  needed) your server list—for example when linking experience to a Discord guild or fetching servers you belong to.
+                </li>
+                <li>
+                  After authorization you land back on the site; your session is stored so returning visits keep you signed in when the
+                  browser allows it.
+                </li>
               </ol>
-              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="getting-started-checklist">
-                First-time checklist
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="getting-started-terms">
+                Terms & first login
               </h3>
-              <ol className="mt-3 list-decimal pl-5 space-y-2 text-muted-foreground leading-relaxed">
-                <li>Fill display name, bio, skills, and banner under Edit profile.</li>
-                <li>Add experience entries (server-linked or direct).</li>
-                <li>Browse members or servers and send a connection request when appropriate.</li>
-              </ol>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                New accounts may see an in-app gate to accept <Link to="/terms" className="text-primary underline-offset-2 hover:underline">Terms</Link> and{' '}
+                <Link to="/privacy" className="text-primary underline-offset-2 hover:underline">Privacy</Link>. Optional preferences (such as Discord DM
+                updates from the site, where enabled) can be chosen there or later in profile settings.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="getting-started-session">
+                Staying signed in
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                The app refreshes your Supabase session when you focus the tab or come back online. If you ever appear logged out after OAuth,
+                try signing in again from the canonical site URL (www.erlc.directory); staging or preview hostnames use separate cookie/storage
+                contexts.
+              </p>
             </>
           ) : meta.id === 'profiles' ? (
             <>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-directory">
+                Member Directory
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                <Link to="/browse" className="text-primary underline-offset-2 hover:underline">Members</Link> lists public profiles. You can search and
+                sort to find people; each card links to that member’s profile page.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-url">
+                Your profile URL
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                When your Discord username can be turned into a safe path segment, your public URL is{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">https://www.erlc.directory/&lt;username&gt;</code> — trailing dots on
+                Discord names are ignored for the URL (for example <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">pixelnovaa.</code>{' '}
+                becomes <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/pixelnovaa</code>). If your name clashes with a reserved route
+                or cannot be slugged, the site falls back to <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/profile/&lt;id&gt;</code>.
+              </p>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                Opening your profile from the avatar menu always uses the canonical path the site generates for you—prefer that link when
+                sharing.
+              </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-editing">
                 Editing your profile
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                From your profile page, choose Edit to update banner, accent theme presets, skills, availability, and bio text.
-                Long-form fields run through an automatic chat filter—keep language respectful so saves succeed smoothly.
+                On your own profile, choose <strong className="text-foreground">Edit profile</strong>. Tabs typically cover:
               </p>
-              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-experience">
-                Experience & verification
+              <ul className="mt-3 list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
+                <li>
+                  <strong className="text-foreground">General</strong> — Display name (also editable in the banner card), pronouns, availability,
+                  county/region, timezone, status line, bio, skills, and optional Discord notification preferences where offered.
+                </li>
+                <li>
+                  <strong className="text-foreground">Customize</strong> — Theme presets, accent color, banner image URL, and live accent preview.
+                </li>
+                <li>
+                  <strong className="text-foreground">Experience</strong> — List roles (including Discord-linked server experience), dates,
+                  verification actions, and adding/removing entries.
+                </li>
+              </ul>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                Long text fields are passed through a community language filter; adjust wording if a save is rejected.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-reviews">
+                Reviews
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Add roles tied to Discord servers you belong to, or document direct collaborations. Where supported, generate a verification link so server leadership can confirm your role.
+                The profile <strong className="text-foreground">Reviews</strong> tab shows ratings and comments others leave about this member.
+                Star ratings aggregate into the summary shown on cards where applicable.
+              </p>
+            </>
+          ) : meta.id === 'experience-verification' ? (
+            <>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="exp-add">
+                Adding experience
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Under Edit profile → Experience, add a row for each role. For server-linked experience you pick from Discord servers you belong
+                to (from your OAuth guild list). New server-linked entries start with a pending role label until a verifier approves—you do not
+                set your final server title yourself in that flow.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="exp-verify-links">
+                Verification links
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                For a pending server-linked row, use <strong className="text-foreground">Verify</strong> to copy a time-limited verification link (often 24 hours).
+                Share it with someone who can approve your role on that server. A refresh control may rotate the token; older links then expire.
               </p>
               <Tip>
-                Verified badges reflect administrator approval—not every role requires verification, but it boosts credibility for hiring flows.
+                Use the site’s generated verification URL on the production domain you configured—Discord OAuth and redirects must match what
+                is registered for your Supabase and Discord app.
               </Tip>
-            </>
-          ) : meta.id === 'servers-openings' ? (
-            <>
-              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="servers-openings-list">
-                Listing a server
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="exp-verifier">
+                What verifiers do
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Navigate to Servers → List a server. Provide accurate descriptions, invite links, tags, and hiring status so candidates understand your culture before applying.
+                A verifier with authority on the Discord server opens the link, signs in with Discord if prompted, and confirms or denies the
+                request. They set your <strong className="text-foreground">verified title/role</strong> on the server and may leave a structured review (for example
+                stars). After approval, your experience shows as verified on your profile.
               </p>
-              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="servers-openings-post">
-                Posting an opening
+            </>
+          ) : meta.id === 'servers-posts' ? (
+            <>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="servers-list">
+                Servers list & detail
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Use Posts to publish hiring threads, looking-for-work listings, announcements, and discussions tied to verified Discord servers when required. Titles and descriptions are filtered automatically—focus on responsibilities and requirements.
+                <Link to="/servers" className="text-primary underline-offset-2 hover:underline">Servers</Link> shows ER:LC communities we track. Cards may show hiring
+                status, banners when available, descriptions, Discord invites when configured, and staff counts driven from verified experience
+                links to that guild. Opening a server shows detail and members linked through experience.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="posts-types">
+                Posts — types & actions
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                <Link to="/posts" className="text-primary underline-offset-2 hover:underline">Posts</Link> is the community board. When creating a post you choose a{' '}
+                <strong className="text-foreground">type</strong>; the form adapts so each type collects the right fields:
+              </p>
+              <ul className="mt-3 list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
+                <li>
+                  <strong className="text-foreground">Discussion</strong> — Threaded replies for conversation.
+                </li>
+                <li>
+                  <strong className="text-foreground">Hiring</strong> — Often includes an application link; Discord membership may be checked when configured.
+                </li>
+                <li>
+                  <strong className="text-foreground">Looking for work</strong> — Highlights that someone is seeking roles; links may point to their profile or messaging.
+                </li>
+                <li>
+                  <strong className="text-foreground">Announcement</strong> — Broadcast-style updates from servers or staff.
+                </li>
+              </ul>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                Filters help narrow by type; author names link to member profiles where available.
               </p>
             </>
           ) : meta.id === 'connections-messages' ? (
@@ -160,13 +292,16 @@ const Docs = () => {
                 Connection requests
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Visit another member’s profile and choose Connect. Optional notes are moderated by the same chat filter. Accepted connections unlock messaging according to product rules.
+                On another member’s profile, <strong className="text-foreground">Connect</strong> sends a request. The recipient can accept or decline from{' '}
+                <Link to="/connections" className="text-primary underline-offset-2 hover:underline">Connections</Link>. Notes are moderated by the same text rules as
+                elsewhere.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="connections-messages-tab">
-                Messages
+                Messages inbox
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Open Messages from the navigation bar to continue conversations. Compose boxes also enforce filtering—keep outreach professional and on-topic.
+                <Link to="/messages" className="text-primary underline-offset-2 hover:underline">Messages</Link> lists conversations with accepted connections. Deep links
+                may open a thread with a specific person using query parameters where supported.
               </p>
             </>
           ) : (
@@ -175,18 +310,36 @@ const Docs = () => {
                 Text filtering
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Typed content across profiles, posts, reviews, connection notes, and messaging passes through client-side moderation helpers that mask disallowed language patterns.
-                Operators may extend this list server-side—when in doubt, rewrite politely before submitting.
+                Typed content across profiles, posts, reviews, connection notes, and messaging passes through client-side moderation helpers.
+                Keep language professional so submissions succeed.
               </p>
-              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
-                Terms & privacy
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-staff">
+                Staff tools
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Review <Link to="/terms" className="text-primary underline-offset-2 hover:underline">Terms of Service</Link> and{' '}
-                <Link to="/privacy" className="text-primary underline-offset-2 hover:underline">Privacy Policy</Link>—first-time Discord logins must acknowledge both before continuing.
+                A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (access is enforced in the database and UI). It is not part of the
+                normal member workflow.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
+                Legal
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Read <Link to="/terms" className="text-primary underline-offset-2 hover:underline">Terms of Service</Link> and{' '}
+                <Link to="/privacy" className="text-primary underline-offset-2 hover:underline">Privacy Policy</Link>. Contact for abuse or privacy requests via{' '}
+                <Link to="/contact" className="text-primary underline-offset-2 hover:underline">Contact</Link>.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-troubleshooting">
+                Troubleshooting: “Profile not found”
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                If your profile opens everywhere except under your <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/@username</code> URL, ensure the database
+                migration for username lookup is applied on your Supabase project and that your <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">profiles.discord_username</code>{' '}
+                matches Discord. Use the <strong className="text-foreground">My profile</strong> link from the avatar menu for the canonical URL. Stay on the production domain
+                you configured for OAuth.
               </p>
               <Tip>
-                Report harmful behavior via the Contact page so moderators can investigate alongside automated tooling.
+                Deploy pending SQL migrations (<code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code> or CI) so functions such as{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">get_profile_by_username_lookup</code> exist in production.
               </Tip>
             </>
           ),
@@ -238,7 +391,6 @@ const Docs = () => {
 
       <div className="flex-1 container mx-auto px-4 py-8 lg:py-12">
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 max-w-7xl mx-auto">
-          {/* Left sidebar */}
           <aside className="lg:w-56 shrink-0 lg:sticky lg:top-28 lg:self-start space-y-6 animate-in fade-in slide-in-from-left-3 duration-500">
             <div className="hidden lg:block relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -266,16 +418,16 @@ const Docs = () => {
             </nav>
           </aside>
 
-          {/* Main */}
           <main className="flex-1 min-w-0 space-y-16">
             <header className={pageHeroEnter}>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-wider text-muted-foreground mb-4">
                 <FileText className="h-3.5 w-3.5" />
                 Documentation
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">How to use www.erlc.directory</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">How to use ERLC Directory</h1>
               <p className="mt-3 text-muted-foreground max-w-2xl leading-relaxed">
-                Animated reference layout aligned with our monochrome accent—jump between sections or skim the on-this-page outline on desktop.
+                In-depth guide to profiles, verification, servers, posts, connections, and account behavior. Use the sidebar or search to jump
+                around.
               </p>
             </header>
 
@@ -297,7 +449,6 @@ const Docs = () => {
             ))}
           </main>
 
-          {/* Right TOC */}
           <aside className="hidden xl:block w-48 shrink-0 sticky top-28 self-start text-sm animate-in fade-in slide-in-from-right-3 duration-500">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">On this page</p>
             <ul className="space-y-2 border-l border-white/10 pl-4">
