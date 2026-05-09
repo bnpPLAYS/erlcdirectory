@@ -126,7 +126,7 @@ const Docs = () => {
                 Editing your profile
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                From your profile page, choose Edit to update banner, accent theme presets, skills, social links, availability, and bio text.
+                From your profile page, choose Edit to update banner, accent theme presets, skills, availability, and bio text.
                 Long-form fields run through an automatic chat filter—keep language respectful so saves succeed smoothly.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="profiles-experience">

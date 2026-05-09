@@ -8,7 +8,6 @@ import {
   Briefcase,
   Palette,
   User as UserIcon,
-  Link2,
   Shield,
   BadgeCheck,
   Pencil,
@@ -17,12 +16,6 @@ import {
   Sparkles,
   Bell,
   Eye,
-  Github,
-  Youtube,
-  Twitch,
-  Twitter,
-  MessageCircle,
-  Gamepad2,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
@@ -80,13 +73,13 @@ interface ProfileLike {
   dm_website_updates?: boolean | null;
   dm_experience_status_updates?: boolean | null;
   skills: string[];
-  social_links: Record<string, string> | null;
 }
 
-const EDITOR_TABS = ['general', 'customize', 'experience', 'socials'] as const;
+const EDITOR_TABS = ['general', 'customize', 'experience'] as const;
 type EditorTab = (typeof EDITOR_TABS)[number];
 
 function parseEditorTab(t: string | undefined): EditorTab {
+  if (t === 'socials') return 'general';
   if (t && (EDITOR_TABS as readonly string[]).includes(t)) return t as EditorTab;
   return 'general';
 }
@@ -153,15 +146,6 @@ const ACCENT_SWATCHES = [
   '#e879f9',
 ]
 
-const SOCIAL_PLATFORMS: { key: string; label: string; Icon: LucideIcon }[] = [
-  { key: 'twitter', label: 'X / Twitter', Icon: Twitter },
-  { key: 'youtube', label: 'YouTube', Icon: Youtube },
-  { key: 'twitch', label: 'Twitch', Icon: Twitch },
-  { key: 'github', label: 'GitHub', Icon: Github },
-  { key: 'discord_server', label: 'Discord invite', Icon: MessageCircle },
-  { key: 'roblox', label: 'Roblox', Icon: Gamepad2 },
-]
-
 function EditorSection({
   title,
   description,
@@ -223,7 +207,6 @@ const ProfileEditor = ({
   });
   const [skills, setSkills] = useState<string[]>(profile.skills || []);
   const [skillInput, setSkillInput] = useState('');
-  const [socials, setSocials] = useState<Record<string, string>>(profile.social_links || {});
   const [exps, setExps] = useState<Experience[]>(experiences);
   const [removedExpIds, setRemovedExpIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -252,8 +235,6 @@ const ProfileEditor = ({
     setSkillInput('');
   };
   const removeSkill = (s: string) => setSkills(skills.filter((x) => x !== s));
-
-  const setSocial = (k: string, v: string) => setSocials((p) => ({ ...p, [k]: v }));
 
   const refreshExperiences = async () => {
     const { data } = await supabase
@@ -336,16 +317,6 @@ const ProfileEditor = ({
     }
     setSaving(true);
     try {
-      const cleanedSocials = Object.fromEntries(
-        Object.entries(socials)
-          .filter(([, v]) => v && v.trim())
-          .map(([k, v]) => {
-            const r = filterPlaintext(v.trim());
-            filterHits += r.blockedHits;
-            return [k, r.text];
-          })
-      );
-
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -361,7 +332,7 @@ const ProfileEditor = ({
           accent_color: form.accent_color || null,
           theme_preset: form.theme_preset || 'mono',
           skills: filteredSkills,
-          social_links: cleanedSocials,
+          social_links: {},
           dm_website_updates: dmWebsiteUpdates,
           dm_experience_status_updates: dmExperienceUpdates,
         })
@@ -474,13 +445,6 @@ const ProfileEditor = ({
           >
             <Briefcase className="h-4 w-4 shrink-0 opacity-80" />
             Experience
-          </TabsTrigger>
-          <TabsTrigger
-            value="socials"
-            className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
-          >
-            <Link2 className="h-4 w-4 shrink-0 opacity-80" />
-            Socials
           </TabsTrigger>
         </TabsList>
 
@@ -883,37 +847,6 @@ const ProfileEditor = ({
               </Card>
             ))}
           </div>
-        </TabsContent>
-
-        {/* SOCIALS */}
-        <TabsContent value="socials" className="mt-5">
-          <EditorSection
-            title="Social links"
-            description="Full URLs — only filled fields show on your public profile."
-            icon={Link2}
-          >
-            <div className="grid sm:grid-cols-2 gap-4">
-              {SOCIAL_PLATFORMS.map(({ key, label, Icon }) => (
-                <div
-                  key={key}
-                  className="flex gap-3 rounded-xl border border-white/10 bg-black/20 p-4 transition-colors hover:border-white/18 hover:bg-white/[0.03]"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] border border-white/10">
-                    <Icon className="h-5 w-5 text-white/85" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <Label className="text-sm font-medium text-foreground">{label}</Label>
-                    <Input
-                      value={socials[key] || ''}
-                      maxLength={200}
-                      onChange={(e) => setSocial(key, e.target.value)}
-                      className={cn(editorInput, 'h-10 text-[13px]')}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </EditorSection>
         </TabsContent>
       </Tabs>
       </div>
