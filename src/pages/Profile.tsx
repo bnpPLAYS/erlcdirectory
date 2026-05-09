@@ -176,16 +176,20 @@ const Profile = () => {
   const toggleAdminFlag = async (field: 'is_verified' | 'is_featured') => {
     if (!profile) return;
     const newVal = !profile[field];
-    const { error } = await supabase
-      .from('profiles')
-      .update({ [field]: newVal })
-      .eq('id', profile.id);
+    const p_is_verified = field === 'is_verified' ? newVal : profile.is_verified;
+    const p_is_featured = field === 'is_featured' ? newVal : profile.is_featured;
+
+    const { error } = await supabase.rpc('site_owner_set_profile_flags', {
+      p_profile_id: profile.id,
+      p_is_verified,
+      p_is_featured,
+    });
     if (error) {
       toast.error('Failed: ' + error.message);
       return;
     }
     toast.success(`${field === 'is_verified' ? 'Verified' : 'Featured'} ${newVal ? 'granted' : 'removed'}`);
-    setProfile({ ...profile, [field]: newVal });
+    setProfile({ ...profile, is_verified: p_is_verified, is_featured: p_is_featured });
   };
 
   useEffect(() => {

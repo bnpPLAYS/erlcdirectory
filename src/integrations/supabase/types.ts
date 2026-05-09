@@ -608,6 +608,14 @@ export type Database = {
         Returns: boolean
       }
       is_my_profile: { Args: { _profile_id: string }; Returns: boolean }
+      site_owner_set_profile_flags: {
+        Args: {
+          p_profile_id: string
+          p_is_verified: boolean
+          p_is_featured: boolean
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, CheckCircle2, Star, Users } from 'lucide-react';
 import SkillBadge from '@/components/ui/skill-badge';
 import { profilePath } from '@/lib/profilePath';
+import { experienceRoleDisplay } from '@/lib/experienceConstants';
+import { cn } from '@/lib/utils';
 
 interface ExperiencePreview {
   id: string;
@@ -135,7 +137,9 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                 Recent work
               </p>
               <div className="space-y-2">
-                {experiences.map((exp) => (
+                {experiences.map((exp) => {
+                  const roleHeadline = experienceRoleDisplay(exp.role, exp.is_verified);
+                  return (
                   <div
                     key={exp.id}
                     className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5"
@@ -147,7 +151,16 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{exp.role}</p>
+                      <p
+                        className={cn(
+                          'text-sm font-semibold truncate',
+                          roleHeadline.mode === 'pending'
+                            ? 'text-muted-foreground font-medium'
+                            : 'text-foreground',
+                        )}
+                      >
+                        {roleHeadline.text}
+                      </p>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
                         <span className="truncate">{exp.server_name}</span>
                         <span className="inline-flex items-center gap-0.5 shrink-0 tabular-nums">
@@ -162,7 +175,8 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                       </Badge>
                     )}
                   </div>
-                ))}
+                );
+                })}
               </div>
               {remainingExp > 0 && (
                 <p className="text-center text-xs text-muted-foreground pt-3 font-medium">
