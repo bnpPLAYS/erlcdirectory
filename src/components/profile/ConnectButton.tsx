@@ -190,7 +190,7 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="glass-strong border-white/10 max-w-md">
+        <DialogContent className="glass-strong border-white/10 bg-card max-w-md text-card-foreground">
           <DialogHeader>
             <DialogTitle>Connect with {targetName || 'this member'}</DialogTitle>
             <DialogDescription>

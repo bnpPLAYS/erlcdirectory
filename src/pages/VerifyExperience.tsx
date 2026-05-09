@@ -143,7 +143,7 @@ const VerifyExperience = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-xl space-y-6">
         <Link to="/" className="flex items-center justify-center gap-2 mb-2">
-          <img src={logo} alt="ERLC Directory" className="w-8 h-8" />
+          <img src={logo} alt="" className="logo-mark w-8 h-8 object-contain" width={32} height={32} aria-hidden />
           <span className="text-sm font-bold">ERLC Directory</span>
         </Link>
 
