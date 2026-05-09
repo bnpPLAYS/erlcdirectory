@@ -20,8 +20,20 @@ const DiscordCallback = () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const state = params.get('state');
-      const expectedState = window.localStorage.getItem('discord_oauth_state');
 
+      // If this is a verify-experience OAuth round-trip, forward to the verify page
+      if (code && state) {
+        try {
+          const decoded = JSON.parse(atob(state));
+          if (decoded?.kind === 'verify' && decoded?.token) {
+            const fwd = new URLSearchParams({ code, state });
+            navigate(`/verify/${decoded.token}?${fwd.toString()}`, { replace: true });
+            return;
+          }
+        } catch { /* not a verify state, fall through */ }
+      }
+
+      const expectedState = window.localStorage.getItem('discord_oauth_state');
       if (!code || !state || state !== expectedState) {
         setStatus('error');
         setMessage('Discord did not return a valid connection request. Try again.');
