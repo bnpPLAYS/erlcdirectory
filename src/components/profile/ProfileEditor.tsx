@@ -29,6 +29,7 @@ interface Experience {
   end_date: string | null;
   is_current: boolean;
   is_verified: boolean;
+  guild_id?: string | null;
   verifier_stated_position?: string | null;
   verifier_review_text?: string | null;
   verifier_review_rating?: number | null;
@@ -564,6 +565,15 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
           experienceId={verifyTarget.id}
           profileId={profile.id}
           serverNameHint={verifyTarget.server_name}
+          linkedGuild={
+            verifyTarget.guild_id
+              ? {
+                  id: verifyTarget.guild_id,
+                  name: verifyTarget.server_name,
+                  icon: verifyTarget.server_icon,
+                }
+              : null
+          }
           onVerified={() => {
             setExps((prev) => prev.map((x) => (x.id === verifyTarget.id ? { ...x, is_verified: true } : x)));
           }}
