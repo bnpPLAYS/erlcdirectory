@@ -130,8 +130,8 @@ const Browse = () => {
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="text-center mb-10">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-              <Users className="h-8 w-8 text-primary-foreground" />
+            <div className="w-14 h-14 mx-auto mb-6 rounded-xl border border-border/60 bg-secondary/40 flex items-center justify-center">
+              <Users className="h-6 w-6 text-foreground" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Browse Members</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
