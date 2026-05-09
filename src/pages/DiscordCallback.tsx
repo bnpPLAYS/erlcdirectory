@@ -8,6 +8,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
 
+function readOAuthParams() {
+  const search = new URLSearchParams(window.location.search);
+  const hash =
+    window.location.hash && window.location.hash.length > 1
+      ? new URLSearchParams(window.location.hash.slice(1))
+      : null;
+  const code = search.get('code') ?? hash?.get('code') ?? null;
+  const state = search.get('state') ?? hash?.get('state') ?? null;
+  return { code, state };
+}
+
 const DiscordCallback = () => {
   const navigate = useNavigate();
   const { loading } = useAuth();
@@ -17,10 +28,29 @@ const DiscordCallback = () => {
   useEffect(() => {
     if (loading) return;
 
+    const finishWithSession = async () => {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        setStatus('error');
+        setMessage(sessionError?.message || 'No session after sign-in.');
+        return;
+      }
+      const { error: syncError } = await syncDiscordProfileFromSession(session);
+      if (syncError) {
+        setStatus('error');
+        setMessage(syncError.message || 'Could not update your profile.');
+        return;
+      }
+      setStatus('success');
+      setMessage('Signed in with Discord. Redirecting…');
+      setTimeout(() => navigate('/', { replace: true }), 600);
+    };
+
     const run = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const state = params.get('state');
+      const { code, state } = readOAuthParams();
 
       // Experience verification: direct Discord OAuth with custom state (not Supabase login)
       if (code && state) {
@@ -32,8 +62,16 @@ const DiscordCallback = () => {
             return;
           }
         } catch {
-          /* Supabase PKCE state is not our verify payload — continue to login flow */
+          /* Supabase PKCE state — not verify */
         }
+      }
+
+      // Supabase often exchanges the code via detectSessionInUrl before this effect runs,
+      // which strips ?code= from the URL — session is already valid; do not require code.
+      const { data: preSession } = await supabase.auth.getSession();
+      if (preSession.session?.user) {
+        await finishWithSession();
+        return;
       }
 
       if (!code) {
@@ -42,40 +80,14 @@ const DiscordCallback = () => {
         return;
       }
 
-      let {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) {
-          setStatus('error');
-          setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
-          return;
-        }
-        ({
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession());
-      }
-
-      if (sessionError || !session) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
         setStatus('error');
-        setMessage(sessionError?.message || 'No session after sign-in.');
+        setMessage(exchangeError.message || 'Could not complete Discord sign-in.');
         return;
       }
 
-      const { error: syncError } = await syncDiscordProfileFromSession(session);
-      if (syncError) {
-        setStatus('error');
-        setMessage(syncError.message || 'Could not update your profile.');
-        return;
-      }
-
-      setStatus('success');
-      setMessage('Signed in with Discord. Redirecting…');
-      setTimeout(() => navigate('/', { replace: true }), 600);
+      await finishWithSession();
     };
 
     void run();
