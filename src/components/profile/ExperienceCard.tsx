@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Shield, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { isPendingPlaceholderRole } from '@/lib/experienceConstants';
+import { experienceRoleDisplay } from '@/lib/experienceConstants';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
+import { cn } from '@/lib/utils';
 
 interface Experience {
   id: string;
@@ -44,9 +45,7 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-  const showPendingHeadline = !experience.is_verified && isPendingPlaceholderRole(experience.role);
-  const verifiedStalePlaceholder =
-    experience.is_verified && isPendingPlaceholderRole(experience.role);
+  const roleHeadline = experienceRoleDisplay(experience.role, experience.is_verified);
 
   const ServerHeader = (
     <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 flex-wrap">
@@ -72,14 +71,13 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className="font-semibold text-foreground">
-                {showPendingHeadline ? (
-                  <span className="text-muted-foreground font-medium">Pending verification</span>
-                ) : verifiedStalePlaceholder ? (
-                  <span>Verified experience</span>
-                ) : (
-                  experience.role
+              <h4
+                className={cn(
+                  'font-semibold text-foreground',
+                  roleHeadline.mode === 'pending' && 'text-muted-foreground font-medium',
                 )}
+              >
+                {roleHeadline.text}
               </h4>
               {experience.department && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
