@@ -9,14 +9,14 @@ const Terms = () => (
     <main className="flex-1 container mx-auto px-4 py-10 max-w-3xl">
       <div className={pageHeroEnter}>
       <h1 className="text-3xl font-bold tracking-tight mb-2">Terms of Service</h1>
-      <p className="text-sm text-muted-foreground mb-8">Last updated: May 9, 2026 · Site: erlc.directory</p>
+      <p className="text-sm text-muted-foreground mb-8">Last updated: May 9, 2026 · Site: www.erlc.directory</p>
       </div>
 
       <div className="space-y-8 text-sm text-muted-foreground leading-relaxed">
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-2">1. Agreement</h2>
           <p>
-            By creating an account or using erlc.directory (the “Service”), you agree to these Terms of Service.
+            By creating an account or using www.erlc.directory (the “Service”), you agree to these Terms of Service.
             If you do not agree, do not use the Service.
           </p>
         </section>
@@ -55,7 +55,7 @@ const Terms = () => (
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-2">5. User content</h2>
           <p>
-            You retain ownership of content you submit. You grant erlc.directory a non-exclusive license to host, display,
+            You retain ownership of content you submit. You grant www.erlc.directory a non-exclusive license to host, display,
             and distribute that content solely to operate and improve the Service. You represent that you have the rights needed for what you upload or write.
           </p>
         </section>

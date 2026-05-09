@@ -62,21 +62,21 @@ const PRODUCT_SCREENSHOTS: {
     description:
       'Search the directory, open profiles, and compare experience before you reach out—without leaving one long spreadsheet of Discord tags.',
     image: homeFeaturePlaceholder,
-    alt: 'Screenshot of the member browse experience on erlc.directory',
+    alt: 'Screenshot of the member browse experience on www.erlc.directory',
   },
   {
     title: 'Profiles that show the work',
     description:
       'Each listing can carry skills, bio, and verified server experience so owners see who someone is, not just a username.',
     image: homeFeaturePlaceholder,
-    alt: 'Screenshot of a member profile with experience on erlc.directory',
+    alt: 'Screenshot of a member profile with experience on www.erlc.directory',
   },
   {
     title: 'Server listings',
     description:
       'Communities publish their server with tags, member reach, and hiring status so staff can find a fit that matches what they want to do.',
     image: homeFeaturePlaceholder,
-    alt: 'Screenshot of server listings on erlc.directory',
+    alt: 'Screenshot of server listings on www.erlc.directory',
   },
 ];
 
@@ -152,7 +152,7 @@ const Index = () => {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-[2.75rem] xl:text-6xl font-bold tracking-tight text-foreground leading-[1.08] mb-5">
-                erlc.directory
+                www.erlc.directory
               </h1>
               <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
                 Hire staff, post resumes and portfolios, connect with friends.
@@ -234,7 +234,7 @@ const Index = () => {
                 <div className="rounded-xl overflow-hidden">
                   <img
                     src={directoryPreview}
-                    alt="Preview of the erlc.directory members page"
+                    alt="Preview of the www.erlc.directory members page"
                     width={1156}
                     height={810}
                     className="block w-full h-auto"
