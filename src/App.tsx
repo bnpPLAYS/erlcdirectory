@@ -36,7 +36,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/browse" element={<Browse />} />
-              <Route path="/profile/:id" element={<Profile />} />
+              <Route path="/profile/:profileSlug" element={<Profile />} />
               <Route path="/servers" element={<Servers />} />
               <Route path="/server/:id" element={<ServerDetail />} />
               <Route path="/posts" element={<Posts />} />
@@ -50,6 +50,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/docs" element={<Docs />} />
+              <Route path="/:profileSlug" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AcceptTermsGate>

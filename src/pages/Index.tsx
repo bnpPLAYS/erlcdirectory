@@ -17,6 +17,7 @@ import homeFeaturePlaceholder from '@/assets/home-features/member-directory.png'
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { pageHeroEnter } from '@/lib/pageHero';
+import { profileEditorPath } from '@/lib/profilePath';
 
 /**
  * Product tour: one image per row. Drop distinct PNGs into `src/assets/home-features/` and
@@ -110,7 +111,7 @@ const Index = () => {
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-10">
                 {user ? (
                   <>
-                    <Link to={profile?.id ? `/profile/${profile.id}?edit=1` : '/browse'}>
+                    <Link to={profile?.id ? profileEditorPath(profile) : '/browse'}>
                       <Button size="lg" className="gap-2 px-7 h-12 rounded-full w-full sm:w-auto">
                         <Pencil className="h-4 w-4" strokeWidth={1.75} />
                         Edit profile

@@ -18,6 +18,7 @@ type SortMode = 'newest' | 'top_rated' | 'most_members' | 'most_experience' | 'a
 
 interface Profile {
   id: string;
+  discord_username?: string | null;
   display_name: string | null;
   discord_avatar: string | null;
   bio: string | null;
@@ -94,7 +95,7 @@ const Browse = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills, created_at',
+        'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills, created_at',
       )
       .limit(150);
 

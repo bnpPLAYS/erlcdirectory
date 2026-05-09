@@ -25,6 +25,7 @@ import { filterPlaintext } from '@/lib/chatFilter';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
+import { profilePath } from '@/lib/profilePath';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 
 interface Post {
@@ -42,6 +43,7 @@ interface Post {
   requirements: string[] | null;
   profiles: {
     id: string;
+    discord_username?: string | null;
     display_name: string | null;
     discord_avatar: string | null;
     discord_id: string | null;
@@ -210,7 +212,7 @@ const Posts = () => {
         `
         id, type, title, content, is_open, view_count, application_count, created_at, server_id,
         application_url, require_guild_membership, requirements,
-        profiles!author_id(id, display_name, discord_avatar, discord_id, is_verified),
+        profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
         servers(id, name, icon, discord_invite, guild_id)
       `,
       )
@@ -401,7 +403,7 @@ const Posts = () => {
                           {post.type === 'looking' && post.profiles?.id && (
                             <div className="flex flex-wrap gap-2 mb-2">
                               <Button size="sm" variant="secondary" className="h-8" asChild>
-                                <Link to={`/profile/${post.profiles.id}`}>View profile</Link>
+                                <Link to={profilePath(post.profiles)}>View profile</Link>
                               </Button>
                               <Button size="sm" variant="outline" className="h-8" asChild>
                                 <Link to={`/messages?with=${post.profiles.id}`}>Message</Link>
@@ -410,7 +412,10 @@ const Posts = () => {
                           )}
 
                           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                            <Link to={`/profile/${post.profiles?.id}`} className="hover:text-foreground">
+                            <Link
+                              to={post.profiles ? profilePath(post.profiles) : '/browse'}
+                              className="hover:text-foreground"
+                            >
                               {post.profiles?.display_name || 'Discord member'}
                             </Link>
                             {post.profiles?.discord_id && (

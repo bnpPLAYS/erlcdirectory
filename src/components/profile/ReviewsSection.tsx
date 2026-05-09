@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { Link } from 'react-router-dom';
+import { profilePath } from '@/lib/profilePath';
 import {
   Select,
   SelectContent,
@@ -306,7 +307,9 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
             {reviews.map((r) => (
               <div key={r.id} className="glass rounded-xl p-3.5">
                 <div className="flex items-start gap-3">
-                  <Link to={`/profile/${r.reviewer?.id}`}>
+                  <Link
+                    to={r.reviewer ? profilePath(r.reviewer) : '/browse'}
+                  >
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={r.reviewer?.discord_avatar || undefined} />
                       <AvatarFallback className="text-xs bg-secondary">
@@ -317,7 +320,7 @@ const ReviewsSection = ({ profileId, serverId, serverName }: Props) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link
-                        to={`/profile/${r.reviewer?.id}`}
+                        to={r.reviewer ? profilePath(r.reviewer) : '/browse'}
                         className="text-sm font-semibold hover:underline truncate"
                       >
                         {r.reviewer?.display_name || 'Member'}

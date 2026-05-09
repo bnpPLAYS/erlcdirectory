@@ -28,6 +28,7 @@ import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { profilePath, profileEditorPath } from '@/lib/profilePath';
 
 const Navbar = () => {
   const location = useLocation();
@@ -109,7 +110,7 @@ const Navbar = () => {
                   className="hidden md:inline-flex h-9 w-9 rounded-full items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
                   aria-label="Add experience"
                   onClick={() =>
-                    navigate(`/profile/${profile.id}?edit=1&tab=experience&add=1`)
+                    navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }))
                   }
                 >
                   <Plus className="h-4 w-4" />
@@ -168,7 +169,7 @@ const Navbar = () => {
                   </div>
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
-                    <Link to={`/profile/${profile?.id}`}>
+                    <Link to={profile ? profilePath(profile) : '/browse'}>
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                       <div className="flex flex-col">
                         <span className="text-sm">My Profile</span>
@@ -178,7 +179,7 @@ const Navbar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="gap-3 py-2.5 cursor-pointer"
-                    onClick={() => navigate(`/profile/${profile?.id}?edit=1`)}
+                    onClick={() => profile && navigate(profileEditorPath(profile))}
                   >
                     <Pencil className="h-4 w-4 text-muted-foreground" />
                     <div className="flex flex-col">
@@ -263,7 +264,7 @@ const Navbar = () => {
                   className="w-full justify-start gap-3 mt-1"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate(`/profile/${profile.id}?edit=1&tab=experience&add=1`);
+                    navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }));
                   }}
                 >
                   <Plus className="h-4 w-4" />

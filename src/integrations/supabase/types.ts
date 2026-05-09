@@ -595,6 +595,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_profile_by_username_lookup: {
+        Args: { lookup: string }
+        Returns: Database["public"]["Tables"]["profiles"]["Row"][]
+      }
       are_connected: { Args: { _a: string; _b: string }; Returns: boolean }
       has_role: {
         Args: {
