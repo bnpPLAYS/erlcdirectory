@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
+import { profilePath } from '@/lib/profilePath';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ interface CoworkerRow {
   is_verified: boolean;
   profile: {
     id: string;
+    discord_username: string | null;
     display_name: string | null;
     discord_avatar: string | null;
     discord_id: string | null;
@@ -62,7 +64,7 @@ const ServerDetail = () => {
         if (profileIds.length) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, display_name, discord_avatar, discord_id, rating, review_count')
+            .select('id, discord_username, display_name, discord_avatar, discord_id, rating, review_count')
             .in('id', profileIds);
           profilesMap = new Map((profiles || []).map((p) => [p.id, p]));
         }
@@ -170,7 +172,10 @@ const ServerDetail = () => {
                 {coworkers.map((c) => (
                   <Card key={c.id} className="card-interactive">
                     <CardContent className="p-4">
-                      <Link to={`/profile/${c.profile?.id}`} className="flex items-center gap-3">
+                      <Link
+                        to={c.profile ? profilePath(c.profile) : '/browse'}
+                        className="flex items-center gap-3"
+                      >
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={c.profile?.discord_avatar || undefined} />
                           <AvatarFallback>{c.profile?.display_name?.[0] || '?'}</AvatarFallback>

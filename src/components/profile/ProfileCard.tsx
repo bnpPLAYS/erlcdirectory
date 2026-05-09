@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Crown, CheckCircle2, Star, Users } from 'lucide-react';
 import SkillBadge from '@/components/ui/skill-badge';
+import { profilePath } from '@/lib/profilePath';
 
 interface ExperiencePreview {
   id: string;
@@ -17,6 +18,7 @@ interface ExperiencePreview {
 interface ProfileCardProps {
   profile: {
     id: string;
+    discord_username?: string | null;
     display_name: string | null;
     discord_avatar: string | null;
     bio: string | null;
@@ -50,7 +52,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const showNewBadge = isNewProfile(profile.created_at);
 
   return (
-    <Link to={`/profile/${profile.id}`} className="block h-full">
+    <Link to={profilePath(profile)} className="block h-full">
       <Card className="group h-full overflow-hidden rounded-2xl border border-white/10 bg-[hsl(240_6%_8%/0.85)] shadow-lg transition-all duration-300 hover:border-white/14 hover:bg-[hsl(240_6%_10%/0.9)] hover:shadow-xl">
         <CardContent className="p-5 sm:p-6 space-y-4">
           {/* Header row */}

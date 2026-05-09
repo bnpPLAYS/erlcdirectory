@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import VerifiedBadge from '@/components/ui/verified-badge';
 import { toast } from 'sonner';
 import { pageHeroEnter } from '@/lib/pageHero';
+import { profilePath } from '@/lib/profilePath';
 
 interface Person {
   id: string;
@@ -250,13 +251,13 @@ const Connections = () => {
                     <Card key={c.id} className="card-elevated liquid-edge hover:border-white/30 transition-colors">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                          <Link to={`/profile/${c.id}`} className="shrink-0">
+                          <Link to={profilePath({ id: c.id, discord_username: c.discord_username })} className="shrink-0">
                             <Avatar className="h-12 w-12 ring-1 ring-white/10">
                               <AvatarImage src={c.discord_avatar || undefined} />
                               <AvatarFallback>{c.display_name?.[0] || 'U'}</AvatarFallback>
                             </Avatar>
                           </Link>
-                          <Link to={`/profile/${c.id}`} className="flex-1 min-w-0">
+                          <Link to={profilePath({ id: c.id, discord_username: c.discord_username })} className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium truncate">{c.display_name || c.discord_username || 'Member'}</span>
                               {c.is_verified && <VerifiedBadge size="sm" />}
@@ -365,7 +366,7 @@ const RequestCard = ({
     <Card className="card-elevated liquid-edge">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <Link to={`/profile/${p.id}`} className="shrink-0">
+          <Link to={profilePath({ id: p.id, discord_username: p.discord_username })} className="shrink-0">
             <Avatar className="h-12 w-12 ring-1 ring-white/10">
               <AvatarImage src={p.discord_avatar || undefined} />
               <AvatarFallback>{p.display_name?.[0] || 'U'}</AvatarFallback>
@@ -373,7 +374,7 @@ const RequestCard = ({
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <Link to={`/profile/${p.id}`} className="font-medium truncate hover:underline">
+              <Link to={profilePath({ id: p.id, discord_username: p.discord_username })} className="font-medium truncate hover:underline">
                 {p.display_name || p.discord_username || 'Member'}
               </Link>
               {p.is_verified && <VerifiedBadge size="sm" />}

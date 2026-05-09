@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { profilePath } from '@/lib/profilePath';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
@@ -64,7 +65,7 @@ const SiteFooter = ({ className }: { className?: string }) => {
               </li>
               <li>
                 {user && profile ? (
-                  <Link to={`/profile/${profile.id}`} className="hover:text-white transition-colors">
+                  <Link to={profilePath(profile)} className="hover:text-white transition-colors">
                     My profile
                   </Link>
                 ) : (

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { sendDiscordUserDm } from '../_shared/discordDm.ts'
 import { discordIconCdnUrl, enrichDiscordGuildForDirectory } from '../_shared/discordGuildEnrichment.ts'
+import { publicProfileAbsoluteUrl } from '../_shared/publicProfilePath.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,13 +66,13 @@ async function notifyExperienceDecisionDm(
 
   const { data: row } = await db
     .from('profiles')
-    .select('discord_id, dm_experience_status_updates')
+    .select('discord_id, discord_username, dm_experience_status_updates')
     .eq('id', params.profileId)
     .maybeSingle()
 
   if (!row?.discord_id || !row.dm_experience_status_updates) return
 
-  const profileUrl = `${siteUrl}/profile/${params.profileId}`
+  const profileUrl = publicProfileAbsoluteUrl(siteUrl, params.profileId, row.discord_username ?? null)
   const guild = params.guildName || 'your server'
   const who = params.approverLabel || 'a server admin'
 

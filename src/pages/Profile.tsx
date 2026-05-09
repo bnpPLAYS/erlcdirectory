@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Briefcase, MessageSquare, MapPin, Pencil, Clock, Star, ExternalLink, Shield, ShieldCheck, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { profilePath, looksLikeProfileUuid } from '@/lib/profilePath';
 
 interface ProfileData {
   id: string;
@@ -60,10 +61,11 @@ interface Experience {
 }
 
 const Profile = () => {
-  const { id: rawId } = useParams();
+  const { profileSlug } = useParams<{ profileSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { profile: meProfile } = useAuth();
-  const id = rawId === 'me' ? meProfile?.id : rawId;
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,61 @@ const Profile = () => {
   useEffect(() => {
     setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
   }, [meProfile?.discord_username]);
+
+  const fetchProfile = useCallback(async () => {
+    setLoading(true);
+    setProfile(null);
+    setExperiences([]);
+    const slug = profileSlug ? decodeURIComponent(profileSlug) : '';
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+
+    let profileData: ProfileData | null = null;
+
+    if (slug === 'me') {
+      const mid = meProfile?.id;
+      if (!mid) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase.from('profiles').select('*').eq('id', mid).single();
+      if (data) profileData = data as ProfileData;
+    } else if (looksLikeProfileUuid(slug)) {
+      const { data } = await supabase.from('profiles').select('*').eq('id', slug).maybeSingle();
+      if (data) profileData = data as ProfileData;
+    } else {
+      const { data: rpcData, error } = await supabase.rpc('get_profile_by_username_lookup', {
+        lookup: slug,
+      });
+      const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      if (!error && row) profileData = row as ProfileData;
+    }
+
+    if (profileData) {
+      setProfile(profileData);
+      const { data: expData } = await supabase
+        .from('experiences')
+        .select('*')
+        .eq('profile_id', profileData.id)
+        .order('start_date', { ascending: false });
+      if (expData) setExperiences(expData);
+    }
+    setLoading(false);
+  }, [profileSlug, meProfile?.id]);
+
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    if (!profile || loading) return;
+    const canon = profilePath(profile);
+    if (location.pathname !== canon) {
+      navigate({ pathname: canon, search: location.search, hash: location.hash }, { replace: true });
+    }
+  }, [profile, loading, location.pathname, location.search, location.hash, navigate]);
 
   const toggleAdminFlag = async (field: 'is_verified' | 'is_featured') => {
     if (!profile) return;
@@ -92,34 +149,10 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    if (id) fetchProfile();
-  }, [id]);
-
-  useEffect(() => {
     if (isOwner && searchParams.get('edit') === '1') {
       setEditMode(true);
     }
   }, [isOwner, searchParams]);
-
-  const fetchProfile = async () => {
-    setLoading(true);
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (profileData) {
-      setProfile(profileData as any);
-      const { data: expData } = await supabase
-        .from('experiences')
-        .select('*')
-        .eq('profile_id', id)
-        .order('start_date', { ascending: false });
-      if (expData) setExperiences(expData);
-    }
-    setLoading(false);
-  };
 
   if (loading) {
     return (
