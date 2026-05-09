@@ -1,5 +1,6 @@
+-- Baseline schema (idempotent where safe for preview / re-linked DBs that already have tables).
 -- Create profiles table for user data
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   discord_id TEXT UNIQUE,
@@ -20,7 +21,7 @@ CREATE TABLE public.profiles (
 );
 
 -- Create experiences table
-CREATE TABLE public.experiences (
+CREATE TABLE IF NOT EXISTS public.experiences (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   server_name TEXT NOT NULL,
@@ -36,7 +37,7 @@ CREATE TABLE public.experiences (
 );
 
 -- Create servers table
-CREATE TABLE public.servers (
+CREATE TABLE IF NOT EXISTS public.servers (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
@@ -56,7 +57,7 @@ CREATE TABLE public.servers (
 );
 
 -- Create posts table
-CREATE TABLE public.posts (
+CREATE TABLE IF NOT EXISTS public.posts (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   server_id UUID REFERENCES public.servers(id) ON DELETE SET NULL,
@@ -72,7 +73,7 @@ CREATE TABLE public.posts (
 );
 
 -- Create messages table
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   receiver_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -82,7 +83,7 @@ CREATE TABLE public.messages (
 );
 
 -- Create conversations view helper table
-CREATE TABLE public.conversations (
+CREATE TABLE IF NOT EXISTS public.conversations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   participant_one UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   participant_two UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -100,47 +101,63 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Experiences policies
+DROP POLICY IF EXISTS "Experiences are viewable by everyone" ON public.experiences;
 CREATE POLICY "Experiences are viewable by everyone" ON public.experiences FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can manage their own experiences" ON public.experiences;
 CREATE POLICY "Users can manage their own experiences" ON public.experiences FOR ALL USING (
   profile_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
 
 -- Servers policies
+DROP POLICY IF EXISTS "Servers are viewable by everyone" ON public.servers;
 CREATE POLICY "Servers are viewable by everyone" ON public.servers FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Owners can manage their servers" ON public.servers;
 CREATE POLICY "Owners can manage their servers" ON public.servers FOR ALL USING (
   owner_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Authenticated users can create servers" ON public.servers;
 CREATE POLICY "Authenticated users can create servers" ON public.servers FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Posts policies
+DROP POLICY IF EXISTS "Posts are viewable by everyone" ON public.posts;
 CREATE POLICY "Posts are viewable by everyone" ON public.posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Authors can manage their posts" ON public.posts;
 CREATE POLICY "Authors can manage their posts" ON public.posts FOR ALL USING (
   author_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Authenticated users can create posts" ON public.posts;
 CREATE POLICY "Authenticated users can create posts" ON public.posts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Messages policies
+DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
 CREATE POLICY "Users can view their own messages" ON public.messages FOR SELECT USING (
   sender_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()) OR
   receiver_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
 CREATE POLICY "Users can send messages" ON public.messages FOR INSERT WITH CHECK (
   sender_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Users can update their received messages" ON public.messages;
 CREATE POLICY "Users can update their received messages" ON public.messages FOR UPDATE USING (
   receiver_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
 
 -- Conversations policies
+DROP POLICY IF EXISTS "Users can view their conversations" ON public.conversations;
 CREATE POLICY "Users can view their conversations" ON public.conversations FOR SELECT USING (
   participant_one IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()) OR
   participant_two IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Users can create conversations" ON public.conversations;
 CREATE POLICY "Users can create conversations" ON public.conversations FOR INSERT WITH CHECK (
   participant_one IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()) OR
   participant_two IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
@@ -156,8 +173,11 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- Create triggers for automatic timestamp updates
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_servers_updated_at ON public.servers;
 CREATE TRIGGER update_servers_updated_at BEFORE UPDATE ON public.servers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_posts_updated_at ON public.posts;
 CREATE TRIGGER update_posts_updated_at BEFORE UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Function to create profile on signup
@@ -177,6 +197,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger to create profile on user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
