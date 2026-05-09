@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, X, Briefcase, Palette, User as UserIcon, Link2, Shield, BadgeCheck, Pencil, ImageIcon, Globe } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProfilePreviewCard from './ProfilePreviewCard';
-
-const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,9 +14,20 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
+import { cn } from '@/lib/utils';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+
+const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
+
+/** Flush with dark directory UI: pill inputs, soft border, minimal ring */
+const flushInput =
+  'rounded-full border-white/12 bg-white/[0.04] text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-white/25 focus-visible:ring-offset-0';
+const flushSelectTrigger =
+  'rounded-full border-white/12 bg-white/[0.04] text-foreground shadow-none focus:ring-1 focus:ring-white/25 focus:ring-offset-0';
+const flushTextarea =
+  'rounded-2xl border-white/12 bg-white/[0.04] text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-white/25 focus-visible:ring-offset-0 min-h-[100px]';
 
 interface Experience {
   id: string;
@@ -87,6 +96,24 @@ const PRESETS = [
   { id: 'ember', label: 'Ember', accent: '#ffb4a2' },
   { id: 'mint', label: 'Mint', accent: '#b8f2d8' },
   { id: 'lilac', label: 'Lilac', accent: '#d6c2ff' },
+  { id: 'slate', label: 'Slate', accent: '#94a3b8' },
+  { id: 'rose', label: 'Rose', accent: '#fda4af' },
+  { id: 'gold', label: 'Gold', accent: '#fcd34d' },
+  { id: 'ocean', label: 'Ocean', accent: '#67e8f9' },
+  { id: 'violet', label: 'Violet', accent: '#c4b5fd' },
+];
+
+const ACCENT_SWATCHES = [
+  '#ffffff',
+  '#e9d5ff',
+  '#c4b5fd',
+  '#a78bfa',
+  '#7dd3fc',
+  '#6ee7b7',
+  '#86efac',
+  '#fca5a5',
+  '#fdba74',
+  '#94a3b8',
 ];
 
 const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
@@ -267,7 +294,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                   maxLength={60}
                   onChange={(e) => update('display_name', e.target.value)}
                   placeholder="Your display name"
-                  className="text-lg font-semibold bg-transparent border-white/10 focus-visible:ring-1 focus-visible:ring-white/30 h-10"
+                  className="text-lg font-semibold rounded-full border-white/12 bg-white/[0.06] focus-visible:ring-1 focus-visible:ring-white/25 focus-visible:ring-offset-0 h-10"
                 />
                 <Pencil className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
               </div>
@@ -289,19 +316,49 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
       <Tabs defaultValue="general" className="w-full min-w-0">
-        <TabsList className="glass">
-          <TabsTrigger value="general" className="gap-2"><UserIcon className="h-4 w-4" />General</TabsTrigger>
-          <TabsTrigger value="customize" className="gap-2"><Palette className="h-4 w-4" />Customize</TabsTrigger>
-          <TabsTrigger value="experience" className="gap-2"><Briefcase className="h-4 w-4" />Experience</TabsTrigger>
-          <TabsTrigger value="socials" className="gap-2"><Link2 className="h-4 w-4" />Socials</TabsTrigger>
+        <TabsList className="flex h-auto min-h-10 w-full flex-wrap justify-start gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1 text-muted-foreground">
+          <TabsTrigger
+            value="general"
+            className="gap-2 rounded-full px-3 py-2 text-sm data-[state=active]:bg-white/12 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            <UserIcon className="h-4 w-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger
+            value="customize"
+            className="gap-2 rounded-full px-3 py-2 text-sm data-[state=active]:bg-white/12 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            <Palette className="h-4 w-4" />
+            Customize
+          </TabsTrigger>
+          <TabsTrigger
+            value="experience"
+            className="gap-2 rounded-full px-3 py-2 text-sm data-[state=active]:bg-white/12 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            <Briefcase className="h-4 w-4" />
+            Experience
+          </TabsTrigger>
+          <TabsTrigger
+            value="socials"
+            className="gap-2 rounded-full px-3 py-2 text-sm data-[state=active]:bg-white/12 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            <Link2 className="h-4 w-4" />
+            Socials
+          </TabsTrigger>
         </TabsList>
 
         {/* GENERAL */}
         <TabsContent value="general" className="mt-4">
-          <Card className="card-elevated liquid-edge">
+          <Card className="card-elevated liquid-edge border-white/10">
             <CardContent className="p-5 grid md:grid-cols-2 gap-4">
               <Field label="Display name">
-                <Input value={form.display_name} maxLength={60} onChange={(e) => update('display_name', e.target.value)} placeholder="How others see you" />
+                <Input
+                  className={flushInput}
+                  value={form.display_name}
+                  maxLength={60}
+                  onChange={(e) => update('display_name', e.target.value)}
+                  placeholder="How others see you"
+                />
               </Field>
               <Field label="Pronouns">
                 {(() => {
@@ -317,7 +374,9 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                           else update('pronouns', v);
                         }}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select pronouns" /></SelectTrigger>
+                        <SelectTrigger className={flushSelectTrigger}>
+                          <SelectValue placeholder="Select pronouns" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none">Prefer not to say</SelectItem>
                           {PRONOUN_PRESETS.map((p) => (
@@ -328,6 +387,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                       </Select>
                       {selectValue === '__custom' && (
                         <Input
+                          className={flushInput}
                           value={form.pronouns.trim()}
                           maxLength={30}
                           autoFocus
@@ -346,7 +406,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                       key={emo}
                       type="button"
                       onClick={() => update('status', `${emo} ${form.status.replace(/^\p{Emoji}\s*/u, '')}`.trim())}
-                      className="h-8 w-8 rounded-md glass glass-hover text-base"
+                      className="h-9 w-9 rounded-full border border-white/10 bg-white/[0.04] text-base hover:bg-white/[0.08] transition-colors"
                       aria-label={`Add ${emo}`}
                     >
                       {emo}
@@ -354,6 +414,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                   ))}
                 </div>
                 <Input
+                  className={flushInput}
                   value={form.status}
                   maxLength={140}
                   onChange={(e) => update('status', e.target.value)}
@@ -364,32 +425,57 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                 </p>
               </Field>
               <Field label="Availability">
-                <Input value={form.availability} maxLength={40} onChange={(e) => update('availability', e.target.value)} placeholder="Open to work" />
+                <Input
+                  className={flushInput}
+                  value={form.availability}
+                  maxLength={40}
+                  onChange={(e) => update('availability', e.target.value)}
+                  placeholder="Open to work"
+                />
               </Field>
               <Field label="Location">
-                <Input value={form.location} maxLength={80} onChange={(e) => update('location', e.target.value)} placeholder="Manchester, UK" />
+                <Input
+                  className={flushInput}
+                  value={form.location}
+                  maxLength={80}
+                  onChange={(e) => update('location', e.target.value)}
+                  placeholder="Manchester, UK"
+                />
               </Field>
               <Field label="Timezone">
-                <Input value={form.timezone} maxLength={40} onChange={(e) => update('timezone', e.target.value)} placeholder="GMT / UTC+0" />
-              </Field>
-              <Field label="Website" className="md:col-span-2">
-                <Input value={form.website} maxLength={200} onChange={(e) => update('website', e.target.value)} placeholder="https://example.com" />
+                <Input
+                  className={flushInput}
+                  value={form.timezone}
+                  maxLength={40}
+                  onChange={(e) => update('timezone', e.target.value)}
+                  placeholder="GMT / UTC+0"
+                />
               </Field>
               <Field label="Bio" className="md:col-span-2">
-                <Textarea value={form.bio} maxLength={500} rows={4} onChange={(e) => update('bio', e.target.value)} placeholder="Tell servers what you bring." />
+                <Textarea
+                  className={flushTextarea}
+                  value={form.bio}
+                  maxLength={500}
+                  rows={4}
+                  onChange={(e) => update('bio', e.target.value)}
+                  placeholder="Tell servers what you bring."
+                />
                 <p className="text-xs text-muted-foreground mt-1">{form.bio.length}/500</p>
               </Field>
 
               <Field label="Skills" className="md:col-span-2">
                 <div className="flex gap-2">
                   <Input
+                    className={flushInput}
                     value={skillInput}
                     maxLength={30}
                     onChange={(e) => setSkillInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                     placeholder="Add a skill and press Enter"
                   />
-                  <Button type="button" variant="secondary" onClick={addSkill}><Plus className="h-4 w-4" /></Button>
+                  <Button type="button" variant="secondary" className="rounded-full shrink-0" onClick={addSkill}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
                 {skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -407,44 +493,120 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
         {/* CUSTOMIZE */}
         <TabsContent value="customize" className="mt-4">
-          <Card className="card-elevated liquid-edge">
-            <CardContent className="p-5 space-y-5">
-              <Field label="Banner image URL">
-                <Input value={form.banner_url} maxLength={500} onChange={(e) => update('banner_url', e.target.value)} placeholder="https://…/banner.jpg" />
-                {form.banner_url && (
-                  <div className="mt-3 h-28 rounded-xl overflow-hidden border border-white/10">
-                    <img src={form.banner_url} alt="banner preview" className="w-full h-full object-cover" />
+          <Card className="card-elevated liquid-edge border-white/10">
+            <CardContent className="p-5 space-y-8">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Tune how your profile looks in the directory. Changes apply to your banner, accents, and the link on your card.
+              </p>
+
+              <div className="space-y-3">
+                <Field label="Banner image URL">
+                  <Input
+                    className={flushInput}
+                    value={form.banner_url}
+                    maxLength={500}
+                    onChange={(e) => update('banner_url', e.target.value)}
+                    placeholder="https://…/banner.jpg"
+                  />
+                </Field>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden aspect-[21/8] max-h-40">
+                  {form.banner_url ? (
+                    <img src={form.banner_url} alt="Banner preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full grid place-items-center text-xs text-muted-foreground px-4 text-center">
+                      Paste an image URL to preview your banner here
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Field label="Personal website">
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      className={cn(flushInput, 'pl-10')}
+                      value={form.website}
+                      maxLength={200}
+                      onChange={(e) => update('website', e.target.value)}
+                      placeholder="https://example.com"
+                    />
                   </div>
-                )}
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Shown on your public profile. Must start with http:// or https://
+                  </p>
+                </Field>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Quick accent</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ACCENT_SWATCHES.map((c) => {
+                    const active = form.accent_color.toLowerCase() === c.toLowerCase();
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        title={c}
+                        onClick={() => update('accent_color', c)}
+                        className={cn(
+                          'h-10 w-10 rounded-full border-2 transition-transform shrink-0',
+                          active
+                            ? 'border-white scale-105 ring-2 ring-violet-400/50 ring-offset-2 ring-offset-background'
+                            : 'border-white/25 hover:border-white/45',
+                        )}
+                        style={{ backgroundColor: c }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Field label="Accent hex">
+                <div className="flex items-center gap-2 max-w-md">
+                  <input
+                    type="color"
+                    value={form.accent_color.match(/^#[0-9a-fA-F]{6}$/) ? form.accent_color : '#ffffff'}
+                    onChange={(e) => update('accent_color', e.target.value)}
+                    className="h-10 w-12 shrink-0 rounded-full border border-white/15 bg-transparent cursor-pointer overflow-hidden"
+                    aria-label="Pick accent color"
+                  />
+                  <Input
+                    className={flushInput}
+                    value={form.accent_color}
+                    maxLength={9}
+                    onChange={(e) => update('accent_color', e.target.value)}
+                    placeholder="#ffffff"
+                  />
+                </div>
               </Field>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <Field label="Accent color">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={form.accent_color}
-                      onChange={(e) => update('accent_color', e.target.value)}
-                      className="h-10 w-14 rounded-md bg-transparent border border-white/10 cursor-pointer"
-                    />
-                    <Input value={form.accent_color} maxLength={9} onChange={(e) => update('accent_color', e.target.value)} />
-                  </div>
-                </Field>
-                <Field label="Theme preset">
-                  <div className="flex flex-wrap gap-2">
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => { update('theme_preset', p.id); update('accent_color', p.accent); }}
-                        className={`px-3 py-2 rounded-lg text-sm glass glass-hover ${form.theme_preset === p.id ? 'ring-1 ring-white/40' : ''}`}
-                      >
-                        <span className="inline-block w-3 h-3 rounded-full mr-2 align-middle" style={{ background: p.accent }} />
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
+              <div className="space-y-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Theme preset</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        update('theme_preset', p.id);
+                        update('accent_color', p.accent);
+                      }}
+                      className={cn(
+                        'flex items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-colors',
+                        form.theme_preset === p.id
+                          ? 'border-violet-400/35 bg-violet-500/10 text-foreground'
+                          : 'border-white/10 bg-white/[0.02] text-muted-foreground hover:bg-white/[0.05] hover:border-white/15',
+                      )}
+                    >
+                      <span
+                        className="h-8 w-8 rounded-full border border-white/15 shrink-0"
+                        style={{ background: p.accent }}
+                      />
+                      <span className="font-medium">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -486,6 +648,7 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                       </div>
                     ) : (
                       <Input
+                        className={flushInput}
                         value={e.role}
                         maxLength={80}
                         onChange={(ev) => updateExp(e.id, { role: ev.target.value })}
@@ -494,7 +657,12 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                     )}
                   </Field>
                   <Field label="Start date">
-                    <Input type="date" value={e.start_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })} />
+                    <Input
+                      className={cn(flushInput, 'rounded-2xl')}
+                      type="date"
+                      value={e.start_date?.slice(0, 10) || ''}
+                      onChange={(ev) => updateExp(e.id, { start_date: ev.target.value })}
+                    />
                   </Field>
                   <div className="flex items-center justify-between md:col-span-2">
                     <div className="flex items-center gap-3">
@@ -503,7 +671,12 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
                     </div>
                     {!e.is_current && (
                       <Field label="End date" className="w-48">
-                        <Input type="date" value={e.end_date?.slice(0, 10) || ''} onChange={(ev) => updateExp(e.id, { end_date: ev.target.value })} />
+                        <Input
+                          className={cn(flushInput, 'rounded-2xl')}
+                          type="date"
+                          value={e.end_date?.slice(0, 10) || ''}
+                          onChange={(ev) => updateExp(e.id, { end_date: ev.target.value })}
+                        />
                       </Field>
                     )}
                   </div>
@@ -534,15 +707,16 @@ const ProfileEditor = ({ profile, experiences, onSaved, onCancel }: Props) => {
 
         {/* SOCIALS */}
         <TabsContent value="socials" className="mt-4">
-          <Card className="card-elevated liquid-edge">
+          <Card className="card-elevated liquid-edge border-white/10">
             <CardContent className="p-5 grid md:grid-cols-2 gap-4">
               {['twitter', 'youtube', 'twitch', 'roblox', 'discord_server', 'github'].map((k) => (
                 <Field key={k} label={k.replace('_', ' ')}>
                   <Input
+                    className={flushInput}
                     value={socials[k] || ''}
                     maxLength={200}
                     onChange={(e) => setSocial(k, e.target.value)}
-                    placeholder={`https://…`}
+                    placeholder="https://…"
                   />
                 </Field>
               ))}
