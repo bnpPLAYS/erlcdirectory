@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { sendDiscordUserDm } from '../_shared/discordDm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,41 @@ const json = (body: unknown, status = 200) =>
   })
 
 const ADMIN = 0x8n
+
+async function notifyExperienceDecisionDm(
+  db: SupabaseClient,
+  params: {
+    profileId: string
+    guildName: string
+    decision: 'approved' | 'rejected'
+    approverLabel: string
+  },
+) {
+  const botToken = Deno.env.get('DISCORD_BOT_TOKEN')?.trim()
+  if (!botToken) return
+
+  const siteUrl = (Deno.env.get('PUBLIC_SITE_URL') || 'https://www.erlc.directory').replace(/\/$/, '')
+
+  const { data: row } = await db
+    .from('profiles')
+    .select('discord_id, dm_experience_status_updates')
+    .eq('id', params.profileId)
+    .maybeSingle()
+
+  if (!row?.discord_id || !row.dm_experience_status_updates) return
+
+  const profileUrl = `${siteUrl}/profile/${params.profileId}`
+  const guild = params.guildName || 'your server'
+  const who = params.approverLabel || 'a server admin'
+
+  const text =
+    params.decision === 'approved'
+      ? `**ERLC Directory** — Your experience for **${guild}** was **approved** by @${who}.\n\nOpen your profile: ${profileUrl}`
+      : `**ERLC Directory** — Your experience verification for **${guild}** was **not approved** by @${who}. You can generate a new verification link from your profile editor.\n\n${profileUrl}`
+
+  const r = await sendDiscordUserDm(botToken, String(row.discord_id), text)
+  if (!r.ok) console.error('[experience-verify] discord_dm_failed', r.error)
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -358,6 +394,13 @@ Deno.serve(async (req) => {
         }
       }
 
+      await notifyExperienceDecisionDm(admin, {
+        profileId: vr.profile_id,
+        guildName: (vr.guild_name || experience?.server_name || 'Discord server') as string,
+        decision: 'approved',
+        approverLabel: String(me.username || 'admin'),
+      })
+
       return json({ ok: true, status: 'approved', approver: me.username })
     } else {
       await admin
@@ -369,6 +412,14 @@ Deno.serve(async (req) => {
           decided_at: decidedAt,
         })
         .eq('id', vr.id)
+
+      await notifyExperienceDecisionDm(admin, {
+        profileId: vr.profile_id,
+        guildName: (vr.guild_name || experience?.server_name || 'Discord server') as string,
+        decision: 'rejected',
+        approverLabel: String(me.username || 'admin'),
+      })
+
       return json({ ok: true, status: 'rejected', approver: me.username })
     }
   } catch (error) {

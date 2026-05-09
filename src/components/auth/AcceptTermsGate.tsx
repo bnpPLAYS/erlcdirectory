@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [checked, setChecked] = useState(false);
+  const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(false);
+  const [dmExperienceUpdates, setDmExperienceUpdates] = useState(false);
   const [busy, setBusy] = useState(false);
 
   /** `null` from DB = must accept; `undefined` (legacy row) or ISO string = OK */
@@ -26,7 +28,11 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     const { error } = await supabase
       .from('profiles')
-      .update({ terms_accepted_at: new Date().toISOString() })
+      .update({
+        terms_accepted_at: new Date().toISOString(),
+        dm_website_updates: dmWebsiteUpdates,
+        dm_experience_status_updates: dmExperienceUpdates,
+      })
       .eq('id', profile.id);
     setBusy(false);
     if (error) {
@@ -87,6 +93,34 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
                 .
               </span>
             </label>
+
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+              <p className="text-xs font-medium text-foreground/90 uppercase tracking-wide">
+                Discord notifications (optional)
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Our bot can DM you only if you opt in. You must share a Discord server with the bot for DMs to work.
+              </p>
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-muted-foreground">
+                <Checkbox
+                  checked={dmWebsiteUpdates}
+                  onCheckedChange={(v) => setDmWebsiteUpdates(v === true)}
+                  className="mt-0.5"
+                />
+                <span>Send me occasional <strong className="text-foreground/90">website updates</strong> on Discord.</span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-muted-foreground">
+                <Checkbox
+                  checked={dmExperienceUpdates}
+                  onCheckedChange={(v) => setDmExperienceUpdates(v === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  DM me when my <strong className="text-foreground/90">pending experience verifications</strong> are
+                  approved or declined.
+                </span>
+              </label>
+            </div>
 
             <Button
               type="button"

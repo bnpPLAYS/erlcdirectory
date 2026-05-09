@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X } from 'lucide-react';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,8 @@ const Admin = () => {
   const [staff, setStaff] = useState<any[]>([]);
   const [q, setQ] = useState('');
   const [newStaffQuery, setNewStaffQuery] = useState('');
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
 
   useEffect(() => {
     if (!user) { setIsAdmin(false); return; }
@@ -108,6 +111,20 @@ const Admin = () => {
     setNewStaffQuery('');
     refresh();
   };
+  const sendDiscordBroadcast = async () => {
+    const msg = broadcastText.trim();
+    if (!msg) return toast({ title: 'Enter a message', variant: 'destructive' });
+    if (!confirm(`Send this update as a Discord DM to everyone who opted into website updates?`)) return;
+    setBroadcasting(true);
+    const { data, error } = await supabase.functions.invoke('website-dm-broadcast', { body: { message: msg } });
+    setBroadcasting(false);
+    if (error) return toast({ title: error.message || 'Broadcast failed', variant: 'destructive' });
+    toast({
+      title: `Delivered to ${(data as { sent?: number })?.sent ?? 0} of ${(data as { attempted?: number })?.attempted ?? 0} subscribers`,
+    });
+    setBroadcastText('');
+  };
+
   const removeStaff = async (row: any) => {
     if (row.user_id === user.id) return toast({ title: "You can't remove yourself.", variant: 'destructive' });
     if (!confirm(`Remove staff access from ${row.profile?.display_name || 'this user'}?`)) return;
@@ -145,6 +162,9 @@ const Admin = () => {
             <TabsTrigger value="servers">Servers</TabsTrigger>
             <TabsTrigger value="openings">Posts</TabsTrigger>
             <TabsTrigger value="staff">Staff</TabsTrigger>
+            <TabsTrigger value="discord" className="gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5" /> Discord
+            </TabsTrigger>
           </TabsList>
 
           <div className="relative mb-4">
@@ -198,6 +218,35 @@ const Admin = () => {
                 <Button size="icon" variant="ghost" onClick={() => removePost(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
               </CardContent></Card>
             ))}
+          </TabsContent>
+
+          <TabsContent value="discord" className="space-y-3">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" /> Website update (Discord DM)
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Sends a direct message from the directory bot to every profile with <strong>website updates</strong>{' '}
+                    enabled. Requires <code className="text-xs bg-white/10 px-1 rounded">DISCORD_BOT_TOKEN</code> and the
+                    bot to share a server with each recipient.
+                  </p>
+                </div>
+                <Textarea
+                  value={broadcastText}
+                  onChange={(e) => setBroadcastText(e.target.value)}
+                  placeholder="Short announcement (max 1800 characters)…"
+                  rows={5}
+                  maxLength={1800}
+                  className="rounded-xl border-white/12 bg-white/[0.04] resize-none"
+                />
+                <p className="text-xs text-muted-foreground text-right tabular-nums">{broadcastText.length}/1800</p>
+                <Button type="button" disabled={broadcasting || !broadcastText.trim()} onClick={() => void sendDiscordBroadcast()}>
+                  {broadcasting ? 'Sending…' : 'Send to opted-in users'}
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="staff" className="space-y-3">

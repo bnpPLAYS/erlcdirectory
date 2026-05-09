@@ -43,6 +43,12 @@ const Privacy = () => (
             <li>Show directory listings, openings, messages, and connections you choose to use.</li>
             <li>Operate moderation tooling including automated text filtering.</li>
             <li>Improve reliability, security, and product quality.</li>
+            <li>
+              <strong className="text-foreground">Optional Discord DMs:</strong> if you opt in, our Discord bot may send you
+              direct messages about site announcements or the status of your experience verifications. You can change this
+              anytime in your profile settings. Delivery requires you to share at least one Discord server with our bot and
+              your Discord privacy settings allowing DMs.
+            </li>
           </ul>
         </section>
 

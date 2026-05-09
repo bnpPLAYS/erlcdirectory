@@ -382,6 +382,8 @@ export type Database = {
           discord_refresh_token: string | null
           discord_token_expires_at: string | null
           discord_username: string | null
+          dm_experience_status_updates: boolean
+          dm_website_updates: boolean
           display_name: string | null
           id: string
           is_featured: boolean | null
@@ -412,6 +414,8 @@ export type Database = {
           discord_refresh_token?: string | null
           discord_token_expires_at?: string | null
           discord_username?: string | null
+          dm_experience_status_updates?: boolean | null
+          dm_website_updates?: boolean | null
           display_name?: string | null
           id?: string
           is_featured?: boolean | null
@@ -442,6 +446,8 @@ export type Database = {
           discord_refresh_token?: string | null
           discord_token_expires_at?: string | null
           discord_username?: string | null
+          dm_experience_status_updates?: boolean | null
+          dm_website_updates?: boolean | null
           display_name?: string | null
           id?: string
           is_featured?: boolean | null

@@ -39,6 +39,8 @@ interface Profile {
   theme_preset: string | null;
   /** Absent or ISO timestamp = OK; explicit `null` from DB = must accept in-app. */
   terms_accepted_at?: string | null;
+  dm_website_updates?: boolean | null;
+  dm_experience_status_updates?: boolean | null;
   created_at: string;
   updated_at: string;
 }
