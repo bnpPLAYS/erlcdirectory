@@ -16,6 +16,7 @@ import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 
 interface ProfileData {
   id: string;
@@ -72,18 +73,8 @@ const Profile = () => {
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      if (!meProfile?.user_id) return setIsAdmin(false);
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', meProfile.user_id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      setIsAdmin(!!data);
-    };
-    checkAdmin();
-  }, [meProfile?.user_id]);
+    setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
+  }, [meProfile?.discord_username]);
 
   const toggleAdminFlag = async (field: 'is_verified' | 'is_featured') => {
     if (!profile) return;

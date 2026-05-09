@@ -27,7 +27,7 @@ import { useEffect, useState } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 
 const Navbar = () => {
   const location = useLocation();
@@ -37,10 +37,12 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
-    supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
-  }, [user]);
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    setIsAdmin(isSiteOwnerDiscordUsername(profile?.discord_username ?? null));
+  }, [user, profile?.discord_username]);
 
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },

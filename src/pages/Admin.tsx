@@ -12,9 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 
 const Admin = () => {
-  const { user, profile, loading } = useAuth();
+  const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -27,16 +28,24 @@ const Admin = () => {
   const [broadcasting, setBroadcasting] = useState(false);
 
   useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
-    (async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    setIsAdmin(null);
+    void (async () => {
       const { data } = await supabase
-        .from('user_roles')
-        .select('role')
+        .from('profiles')
+        .select('discord_username')
         .eq('user_id', user.id)
-        .eq('role', 'admin')
         .maybeSingle();
-      setIsAdmin(!!data);
+      if (cancelled) return;
+      setIsAdmin(isSiteOwnerDiscordUsername(data?.discord_username ?? null));
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const refresh = async () => {
