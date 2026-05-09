@@ -29,12 +29,17 @@ const ServerCard = ({ server }: ServerCardProps) => {
 
   return (
     <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
-      {server.banner ? (
-        <div className="relative h-28 w-full overflow-hidden border-b border-white/[0.06]">
+      <div className="relative h-28 w-full overflow-hidden border-b border-white/[0.06]">
+        {server.banner ? (
           <img src={server.banner} alt="" className="h-full w-full object-cover" loading="lazy" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
-        </div>
-      ) : null}
+        ) : (
+          <div
+            className="h-full w-full bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent"
+            aria-hidden
+          />
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+      </div>
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-14 w-14 rounded-xl ring-2 ring-border group-hover:ring-primary/50 transition-all flex-shrink-0">

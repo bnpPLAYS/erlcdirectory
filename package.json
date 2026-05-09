@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy:function:experience-verify": "supabase functions deploy experience-verify",
-    "deploy:function:website-dm-broadcast": "supabase functions deploy website-dm-broadcast"
+    "deploy:function:website-dm-broadcast": "supabase functions deploy website-dm-broadcast",
+    "deploy:function:servers-enrich-metadata": "supabase functions deploy servers-enrich-metadata"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

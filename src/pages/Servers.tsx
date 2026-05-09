@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
 import SiteFooter from '@/components/layout/SiteFooter';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ServerData {
   id: string;
@@ -35,21 +35,25 @@ interface ServerData {
 }
 
 const Servers = () => {
+  const { user } = useAuth();
   const [servers, setServers] = useState<ServerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
   const [filterHiring, setFilterHiring] = useState(false);
+  const enrichOnceRef = useRef(false);
 
   useEffect(() => {
-    fetchServers();
-  }, [sortBy]);
+    if (!user) enrichOnceRef.current = false;
+  }, [user]);
 
-  const fetchServers = async () => {
+  const fetchServers = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('servers')
-      .select('id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite');
+      .select(
+        'id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite',
+      );
 
     if (sortBy === 'featured') {
       query = query.order('is_featured', { ascending: false }).order('member_count', { ascending: false });
@@ -65,7 +69,23 @@ const Servers = () => {
       setServers(data);
     }
     setLoading(false);
-  };
+  }, [sortBy]);
+
+  useEffect(() => {
+    void fetchServers();
+  }, [fetchServers]);
+
+  /** Backfill Discord invite + banner for rows missing data (bot token / widget / preview APIs). */
+  useEffect(() => {
+    if (!user || enrichOnceRef.current) return;
+    enrichOnceRef.current = true;
+    void (async () => {
+      const { error } = await supabase.functions.invoke('servers-enrich-metadata', {
+        body: { mode: 'missing' },
+      });
+      if (!error) await fetchServers();
+    })();
+  }, [user, fetchServers]);
 
   const filteredServers = servers.filter(server => {
     const matchesSearch = !searchQuery || 

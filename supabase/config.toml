@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.website-dm-broadcast]
 verify_jwt = true
+
+[functions.servers-enrich-metadata]
+verify_jwt = true
