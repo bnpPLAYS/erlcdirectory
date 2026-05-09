@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 
 /**
  * Blocks app interaction until new Discord-linked profiles accept Terms + Privacy.
@@ -26,14 +27,27 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
   const submit = async () => {
     if (!profile || !checked) return;
     setBusy(true);
-    const { error } = await supabase
+    const acceptedAt = new Date().toISOString();
+    let { error } = await supabase
       .from('profiles')
       .update({
-        terms_accepted_at: new Date().toISOString(),
+        terms_accepted_at: acceptedAt,
         dm_website_updates: dmWebsiteUpdates,
         dm_experience_status_updates: dmExperienceUpdates,
       })
       .eq('id', profile.id);
+
+    if (error && isProfileDmPrefsSchemaError(error.message)) {
+      ({ error } = await supabase
+        .from('profiles')
+        .update({ terms_accepted_at: acceptedAt })
+        .eq('id', profile.id));
+      if (!error) {
+        toast.warning(
+          'Terms saved. Discord notification preferences need the latest database migration on your Supabase project.',
+        );
+      }
+    }
     setBusy(false);
     if (error) {
       toast.error(error.message || 'Could not save your acceptance.');
