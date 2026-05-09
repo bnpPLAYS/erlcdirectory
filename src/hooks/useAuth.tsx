@@ -1,6 +1,7 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
 import { getDiscordRedirectUri } from '@/lib/discordOAuth';
 
 interface AuthContextType {
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const refresh = () => {
       void supabase.auth.getSession();
+      void supabase.auth.refreshSession().catch(() => {});
     };
     const onVisible = () => {
       if (document.visibilityState === 'visible') refresh();
@@ -119,7 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!row.error && row.data) setProfile(row.data as Profile);
   };
 
-  const signInWithDiscord = async () => {
+  const signInWithDiscord = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      const here = window.location.origin.replace(/\/+$/, '');
+      const canonical = getCanonicalSiteBaseUrl();
+      if (here !== canonical) {
+        const next = encodeURIComponent(
+          `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        );
+        window.location.assign(`${canonical}/auth?oauth=discord&next=${next}`);
+        return;
+      }
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
@@ -130,12 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, session, profile, loading, signInWithDiscord, signOut, refreshProfile }}>
