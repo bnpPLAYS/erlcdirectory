@@ -1,13 +1,18 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { getCanonicalRedirectUrl } from '@/lib/canonicalHost';
+import {
+  getCanonicalRedirectUrl,
+  shouldDeferCanonicalRedirectForOAuthCallback,
+} from '@/lib/canonicalHost';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
   throw new Error('Missing #root element');
 }
 
-const redirectTo = getCanonicalRedirectUrl();
+const redirectTo = shouldDeferCanonicalRedirectForOAuthCallback()
+  ? null
+  : getCanonicalRedirectUrl();
 
 const missing: string[] = [];
 if (!import.meta.env.VITE_SUPABASE_URL) missing.push('VITE_SUPABASE_URL');
