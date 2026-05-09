@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
 import { getDiscordRedirectUri } from '@/lib/discordOAuth';
+import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
 
 interface AuthContextType {
   user: User | null;
@@ -104,22 +105,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
 
-    if (!error && data) {
+    if (data) {
       setProfile(data as Profile);
+      return;
+    }
+
+    // Missing row (failed trigger) or not hydrated yet: create/update from Discord session — same source as OAuth callback.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user?.id === userId) {
+      const syncResult = await syncDiscordProfileFromSession(session);
+      if (!syncResult.error) {
+        const { data: row } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (row) setProfile(row as Profile);
+      }
     }
   };
 
   const refreshProfile = async () => {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;
-    if (!uid) return;
-    const row = await supabase.from('profiles').select('*').eq('user_id', uid).single();
+    const session = data.session;
+    if (!uid || !session) return;
+    await syncDiscordProfileFromSession(session).catch(() => {});
+    const row = await supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle();
     if (!row.error && row.data) setProfile(row.data as Profile);
   };
 
