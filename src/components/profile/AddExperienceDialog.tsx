@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
+import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { cn } from '@/lib/utils';
 
 interface Guild {
@@ -68,12 +69,10 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
   const loadGuilds = async () => {
     setLoadingGuilds(true);
     try {
-      const { data, error } = await supabase.functions.invoke('discord-guilds');
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setGuilds((data?.guilds || []) as Guild[]);
-    } catch (e: any) {
-      toast.error(e?.message || 'Could not load your Discord servers.');
+      const list = await fetchDiscordGuilds();
+      setGuilds(list as Guild[]);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Could not load your Discord servers.');
     } finally {
       setLoadingGuilds(false);
     }

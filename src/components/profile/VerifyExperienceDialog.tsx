@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { cn } from '@/lib/utils';
 
 interface Guild {
@@ -149,13 +150,14 @@ const VerifyExperienceDialog = ({
   const loadGuilds = async () => {
     setLoadingGuilds(true);
     setErrorMsg(null);
-    const { data, error } = await supabase.functions.invoke('discord-guilds', { body: {} });
-    setLoadingGuilds(false);
-    if (error || (data as { error?: string })?.error) {
-      setErrorMsg((data as { error?: string })?.error || error?.message || 'Could not load your Discord servers.');
-      return;
+    try {
+      const list = await fetchDiscordGuilds();
+      setGuilds(list as Guild[]);
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : 'Could not load your Discord servers.');
+    } finally {
+      setLoadingGuilds(false);
     }
-    setGuilds((data as { guilds: Guild[] }).guilds);
   };
 
   const generateLink = async (guild: Guild) => {

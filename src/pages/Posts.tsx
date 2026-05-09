@@ -25,6 +25,7 @@ import { filterPlaintext } from '@/lib/chatFilter';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
+import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 
 interface Post {
   id: string;
@@ -239,12 +240,13 @@ const Posts = () => {
       return;
     }
     if (post.require_guild_membership && post.servers?.guild_id) {
-      const { data, error } = await supabase.functions.invoke('discord-guilds', { body: {} });
-      if (error) {
-        toast.error(error.message || 'Could not verify Discord.');
+      let guilds: { id: string }[] = [];
+      try {
+        guilds = await fetchDiscordGuilds();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not verify Discord.');
         return;
       }
-      const guilds = (data as { guilds?: { id: string }[] })?.guilds || [];
       const ok = guilds.some((g) => g.id === post.servers!.guild_id);
       if (!ok) {
         toast.error('Join the server on Discord first—this post requires membership.');
