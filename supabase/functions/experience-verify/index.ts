@@ -189,25 +189,94 @@ Deno.serve(async (req) => {
         })
         .eq('id', vr.experience_id)
 
-      // If verifier has a directory profile linked to the same Discord account, mirror rating into reviews.
-      if (verifierRating && experience?.profile_id) {
-        const { data: reviewerProfile } = await admin
-          .from('profiles')
-          .select('id')
-          .eq('discord_id', me.id)
-          .maybeSingle()
-        if (reviewerProfile?.id && reviewerProfile.id !== experience.profile_id) {
-          await admin.from('reviews').upsert(
-            {
-              reviewee_id: experience.profile_id,
-              reviewer_id: reviewerProfile.id,
-              rating: verifierRating,
-              content: verifierReviewText || null,
-              updated_at: decidedAt,
-            },
-            { onConflict: 'reviewee_id,reviewer_id' },
-          )
+      const approveeProfileId = experience?.profile_id as string | undefined
+
+      let { data: verifierProfile } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('discord_id', String(me.id))
+        .maybeSingle()
+
+      const skipVerifierMirror = !!(
+        approveeProfileId &&
+        verifierProfile?.id &&
+        verifierProfile.id === approveeProfileId
+      )
+
+      const verifierDiscordId = String(me.id)
+      const verifierUsername = typeof me.username === 'string' ? me.username : 'staff'
+      const verifierDisplay =
+        (typeof me.global_name === 'string' && me.global_name.trim()) || verifierUsername
+      const verifierAvatarUrl =
+        me.avatar && verifierDiscordId
+          ? `https://cdn.discordapp.com/avatars/${verifierDiscordId}/${me.avatar}.png?size=128`
+          : null
+
+      if (!verifierProfile && !skipVerifierMirror) {
+        const syntheticEmail = `discord-${verifierDiscordId}@verifier.erlc.directory`
+        const randomPassword =
+          crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+        const { data: createdAuth, error: createAuthErr } = await admin.auth.admin.createUser({
+          email: syntheticEmail,
+          password: randomPassword,
+          email_confirm: true,
+          user_metadata: {
+            name: verifierDisplay,
+            avatar_url: verifierAvatarUrl,
+            discord_id: verifierDiscordId,
+            discord_username: verifierUsername,
+          },
+        })
+        if (!createAuthErr && createdAuth.user) {
+          const { data: newProf, error: newProfErr } = await admin
+            .from('profiles')
+            .insert({
+              user_id: createdAuth.user.id,
+              discord_id: verifierDiscordId,
+              discord_username: verifierUsername,
+              discord_avatar: verifierAvatarUrl,
+              display_name: verifierDisplay,
+              is_verified: true,
+            })
+            .select('id')
+            .single()
+          if (!newProfErr && newProf) verifierProfile = newProf
+        } else {
+          const { data: retryProfile } = await admin
+            .from('profiles')
+            .select('id')
+            .eq('discord_id', verifierDiscordId)
+            .maybeSingle()
+          verifierProfile = retryProfile ?? verifierProfile
         }
+      } else if (verifierProfile && !skipVerifierMirror) {
+        await admin
+          .from('profiles')
+          .update({
+            discord_username: verifierUsername,
+            discord_avatar: verifierAvatarUrl,
+            display_name: verifierDisplay,
+            is_verified: true,
+          })
+          .eq('id', verifierProfile.id)
+      }
+
+      if (
+        verifierRating &&
+        approveeProfileId &&
+        verifierProfile?.id &&
+        verifierProfile.id !== approveeProfileId
+      ) {
+        await admin.from('reviews').upsert(
+          {
+            reviewee_id: approveeProfileId,
+            reviewer_id: verifierProfile.id,
+            rating: verifierRating,
+            content: verifierReviewText || null,
+            updated_at: decidedAt,
+          },
+          { onConflict: 'reviewee_id,reviewer_id' },
+        )
       }
 
       // Auto-create / refresh server stub keyed by guild_id, and capture member count from Discord
@@ -231,6 +300,62 @@ Deno.serve(async (req) => {
           .from('servers')
           .update({ member_count: memberCount })
           .eq('id', existingServer.id)
+      }
+
+      // Verified staff experience for the approving admin on this server (directory account may be new)
+      if (verifierProfile?.id && !skipVerifierMirror) {
+        const serverLabel =
+          (typeof target.name === 'string' && target.name) || vr.guild_name || 'Discord server'
+        const iconFromDiscord =
+          target.icon && target.id
+            ? `https://cdn.discordapp.com/icons/${target.id}/${target.icon}.png?size=128`
+            : null
+        const serverIcon = (iconFromDiscord || vr.guild_icon) as string | null
+        const day = decidedAt.slice(0, 10)
+
+        const { data: existingVx } = await admin
+          .from('experiences')
+          .select('id')
+          .eq('profile_id', verifierProfile.id)
+          .eq('guild_id', String(vr.guild_id))
+          .maybeSingle()
+
+        if (existingVx?.id) {
+          await admin
+            .from('experiences')
+            .update({
+              role: verifierPosition,
+              server_name: serverLabel,
+              server_icon: serverIcon,
+              guild_id: String(vr.guild_id),
+              is_verified: true,
+              is_current: true,
+              verified_at: decidedAt,
+              verified_by_discord_id: null,
+              verified_by_discord_username: null,
+              verifier_stated_position: null,
+              verifier_review_text: null,
+              verifier_review_rating: null,
+            })
+            .eq('id', existingVx.id)
+        } else {
+          await admin.from('experiences').insert({
+            profile_id: verifierProfile.id,
+            role: verifierPosition,
+            server_name: serverLabel,
+            server_icon: serverIcon,
+            guild_id: String(vr.guild_id),
+            start_date: day,
+            end_date: null,
+            is_current: true,
+            is_verified: true,
+            verified_at: decidedAt,
+            verified_by_discord_id: null,
+            verified_by_discord_username: null,
+            department: null,
+            description: null,
+          })
+        }
       }
 
       return json({ ok: true, status: 'approved', approver: me.username })
