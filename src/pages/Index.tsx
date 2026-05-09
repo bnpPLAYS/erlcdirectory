@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
   Users,
@@ -8,14 +7,9 @@ import {
   Monitor,
   Sparkles,
   Server,
-  Target,
   Rocket,
-  Shield,
-  Star,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
 import ProfileCard from '@/components/profile/ProfileCard';
 import ServerCard from '@/components/server/ServerCard';
@@ -23,7 +17,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import directoryPreview from '@/assets/directory-preview.png';
+import homeFeaturePlaceholder from '@/assets/home-features/member-directory.png';
 import SiteFooter from '@/components/layout/SiteFooter';
+import { cn } from '@/lib/utils';
 
 interface Profile {
   id: string;
@@ -50,21 +46,36 @@ interface ServerRow {
   tags: string[];
 }
 
-const FEATURE_CARDS: { icon: LucideIcon; title: string; desc: string }[] = [
+/**
+ * Product tour: one image per row. Drop distinct PNGs into `src/assets/home-features/` and
+ * point each `image` at its own import (browse, profile, servers, etc.).
+ */
+const PRODUCT_SCREENSHOTS: {
+  title: string;
+  description: string;
+  image: string;
+  alt: string;
+}[] = [
   {
-    icon: Shield,
-    title: 'Clear experience',
-    desc: 'List roles, departments, and current positions in one place.',
+    title: 'Browse members',
+    description:
+      'Search the directory, open profiles, and compare experience before you reach out—without leaving one long spreadsheet of Discord tags.',
+    image: homeFeaturePlaceholder,
+    alt: 'Screenshot of the member browse experience on erlc.directory',
   },
   {
-    icon: Star,
-    title: 'Useful profiles',
-    desc: 'Skills, history, and Discord details help owners make faster decisions.',
+    title: 'Profiles that show the work',
+    description:
+      'Each listing can carry skills, bio, and verified server experience so owners see who someone is, not just a username.',
+    image: homeFeaturePlaceholder,
+    alt: 'Screenshot of a member profile with experience on erlc.directory',
   },
   {
-    icon: Zap,
-    title: 'Direct contact',
-    desc: 'Reach out to staff candidates and server teams from their profile.',
+    title: 'Server listings',
+    description:
+      'Communities publish their server with tags, member reach, and hiring status so staff can find a fit that matches what they want to do.',
+    image: homeFeaturePlaceholder,
+    alt: 'Screenshot of server listings on erlc.directory',
   },
 ];
 
@@ -293,27 +304,48 @@ const Index = () => {
         </section>
       )}
 
-      <section className="py-12 md:py-16">
+      <section className="py-12 md:py-20 border-t border-white/[0.06]">
         <div className="container mx-auto px-4">
-          <div className="mb-8 max-w-2xl">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 flex items-center gap-2.5">
-              <Target className="h-6 w-6 text-foreground/85 shrink-0" strokeWidth={1.5} aria-hidden />
-              Built for ER:LC hiring
+          <div className="max-w-2xl mb-14 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-3">
+              How it works on the site
             </h2>
-            <p className="text-sm text-muted-foreground">Keep staff searches organized and easy to trust</p>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Straight from the app: browsing members, reading a profile, and scanning server listings.
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            {FEATURE_CARDS.map(({ icon: Icon, title, desc }) => (
-              <Card key={title} className="card-elevated">
-                <CardContent className="p-5 text-center md:text-left">
-                  <div className="w-11 h-11 mx-auto md:mx-0 mb-3 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-foreground/90" strokeWidth={1.5} aria-hidden />
+          <div className="flex flex-col gap-16 md:gap-24">
+            {PRODUCT_SCREENSHOTS.map((item, i) => (
+              <div
+                key={item.title}
+                className="grid gap-8 md:gap-12 md:grid-cols-2 md:items-center"
+              >
+                <div className={cn(i % 2 === 1 && 'md:order-2')}>
+                  <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-2 shadow-xl shadow-black/30 ring-1 ring-white/[0.06]">
+                    <div className="rounded-xl overflow-hidden border border-white/8">
+                      <img
+                        src={item.image}
+                        alt={item.alt}
+                        width={1156}
+                        height={810}
+                        className="block w-full h-auto"
+                        loading="lazy"
+                        decoding="async"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </div>
                   </div>
-                  <h3 className="font-semibold mb-1 capitalize">{title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-                </CardContent>
-              </Card>
+                </div>
+                <div className={cn('space-y-3', i % 2 === 1 && 'md:order-1')}>
+                  <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
