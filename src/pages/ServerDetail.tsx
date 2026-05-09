@@ -237,7 +237,18 @@ const ServerDetail = () => {
           </div>
 
           <div>
-            <ReviewsSection serverId={server.id} serverName={server.name} />
+            <ReviewsSection
+              serverId={server.id}
+              serverName={server.name}
+              serverReviewTargets={coworkers
+                .filter((c) => c.profile?.id)
+                .map((c) => ({
+                  profileId: c.profile!.id,
+                  display_name: c.profile!.display_name ?? null,
+                  discord_avatar: c.profile!.discord_avatar ?? null,
+                  discord_username: c.profile!.discord_username ?? null,
+                }))}
+            />
           </div>
         </div>
       </div>
