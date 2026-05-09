@@ -227,20 +227,31 @@ const Profile = () => {
           <ProfileEditor
             profile={profile as any}
             experiences={experiences}
+            initialTab={searchParams.get('tab') ?? undefined}
+            openAddExperienceOnMount={searchParams.get('add') === '1'}
+            onConsumedAddDeepLink={() => {
+              if (searchParams.get('add') === '1') {
+                const next = new URLSearchParams(searchParams);
+                next.delete('add');
+                setSearchParams(next, { replace: true });
+              }
+            }}
             onSaved={() => {
               setEditMode(false);
-              if (searchParams.get('edit')) {
-                searchParams.delete('edit');
-                setSearchParams(searchParams, { replace: true });
-              }
+              const next = new URLSearchParams(searchParams);
+              next.delete('edit');
+              next.delete('tab');
+              next.delete('add');
+              setSearchParams(next, { replace: true });
               fetchProfile();
             }}
             onCancel={() => {
               setEditMode(false);
-              if (searchParams.get('edit')) {
-                searchParams.delete('edit');
-                setSearchParams(searchParams, { replace: true });
-              }
+              const next = new URLSearchParams(searchParams);
+              next.delete('edit');
+              next.delete('tab');
+              next.delete('add');
+              setSearchParams(next, { replace: true });
             }}
           />
         ) : (

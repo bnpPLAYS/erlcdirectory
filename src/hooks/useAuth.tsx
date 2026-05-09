@@ -80,6 +80,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Refresh session when the tab wakes up or the network returns (keeps login across visits).
+  useEffect(() => {
+    const refresh = () => {
+      void supabase.auth.getSession();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
+
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
