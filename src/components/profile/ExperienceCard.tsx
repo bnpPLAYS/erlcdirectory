@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink, Shield, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +16,10 @@ interface Experience {
   is_current: boolean;
   is_verified: boolean;
   guild_id?: string | null;
+  verifier_stated_position?: string | null;
+  verifier_review_text?: string | null;
+  verifier_review_rating?: number | null;
+  verified_by_discord_username?: string | null;
 }
 
 const ExperienceCard = ({ experience }: { experience: Experience }) => {
@@ -83,8 +87,43 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
         </div>
 
         {experience.is_verified && (
-          <div className="pt-2 border-t border-border/50">
-            <Badge className="badge-verified text-[10px]">verified</Badge>
+          <div className="pt-3 border-t border-white/10 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="badge-verified text-[10px]">Verified</Badge>
+              {experience.verified_by_discord_username && (
+                <span className="text-[10px] text-muted-foreground">
+                  by @{experience.verified_by_discord_username}
+                </span>
+              )}
+            </div>
+            {experience.verifier_stated_position && (
+              <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <Shield className="h-3.5 w-3.5 shrink-0 mt-0.5 opacity-80" />
+                <span>
+                  <span className="text-foreground/90 font-medium">Verifier position: </span>
+                  {experience.verifier_stated_position}
+                </span>
+              </p>
+            )}
+            {(experience.verifier_review_rating || experience.verifier_review_text) && (
+              <div className="rounded-lg bg-white/[0.03] border border-white/8 px-3 py-2 text-xs">
+                {experience.verifier_review_rating ? (
+                  <div className="flex items-center gap-1 mb-1 text-amber-200/90">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-3 w-3 ${i < experience.verifier_review_rating! ? 'fill-current' : 'opacity-25'}`}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                {experience.verifier_review_text ? (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {experience.verifier_review_text}
+                  </p>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

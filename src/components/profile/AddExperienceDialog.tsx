@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
+import { cn } from '@/lib/utils';
 
 interface Guild {
   id: string;
@@ -125,8 +126,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent fullscreen className="glass p-0 overflow-y-auto">
-        <div className="mx-auto max-w-5xl w-full px-4 sm:px-8 py-8 sm:py-12 space-y-6">
+      <DialogContent fullscreen className="glass border-0 p-0 overflow-y-auto bg-background/95">
+        <div className="mx-auto max-w-5xl w-full px-4 sm:px-8 py-8 sm:py-12 space-y-8">
         {step === 'pick' && (
           <>
             <DialogHeader className="text-center items-center">
@@ -191,45 +192,47 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               <DialogDescription>Add an experience from a Discord server you're part of.</DialogDescription>
             </DialogHeader>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-5">
               {/* Server picker */}
-              <Card className="card-elevated">
-                <CardContent className="p-4 space-y-3">
+              <Card className="rounded-2xl border border-white/12 bg-[hsl(240_6%_9%/0.6)] shadow-xl shadow-black/20">
+                <CardContent className="p-5 space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
-                        <Users className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-foreground/90" />
                       </div>
-                      <span className="font-medium">Select server</span>
+                      <span className="font-semibold text-sm">Select server</span>
                     </div>
-                    <Button size="icon" variant="ghost" onClick={loadGuilds} disabled={loadingGuilds}>
+                    <Button size="icon" variant="ghost" className="rounded-full" onClick={loadGuilds} disabled={loadingGuilds}>
                       <RefreshCw className={`h-4 w-4 ${loadingGuilds ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
                   <div className="relative">
-                    <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search servers…"
-                      className="pl-8"
+                      className="pl-10 rounded-xl border-white/12 bg-white/[0.04] h-11"
                     />
                   </div>
                   <ScrollArea className="h-72">
-                    <div className="space-y-1.5 pr-2">
-                      {loadingGuilds && <p className="text-sm text-muted-foreground py-4 text-center">Loading…</p>}
+                    <div className="space-y-2 pr-2">
+                      {loadingGuilds && <p className="text-sm text-muted-foreground py-6 text-center">Loading your servers…</p>}
                       {!loadingGuilds && filteredGuilds.length === 0 && (
-                        <p className="text-sm text-muted-foreground py-4 text-center">No servers found.</p>
+                        <p className="text-sm text-muted-foreground py-6 text-center">No servers match.</p>
                       )}
                       {filteredGuilds.map((g) => (
                         <button
                           key={g.id}
+                          type="button"
                           onClick={() => setSelectedGuild(g)}
-                          className={`w-full flex items-center gap-3 rounded-lg p-2.5 text-left transition border ${
+                          className={cn(
+                            'w-full flex items-center gap-3 rounded-xl p-3 text-left transition border',
                             selectedGuild?.id === g.id
-                              ? 'border-white/40 bg-white/[0.06]'
-                              : 'border-white/5 hover:bg-white/[0.04]'
-                          }`}
+                              ? 'border-violet-400/40 bg-violet-500/10 ring-1 ring-violet-400/25'
+                              : 'border-white/8 hover:bg-white/[0.04] hover:border-white/12',
+                          )}
                         >
                           {g.icon ? (
                             <img src={g.icon} alt="" className="h-9 w-9 rounded-full object-cover" />
@@ -241,7 +244,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium truncate">{g.name}</div>
                             <div className="text-[11px] text-muted-foreground">
-                              {g.owner ? 'Owner' : g.is_admin ? 'Admin' : 'Member'}
+                              {g.owner ? 'Owner' : g.is_admin ? 'Administrator' : 'Member'}
                             </div>
                           </div>
                         </button>
@@ -252,45 +255,47 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               </Card>
 
               {/* Details */}
-              <Card className="card-elevated">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
-                      <Sparkles className="h-3.5 w-3.5" />
+              <Card className="rounded-2xl border border-white/12 bg-[hsl(240_6%_9%/0.6)] shadow-xl shadow-black/20">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-foreground/90" />
                     </div>
-                    <span className="font-medium">Experience details</span>
+                    <span className="font-semibold text-sm">Experience details</span>
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">Position *</Label>
                     <Input
                       value={role}
                       maxLength={80}
                       onChange={(e) => setRole(e.target.value)}
                       placeholder="e.g. Patrol Officer, Staff, Lead Developer"
+                      className="rounded-xl border-white/12 bg-white/[0.04]"
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">Description</Label>
                     <Textarea
                       value={description}
                       maxLength={600}
-                      rows={3}
+                      rows={4}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Describe your responsibilities, achievements, and impact…"
+                      className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wide text-muted-foreground">Start date *</Label>
-                      <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                      <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-xl border-white/12 bg-white/[0.04]" />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label className="text-xs uppercase tracking-wide text-muted-foreground">End date</Label>
-                      <Input type="date" value={endDate} disabled={isCurrent} onChange={(e) => setEndDate(e.target.value)} />
+                      <Input type="date" value={endDate} disabled={isCurrent} onChange={(e) => setEndDate(e.target.value)} className="rounded-xl border-white/12 bg-white/[0.04]" />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className="flex items-center gap-2.5 text-sm text-muted-foreground cursor-pointer">
                     <Switch checked={isCurrent} onCheckedChange={setIsCurrent} />
                     This is an active/ongoing position
                   </label>
@@ -298,7 +303,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                   <Button
                     onClick={() => submit('server')}
                     disabled={!canSubmitServer || saving}
-                    className="w-full"
+                    className="w-full rounded-full h-11 font-medium"
                   >
                     {saving ? 'Saving…' : 'Create server experience'}
                   </Button>
@@ -306,8 +311,8 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               </Card>
             </div>
 
-            <div className="flex">
-              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2">
+            <div className="flex pt-2">
+              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" /> Back to experience types
               </Button>
             </div>
@@ -323,47 +328,50 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
               <DialogDescription>Document one-on-one work or a collaboration.</DialogDescription>
             </DialogHeader>
 
-            <Card className="card-elevated">
-              <CardContent className="p-4 space-y-3">
-                <div>
+            <Card className="rounded-2xl border border-white/12 bg-[hsl(240_6%_9%/0.6)] shadow-xl shadow-black/20 max-w-2xl mx-auto w-full">
+              <CardContent className="p-5 space-y-4">
+                <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">Client / project name *</Label>
                   <Input
                     value={serverName}
                     maxLength={80}
                     onChange={(e) => setServerName(e.target.value)}
                     placeholder="Who or what was this for?"
+                    className="rounded-xl border-white/12 bg-white/[0.04]"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">Position *</Label>
                   <Input
                     value={role}
                     maxLength={80}
                     onChange={(e) => setRole(e.target.value)}
                     placeholder="e.g. Freelance Developer, Consultant"
+                    className="rounded-xl border-white/12 bg-white/[0.04]"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">Description</Label>
                   <Textarea
                     value={description}
                     maxLength={600}
-                    rows={3}
+                    rows={4}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe the work and the outcome…"
+                    className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">Start date *</Label>
-                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-xl border-white/12 bg-white/[0.04]" />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">End date</Label>
-                    <Input type="date" value={endDate} disabled={isCurrent} onChange={(e) => setEndDate(e.target.value)} />
+                    <Input type="date" value={endDate} disabled={isCurrent} onChange={(e) => setEndDate(e.target.value)} className="rounded-xl border-white/12 bg-white/[0.04]" />
                   </div>
                 </div>
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2.5 text-sm text-muted-foreground cursor-pointer">
                   <Switch checked={isCurrent} onCheckedChange={setIsCurrent} />
                   This is an active/ongoing engagement
                 </label>
@@ -371,15 +379,15 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
                 <Button
                   onClick={() => submit('direct')}
                   disabled={!canSubmitDirect || saving}
-                  className="w-full"
+                  className="w-full rounded-full h-11 font-medium"
                 >
                   {saving ? 'Saving…' : 'Create direct experience'}
                 </Button>
               </CardContent>
             </Card>
 
-            <div className="flex">
-              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2">
+            <div className="flex pt-2">
+              <Button variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" /> Back to experience types
               </Button>
             </div>

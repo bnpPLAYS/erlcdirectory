@@ -87,6 +87,9 @@ export type Database = {
         Row: {
           approver_discord_id: string | null
           approver_discord_username: string | null
+          approver_review_rating: number | null
+          approver_review_text: string | null
+          approver_stated_position: string | null
           created_at: string
           decided_at: string | null
           experience_id: string
@@ -102,6 +105,9 @@ export type Database = {
         Insert: {
           approver_discord_id?: string | null
           approver_discord_username?: string | null
+          approver_review_rating?: number | null
+          approver_review_text?: string | null
+          approver_stated_position?: string | null
           created_at?: string
           decided_at?: string | null
           experience_id: string
@@ -117,6 +123,9 @@ export type Database = {
         Update: {
           approver_discord_id?: string | null
           approver_discord_username?: string | null
+          approver_review_rating?: number | null
+          approver_review_text?: string | null
+          approver_stated_position?: string | null
           created_at?: string
           decided_at?: string | null
           experience_id?: string
@@ -157,6 +166,9 @@ export type Database = {
           verified_at: string | null
           verified_by_discord_id: string | null
           verified_by_discord_username: string | null
+          verifier_review_rating: number | null
+          verifier_review_text: string | null
+          verifier_stated_position: string | null
         }
         Insert: {
           created_at?: string
@@ -171,10 +183,13 @@ export type Database = {
           role: string
           server_icon?: string | null
           server_name: string
-          start_date: string
+          start_date?: string
           verified_at?: string | null
           verified_by_discord_id?: string | null
           verified_by_discord_username?: string | null
+          verifier_review_rating?: number | null
+          verifier_review_text?: string | null
+          verifier_stated_position?: string | null
         }
         Update: {
           created_at?: string
@@ -193,6 +208,9 @@ export type Database = {
           verified_at?: string | null
           verified_by_discord_id?: string | null
           verified_by_discord_username?: string | null
+          verifier_review_rating?: number | null
+          verifier_review_text?: string | null
+          verifier_stated_position?: string | null
         }
         Relationships: [
           {

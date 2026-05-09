@@ -92,6 +92,26 @@ Deno.serve(async (req) => {
     const redirectUri = (body.redirectUri ?? '').toString()
     if (!code || !redirectUri) return json({ error: 'Missing Discord authorization.' }, 400)
 
+    let verifierPosition = ''
+    let verifierReviewText = ''
+    let verifierRating: number | null = null
+    if (action === 'approve') {
+      verifierPosition = (body.verifierPosition ?? '').toString().trim()
+      verifierReviewText = (body.verifierReviewText ?? '').toString().trim()
+      const rawRating = body.verifierRating
+      if (rawRating !== undefined && rawRating !== null && rawRating !== '') {
+        const n = Number(rawRating)
+        if (!Number.isFinite(n) || n < 1 || n > 5 || Math.round(n) !== n) {
+          return json({ error: 'Rating must be a whole number from 1 to 5.' }, 400)
+        }
+        verifierRating = n
+      }
+      if (verifierReviewText.length > 2000) return json({ error: 'Review text is too long (2000 max).' }, 400)
+      if (!verifierPosition || verifierPosition.length > 160) {
+        return json({ error: 'Your position in this Discord server is required (1–160 characters).' }, 400)
+      }
+    }
+
     // Exchange code for token
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
@@ -143,6 +163,9 @@ Deno.serve(async (req) => {
           approver_discord_id: me.id,
           approver_discord_username: me.username,
           decided_at: decidedAt,
+          approver_stated_position: verifierPosition,
+          approver_review_text: verifierReviewText || null,
+          approver_review_rating: verifierRating,
         })
         .eq('id', vr.id)
 
@@ -154,8 +177,32 @@ Deno.serve(async (req) => {
           verified_by_discord_id: me.id,
           verified_by_discord_username: me.username,
           verified_at: decidedAt,
+          verifier_stated_position: verifierPosition,
+          verifier_review_text: verifierReviewText || null,
+          verifier_review_rating: verifierRating,
         })
         .eq('id', vr.experience_id)
+
+      // If verifier has a directory profile linked to the same Discord account, mirror rating into reviews.
+      if (verifierRating && experience?.profile_id) {
+        const { data: reviewerProfile } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('discord_id', me.id)
+          .maybeSingle()
+        if (reviewerProfile?.id && reviewerProfile.id !== experience.profile_id) {
+          await admin.from('reviews').upsert(
+            {
+              reviewee_id: experience.profile_id,
+              reviewer_id: reviewerProfile.id,
+              rating: verifierRating,
+              content: verifierReviewText || null,
+              updated_at: decidedAt,
+            },
+            { onConflict: 'reviewee_id,reviewer_id' },
+          )
+        }
+      }
 
       // Auto-create / refresh server stub keyed by guild_id, and capture member count from Discord
       const memberCount = Number(target.approximate_member_count ?? 0) || 0

@@ -52,6 +52,10 @@ interface Experience {
   is_current: boolean;
   is_verified: boolean;
   guild_id: string | null;
+  verifier_stated_position?: string | null;
+  verifier_review_text?: string | null;
+  verifier_review_rating?: number | null;
+  verified_by_discord_username?: string | null;
 }
 
 const Profile = () => {

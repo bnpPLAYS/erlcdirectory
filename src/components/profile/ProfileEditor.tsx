@@ -29,6 +29,10 @@ interface Experience {
   end_date: string | null;
   is_current: boolean;
   is_verified: boolean;
+  verifier_stated_position?: string | null;
+  verifier_review_text?: string | null;
+  verifier_review_rating?: number | null;
+  verified_by_discord_username?: string | null;
 }
 
 interface ProfileLike {

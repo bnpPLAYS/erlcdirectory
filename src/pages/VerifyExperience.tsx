@@ -4,10 +4,14 @@ import { Shield, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle } from 'lu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 
 const DISCORD_CLIENT_ID = '1495931923237703792';
+const APPROVE_EXTRAS_KEY = (t: string) => `experience-verify-approve:${t}`;
 
 interface RequestInfo {
   id: string;
@@ -51,8 +55,10 @@ const VerifyExperience = () => {
     approver: string;
   } | null>(null);
 
-  // Use the statically-registered Discord callback URL so we don't have to
-  // pre-register a unique redirect_uri per verification token.
+  const [verifierPosition, setVerifierPosition] = useState('');
+  const [verifierReviewText, setVerifierReviewText] = useState('');
+  const [verifierRating, setVerifierRating] = useState<string>('');
+
   const redirectUri = `${window.location.origin}/discord/callback`;
 
   useEffect(() => {
@@ -60,16 +66,18 @@ const VerifyExperience = () => {
     fetchInfo();
   }, [token]);
 
-  // Handle return from Discord
   useEffect(() => {
     const code = params.get('code');
     const state = params.get('state');
     if (!code || !state) return;
     let parsed: { token: string; action: 'approve' | 'reject' } | null = null;
-    try { parsed = JSON.parse(atob(state)); } catch { /* ignore */ }
+    try {
+      parsed = JSON.parse(atob(state));
+    } catch {
+      /* ignore */
+    }
     if (!parsed || parsed.token !== token) return;
     submitDecision(parsed.action, code);
-    // Clean URL
     const next = new URLSearchParams(params);
     next.delete('code');
     next.delete('state');
@@ -79,20 +87,55 @@ const VerifyExperience = () => {
   const fetchInfo = async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase.functions.invoke('experience-verify', {
+    const { data, error: fnError } = await supabase.functions.invoke('experience-verify', {
       body: { token },
     });
     setLoading(false);
-    if (error || (data as any)?.error) {
-      setError((data as any)?.error || error?.message || 'This link is not valid.');
+    if (fnError || (data as { error?: string })?.error) {
+      setError((data as { error?: string })?.error || fnError?.message || 'This link is not valid.');
       return;
     }
-    setInfo(data as any);
+    setInfo(data as typeof info);
   };
 
   const startDiscord = (action: 'approve' | 'reject') => {
+    if (!token) return;
+    if (action === 'approve') {
+      const pos = verifierPosition.trim();
+      if (!pos) {
+        setError('Enter your position in this server before approving (e.g. Server Owner, Head Administrator).');
+        return;
+      }
+      if (pos.length > 160) {
+        setError('Position is too long (160 characters max).');
+        return;
+      }
+      if (verifierReviewText.length > 2000) {
+        setError('Review text is too long (2000 characters max).');
+        return;
+      }
+      let ratingNum: number | null = null;
+      if (verifierRating) {
+        ratingNum = Number(verifierRating);
+        if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+          setError('Choose a star rating from 1–5, or clear the rating.');
+          return;
+        }
+      }
+      sessionStorage.setItem(
+        APPROVE_EXTRAS_KEY(token),
+        JSON.stringify({
+          verifierPosition: pos,
+          verifierReviewText: verifierReviewText.trim(),
+          verifierRating: ratingNum,
+        }),
+      );
+    } else {
+      sessionStorage.removeItem(APPROVE_EXTRAS_KEY(token));
+    }
+    setError(null);
     const state = btoa(JSON.stringify({ kind: 'verify', token, action }));
-    const params = new URLSearchParams({
+    const q = new URLSearchParams({
       client_id: DISCORD_CLIENT_ID,
       redirect_uri: redirectUri,
       response_type: 'code',
@@ -100,7 +143,7 @@ const VerifyExperience = () => {
       state,
       prompt: 'consent',
     });
-    window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+    window.location.href = `https://discord.com/oauth2/authorize?${q.toString()}`;
   };
 
   const submitDecision = async (action: 'approve' | 'reject', code: string) => {
@@ -108,8 +151,34 @@ const VerifyExperience = () => {
   };
 
   const finalizeDecision = async (action: 'approve' | 'reject', code: string) => {
+    if (!token) return;
     setSubmitting(true);
     try {
+      let verifierPositionBody = '';
+      let verifierReviewTextBody = '';
+      let verifierRatingBody: number | null = null;
+      if (action === 'approve') {
+        const raw = sessionStorage.getItem(APPROVE_EXTRAS_KEY(token));
+        sessionStorage.removeItem(APPROVE_EXTRAS_KEY(token));
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw) as {
+              verifierPosition?: string;
+              verifierReviewText?: string;
+              verifierRating?: number | null;
+            };
+            verifierPositionBody = (parsed.verifierPosition ?? '').toString();
+            verifierReviewTextBody = (parsed.verifierReviewText ?? '').toString();
+            verifierRatingBody =
+              parsed.verifierRating !== undefined && parsed.verifierRating !== null
+                ? Number(parsed.verifierRating)
+                : null;
+          } catch {
+            /* use empty */
+          }
+        }
+      }
+
       const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/experience-verify?action=${action}`;
       const res = await fetch(url, {
         method: 'POST',
@@ -117,17 +186,24 @@ const VerifyExperience = () => {
           'Content-Type': 'application/json',
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ token, code, redirectUri }),
+        body: JSON.stringify({
+          token,
+          code,
+          redirectUri,
+          verifierPosition: verifierPositionBody,
+          verifierReviewText: verifierReviewTextBody,
+          verifierRating: verifierRatingBody,
+        }),
       });
-      const json = await res.json();
+      const json = (await res.json()) as { error?: string; status?: string; approver?: string };
       if (!res.ok || json.error) {
         setError(json.error || 'Could not complete verification.');
       } else {
-        setDecisionResult({ status: json.status, approver: json.approver });
+        setDecisionResult({ status: json.status || action, approver: json.approver || '' });
         fetchInfo();
       }
-    } catch (e: any) {
-      setError(e?.message || 'Network error.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Network error.');
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +213,8 @@ const VerifyExperience = () => {
   const e = info?.experience;
   const m = info?.member;
   const isPending = r?.status === 'pending';
-  const isExpired = r?.status === 'expired' || (r && new Date(r.expires_at).getTime() < Date.now() && r.status === 'pending');
+  const isExpired =
+    r?.status === 'expired' || (r && new Date(r.expires_at).getTime() < Date.now() && r.status === 'pending');
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
@@ -147,15 +224,15 @@ const VerifyExperience = () => {
           <span className="text-sm font-bold">ERLC Directory</span>
         </Link>
 
-        <Card className="card-elevated liquid-edge">
+        <Card className="card-elevated liquid-edge border-white/12">
           <CardContent className="p-6 space-y-5">
             <div className="text-center">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl glass flex items-center justify-center">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl glass flex items-center justify-center border border-white/10">
                 <Shield className="h-6 w-6" />
               </div>
               <h1 className="text-2xl font-bold mb-1">Experience verification</h1>
               <p className="text-sm text-muted-foreground">
-                A member has asked you to confirm their role in a Discord server.
+                A member asked you to confirm their role. If you approve, we record your position and optional review.
               </p>
             </div>
 
@@ -166,7 +243,7 @@ const VerifyExperience = () => {
             )}
 
             {error && !info && (
-              <div className="glass rounded-xl p-4 text-center text-amber-300 flex flex-col items-center gap-2">
+              <div className="glass rounded-xl p-4 text-center text-amber-300 flex flex-col items-center gap-2 border border-amber-500/20">
                 <AlertTriangle className="h-6 w-6" />
                 <p className="text-sm">{error}</p>
               </div>
@@ -174,25 +251,21 @@ const VerifyExperience = () => {
 
             {info && r && (
               <>
-                {/* Member card */}
                 {m && (
-                  <div className="glass rounded-xl p-4 flex items-center gap-3">
+                  <div className="glass rounded-xl p-4 flex items-center gap-3 border border-white/10">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={m.discord_avatar || undefined} />
                       <AvatarFallback>{m.display_name?.[0] || '?'}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{m.display_name || 'Member'}</p>
-                      {m.discord_username && (
-                        <p className="text-xs text-muted-foreground">@{m.discord_username}</p>
-                      )}
+                      {m.discord_username && <p className="text-xs text-muted-foreground">@{m.discord_username}</p>}
                     </div>
                   </div>
                 )}
 
-                {/* Experience card */}
                 {e && (
-                  <div className="glass rounded-xl p-4 space-y-2">
+                  <div className="glass rounded-xl p-4 space-y-2 border border-white/10">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
                       <Shield className="h-3.5 w-3.5" /> Claimed role
                     </div>
@@ -210,8 +283,7 @@ const VerifyExperience = () => {
                   </div>
                 )}
 
-                {/* Server card */}
-                <div className="glass rounded-xl p-4 flex items-center gap-3">
+                <div className="glass rounded-xl p-4 flex items-center gap-3 border border-white/10">
                   {r.guild_icon ? (
                     <img src={r.guild_icon} alt="" className="w-10 h-10 rounded-md" />
                   ) : (
@@ -225,7 +297,6 @@ const VerifyExperience = () => {
                   </div>
                 </div>
 
-                {/* Status / actions */}
                 {decisionResult ? (
                   <ResultPanel result={decisionResult} />
                 ) : r.status === 'approved' ? (
@@ -233,38 +304,102 @@ const VerifyExperience = () => {
                 ) : r.status === 'rejected' ? (
                   <ResultPanel result={{ status: 'rejected', approver: r.approver_discord_username || '' }} />
                 ) : isExpired ? (
-                  <div className="glass rounded-xl p-4 text-center text-amber-300 flex flex-col items-center gap-2">
+                  <div className="glass rounded-xl p-4 text-center text-amber-300 flex flex-col items-center gap-2 border border-amber-500/20">
                     <Clock className="h-6 w-6" />
                     <p className="text-sm">This link has expired. Ask the member to send a fresh one.</p>
                   </div>
                 ) : isPending ? (
                   <>
                     {error && (
-                      <div className="glass rounded-xl p-3 text-sm text-red-300 flex items-start gap-2">
+                      <div className="glass rounded-xl p-3 text-sm text-red-300 flex items-start gap-2 border border-red-500/25">
                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                         <span>{error}</span>
                       </div>
                     )}
-                    <div className="space-y-2 pt-1">
-                      <p className="text-xs text-muted-foreground text-center">
-                        You'll sign in with Discord. We'll verify you have <strong>Administrator</strong> permission in
-                        <strong> {r.guild_name || 'this server'}</strong> before recording your decision.
+
+                    <div className="rounded-xl border border-white/12 bg-white/[0.03] p-4 space-y-4">
+                      <p className="text-sm font-medium text-foreground">Before you approve</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        You must sign in with Discord so we can confirm you have <strong>Administrator</strong> in{' '}
+                        <strong>{r.guild_name || 'this server'}</strong>. Your stated position and optional review are
+                        stored with the verification.
                       </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="verifier-position" className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Your position in this server *
+                        </Label>
+                        <Input
+                          id="verifier-position"
+                          value={verifierPosition}
+                          onChange={(ev) => setVerifierPosition(ev.target.value)}
+                          placeholder="e.g. Owner, Director, Head Administrator"
+                          maxLength={160}
+                          className="rounded-xl border-white/12 bg-white/[0.04]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="verifier-review" className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Review (optional)
+                        </Label>
+                        <Textarea
+                          id="verifier-review"
+                          value={verifierReviewText}
+                          onChange={(ev) => setVerifierReviewText(ev.target.value)}
+                          placeholder="Brief feedback on working with this member…"
+                          maxLength={2000}
+                          rows={4}
+                          className="rounded-xl border-white/12 bg-white/[0.04] resize-none min-h-[100px]"
+                        />
+                        <p className="text-[11px] text-muted-foreground text-right tabular-nums">
+                          {verifierReviewText.length}/2000
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="verifier-rating" className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Star rating (optional)
+                        </Label>
+                        <select
+                          id="verifier-rating"
+                          value={verifierRating}
+                          onChange={(ev) => setVerifierRating(ev.target.value)}
+                          className="w-full h-10 rounded-xl border border-white/12 bg-white/[0.04] px-3 text-sm"
+                        >
+                          <option value="">No rating — text only</option>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <option key={n} value={String(n)}>
+                              {n} — {n === 5 ? 'Excellent' : n === 1 ? 'Poor' : '…'}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-muted-foreground">
+                          If you have a directory account linked to this Discord, a 1–5 rating also updates their
+                          public reviews.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
                       <div className="grid grid-cols-2 gap-2">
                         <Button
-                          variant="secondary"
+                          type="button"
+                          variant="outline"
                           disabled={submitting}
                           onClick={() => startDiscord('reject')}
-                          className="gap-2"
+                          className="gap-2 rounded-full border-white/20"
                         >
                           <XCircle className="h-4 w-4" /> Reject
                         </Button>
                         <Button
+                          type="button"
                           disabled={submitting}
                           onClick={() => startDiscord('approve')}
-                          className="gap-2"
+                          className="gap-2 rounded-full"
                         >
-                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                          {submitting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
                           Approve
                         </Button>
                       </div>
@@ -280,8 +415,8 @@ const VerifyExperience = () => {
         </Card>
 
         <p className="text-xs text-muted-foreground text-center">
-          Only an admin of the listed Discord server can approve this. Your Discord username will be shown on the
-          verified badge.
+          Only an administrator of the listed Discord server can complete this. Your Discord username is stored with
+          the decision.
         </p>
       </div>
     </div>
@@ -292,16 +427,14 @@ const ResultPanel = ({ result }: { result: { status: string; approver: string } 
   const isApproved = result.status === 'approved';
   return (
     <div
-      className={`glass rounded-xl p-5 text-center flex flex-col items-center gap-2 ${
-        isApproved ? 'text-emerald-300' : 'text-red-300'
+      className={`glass rounded-xl p-5 text-center flex flex-col items-center gap-2 border ${
+        isApproved ? 'text-violet-200 border-violet-500/25' : 'text-red-300 border-red-500/20'
       }`}
     >
       {isApproved ? <CheckCircle2 className="h-8 w-8" /> : <XCircle className="h-8 w-8" />}
       <p className="font-semibold">{isApproved ? 'Verified' : 'Rejected'}</p>
       {result.approver && (
-        <p className="text-xs text-muted-foreground">
-          Recorded with @{result.approver}
-        </p>
+        <p className="text-xs text-muted-foreground">Recorded with @{result.approver}</p>
       )}
     </div>
   );
