@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { isModerationReportsSchemaMissingError } from '@/lib/moderationReportsErrors';
 
 type Props = {
   open: boolean;
@@ -71,11 +72,9 @@ export function SubmitReportDialog({
     setSubmitting(false);
     if (error) {
       const msg = error.message ?? '';
-      const migrationMissing =
-        /moderation_reports|schema cache/i.test(msg) && /could not find|does not exist/i.test(msg);
       toast.error(
-        migrationMissing
-          ? 'Reports are not live on this database yet. Apply the Supabase migration that creates moderation_reports (see repo migration staff_warnings_reports), then retry.'
+        isModerationReportsSchemaMissingError(msg)
+          ? 'Reporting isn’t enabled on this database yet. In Supabase → SQL Editor, paste the full contents of the file supabase/migrations/20260530120000_staff_warnings_reports.sql (open the file, copy all SQL, run — not the filename). Then try again.'
           : msg,
       );
       return;

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { SubmitReportDialog } from '@/components/moderation';
 
 type ProfileChip = {
   id: string;
@@ -459,6 +459,14 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
                             <Flag className="h-3 w-3" />
                             Report
                           </Button>
+                        )}
+                        {!me && (
+                          <Link
+                            to="/auth"
+                            className="h-7 inline-flex items-center px-2 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                          >
+                            Sign in to report
+                          </Link>
                         )}
                         {staffTools && (
                           <Button

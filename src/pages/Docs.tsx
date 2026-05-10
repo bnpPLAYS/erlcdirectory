@@ -75,7 +75,7 @@ const SECTION_DATA: Omit<Section, 'body'>[] = [
     id: 'trust-account',
     title: 'Trust, staff & account',
     icon: ShieldCheck,
-    toc: ['Text filtering', 'Staff tools', 'Legal', 'Troubleshooting'],
+    toc: ['Text filtering', 'Staff tools', 'Reporting & fixing DB errors', 'Legal', 'Troubleshooting'],
   },
 ];
 
@@ -317,9 +317,35 @@ const Docs = () => {
                 Staff tools
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (access is enforced in the database and UI). It is not part of the
-                normal member workflow.
+                A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (access is enforced in the database and UI). It includes moderation for posts and a{' '}
+                <strong className="text-foreground">Reports</strong> queue when someone uses <strong className="text-foreground">Report</strong> on a review or direct message.
               </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-reporting-db">
+                Reporting & fixing DB errors
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Signed-in members can flag reviews (on profiles and server pages) and messages. Staff review submissions under{' '}
+                <strong className="text-foreground">Staff panel → Reports</strong>.
+              </p>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                If submitters see errors like <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">Could not find the table moderation_reports</code> or{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">schema cache</code>, the Supabase project has not run the migration that creates that table. Fix:
+              </p>
+              <ol className="mt-3 list-decimal pl-5 space-y-2 text-muted-foreground leading-relaxed">
+                <li>
+                  Open the repo file <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> in an editor.
+                </li>
+                <li>
+                  Copy <strong className="text-foreground">all SQL inside the file</strong> (CREATE TABLE, policies, etc.) — not the file path, not one line.
+                </li>
+                <li>
+                  In Supabase Dashboard → <strong className="text-foreground">SQL</strong> → New query → paste → Run.
+                </li>
+                <li>
+                  Ensure earlier migrations ran too (especially <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff()</code> from post moderation). Alternatively use{' '}
+                  <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code> from the project folder if the Supabase CLI is installed.
+                </li>
+              </ol>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
                 Legal
               </h3>

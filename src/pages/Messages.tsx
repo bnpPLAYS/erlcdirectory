@@ -14,7 +14,7 @@ import { pageHeroEnter } from '@/lib/pageHero';
 import { supabase } from '@/integrations/supabase/client';
 import { orderedParticipantIds } from '@/lib/conversationPair';
 import { profilePath } from '@/lib/profilePath';
-import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { SubmitReportDialog } from '@/components/moderation';
 
 interface Participant {
   id: string;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
@@ -14,11 +14,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
+import { isModerationReportsSchemaMissingError } from '@/lib/moderationReportsErrors';
 
 type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
+  const warnedModerationMigrationRef = useRef(false);
   const [access, setAccess] = useState<StaffAccess | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -79,6 +81,18 @@ const Admin = () => {
 
     if (rep.error) {
       setReports([]);
+      if (
+        !warnedModerationMigrationRef.current &&
+        isModerationReportsSchemaMissingError(rep.error.message)
+      ) {
+        warnedModerationMigrationRef.current = true;
+        toast({
+          title: 'Reports table missing on Supabase',
+          description:
+            'Copy all SQL from supabase/migrations/20260530120000_staff_warnings_reports.sql into Supabase → SQL Editor and run it (not the file path). Requires prior migrations including is_staff().',
+          variant: 'destructive',
+        });
+      }
     } else {
       const rlist = rep.data || [];
       const rids = [...new Set(rlist.map((x: { reporter_profile_id: string }) => x.reporter_profile_id))];
