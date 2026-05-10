@@ -49,31 +49,50 @@ const SORT_OPTIONS: { id: SortMode; label: string }[] = [
   { id: 'az', label: 'A–Z' },
 ];
 
+/** Staff-pinned featured profiles stay at the top for every sort mode and filter result. */
+function featuredFirstCmp(a: Profile, b: Profile): number {
+  const af = !!a.is_featured;
+  const bf = !!b.is_featured;
+  if (af === bf) return 0;
+  return af ? -1 : 1;
+}
+
 function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
   const copy = [...list];
   switch (mode) {
     case 'newest':
-      return copy.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
+      return copy.sort((a, b) => {
+        const f = featuredFirstCmp(a, b);
+        if (f !== 0) return f;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
     case 'top_rated':
       return copy.sort((a, b) => {
-        if (!!a.is_featured !== !!b.is_featured) return a.is_featured ? -1 : 1;
+        const f = featuredFirstCmp(a, b);
+        if (f !== 0) return f;
         if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
         return (b.review_count || 0) - (a.review_count || 0);
       });
     case 'most_members':
-      return copy.sort((a, b) => (b.total_members ?? 0) - (a.total_members ?? 0));
+      return copy.sort((a, b) => {
+        const f = featuredFirstCmp(a, b);
+        if (f !== 0) return f;
+        return (b.total_members ?? 0) - (a.total_members ?? 0);
+      });
     case 'most_experience':
-      return copy.sort(
-        (a, b) => (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0),
-      );
+      return copy.sort((a, b) => {
+        const f = featuredFirstCmp(a, b);
+        if (f !== 0) return f;
+        return (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0);
+      });
     case 'az':
-      return copy.sort((a, b) =>
-        (a.display_name || 'zzz').localeCompare(b.display_name || 'zzz', undefined, {
+      return copy.sort((a, b) => {
+        const f = featuredFirstCmp(a, b);
+        if (f !== 0) return f;
+        return (a.display_name || 'zzz').localeCompare(b.display_name || 'zzz', undefined, {
           sensitivity: 'base',
-        }),
-      );
+        });
+      });
     default:
       return copy;
   }
