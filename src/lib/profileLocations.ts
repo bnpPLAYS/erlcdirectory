@@ -224,6 +224,9 @@ function prefix(prefix: string, names: readonly string[]): string[] {
   return names.map((n) => `${prefix}${n}`);
 }
 
+/** Whole-country picks only (no states/provinces). */
+const COUNTRY_ONLY: readonly string[] = ['Australia', 'Canada'];
+
 /** Grouped options for the profile editor `<Select />`. */
 export const PROFILE_LOCATION_GROUPS: readonly ProfileLocationGroup[] = [
   {
@@ -237,6 +240,10 @@ export const PROFILE_LOCATION_GROUPS: readonly ProfileLocationGroup[] = [
   {
     label: 'Mexico',
     options: prefix('Mexico — ', MEXICO_STATES),
+  },
+  {
+    label: 'Countries',
+    options: COUNTRY_ONLY,
   },
 ];
 
