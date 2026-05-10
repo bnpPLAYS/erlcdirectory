@@ -38,14 +38,20 @@ function experienceVerifyUrl(base: string, action: string): string {
   return `${base.replace(/\/$/, '')}/functions/v1/experience-verify?action=${encodeURIComponent(action)}`;
 }
 
-function anonHeaders(): Record<string, string> {
+/** Supabase anon key + optional user JWT (directory session) so Edge Functions can use stored Discord tokens. */
+function verifyRequestHeaders(userAccessToken?: string | null): Record<string, string> {
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (!key) throw new Error('Missing VITE_SUPABASE_PUBLISHABLE_KEY');
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     apikey: key,
-    Authorization: `Bearer ${key}`,
   };
+  if (userAccessToken?.trim()) {
+    headers.Authorization = `Bearer ${userAccessToken.trim()}`;
+  } else {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
 }
 
 const NOT_DEPLOYED_HINT =
@@ -74,7 +80,8 @@ function isDefiniteBusinessRejection(message: string): boolean {
     message.includes('verification link is not valid') ||
     message.includes('Missing or invalid token') ||
     message.includes('This request is already') ||
-    message.includes('Missing Discord authorization')
+    message.includes('Missing Discord authorization') ||
+    message.includes('Discord authorization required')
   );
 }
 
@@ -105,12 +112,13 @@ async function parseRes(res: Response): Promise<{ data: unknown; error: string |
 async function directHttp(
   action: 'lookup' | 'approve' | 'reject',
   body: Record<string, unknown>,
+  userAccessToken?: string | null,
 ): Promise<{ data: unknown; error: string | null }> {
   let last: { data: unknown; error: string | null } = { data: null, error: null };
   for (const base of candidateSupabaseBases()) {
     const res = await fetch(experienceVerifyUrl(base, action), {
       method: 'POST',
-      headers: anonHeaders(),
+      headers: verifyRequestHeaders(userAccessToken),
       body: JSON.stringify(body),
     });
     last = await parseRes(res);
@@ -123,10 +131,11 @@ async function directHttp(
 async function proxiedHttp(
   action: 'lookup' | 'approve' | 'reject',
   body: Record<string, unknown>,
+  userAccessToken?: string | null,
 ): Promise<{ data: unknown; error: string | null }> {
   const res = await fetch(`/api/experience-verify?action=${encodeURIComponent(action)}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: verifyRequestHeaders(userAccessToken),
     body: JSON.stringify(body),
   });
   return parseRes(res);
@@ -145,11 +154,13 @@ function humanizeNetworkError(message: string | null): string {
 export async function callExperienceVerify<T = unknown>(
   action: 'lookup' | 'approve' | 'reject',
   body: Record<string, unknown>,
+  /** When set, approve/reject can use stored Discord OAuth tokens (no redirect). Lookup ignores this. */
+  userAccessToken?: string | null,
 ): Promise<{ data: T | null; error: string | null }> {
   let lastErr: string | null = null;
 
   try {
-    const r1 = await directHttp(action, body);
+    const r1 = await directHttp(action, body, userAccessToken);
     if (!r1.error && r1.data !== null) return { data: r1.data as T, error: null };
     lastErr = r1.error || lastErr;
   } catch (e) {
@@ -157,7 +168,7 @@ export async function callExperienceVerify<T = unknown>(
   }
 
   try {
-    const r2 = await proxiedHttp(action, body);
+    const r2 = await proxiedHttp(action, body, userAccessToken);
     if (!r2.error && r2.data !== null) return { data: r2.data as T, error: null };
     lastErr = r2.error || lastErr;
   } catch (e) {

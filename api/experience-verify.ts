@@ -37,13 +37,17 @@ export default async function handler(request: Request): Promise<Response> {
   const action = reqUrl.searchParams.get('action') || 'lookup';
   const bodyText = await request.text();
 
+  const incomingAuth = request.headers.get('Authorization');
+  const forwardAuth =
+    incomingAuth?.startsWith('Bearer ') && incomingAuth.length > 24 ? incomingAuth : `Bearer ${anonKey}`;
+
   const target = `${supabaseUrl}/functions/v1/experience-verify?action=${encodeURIComponent(action)}`;
   const res = await fetch(target, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
+      Authorization: forwardAuth,
     },
     body: bodyText.length ? bodyText : '{}',
   });
