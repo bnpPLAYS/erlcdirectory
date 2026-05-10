@@ -17,9 +17,18 @@ import {
   Bell,
   Eye,
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { z } from 'zod';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,7 +45,10 @@ import AddExperienceDialog from './AddExperienceDialog';
 import { isPendingPlaceholderRole } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
-import { COUNTY_OPTIONS, normalizeStoredCounty } from '@/lib/ukCounties';
+import {
+  PROFILE_LOCATION_GROUPS,
+  normalizeStoredCounty,
+} from '@/lib/profileLocations';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
 
@@ -524,22 +536,27 @@ const ProfileEditor = ({
                 />
               </Field>
               <Field
-                label="County / region"
-                hint="Pick your general area — not your street or town."
+                label="Country / region"
+                hint="Pick a broad area — country or state/province — not your street or town."
               >
                 <Select
                   value={form.location ? form.location : '__none'}
                   onValueChange={(v) => update('location', v === '__none' ? '' : v)}
                 >
                   <SelectTrigger className={editorSelect}>
-                    <SelectValue placeholder="Choose a county or region" />
+                    <SelectValue placeholder="Choose country or region" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[min(22rem,70vh)]">
                     <SelectItem value="__none">Don&apos;t show location</SelectItem>
-                    {COUNTY_OPTIONS.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
+                    {PROFILE_LOCATION_GROUPS.map((group) => (
+                      <SelectGroup key={group.label}>
+                        <SelectLabel className="text-muted-foreground">{group.label}</SelectLabel>
+                        {group.options.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
