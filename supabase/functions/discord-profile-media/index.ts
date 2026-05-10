@@ -96,13 +96,15 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization') ?? ''
   if (!authHeader.includes('Bearer')) return json({ ok: false, error: 'Unauthorized' }, 401)
 
+  const jwt = authHeader.replace(/^Bearer\s+/i, '').trim()
+
   const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
   })
   const {
     data: { user },
     error: authErr,
-  } = await userClient.auth.getUser()
+  } = await userClient.auth.getUser(jwt)
   if (authErr || !user) return json({ ok: false, error: 'Unauthorized' }, 401)
 
   const admin = createClient(supabaseUrl, serviceKey)
@@ -183,12 +185,13 @@ Deno.serve(async (req) => {
   const bannerUrl = discordId ? bannerCdn(discordId, du.banner ?? null) : null
 
   const patch: Record<string, unknown> = {
-    discord_avatar: avatarUrl,
-    banner_url: bannerUrl,
     discord_access_token: accessToken || null,
     discord_refresh_token: refreshToken || null,
     updated_at: new Date().toISOString(),
   }
+  // Only overwrite media URLs when Discord returns hashes — avoid wiping a custom banner/avatar.
+  if (avatarUrl != null) patch.discord_avatar = avatarUrl
+  if (bannerUrl != null) patch.banner_url = bannerUrl
   if (oauthExpiresIn != null && oauthExpiresIn > 0) {
     patch.discord_token_expires_at = new Date(Date.now() + oauthExpiresIn * 1000).toISOString()
   }
