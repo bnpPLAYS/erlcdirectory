@@ -92,10 +92,12 @@ const ServerDetail = () => {
 
   useEffect(() => {
     if (!server?.id || !server.guild_id) return;
-    if (detailBannerRefreshRef.current === server.id) return;
-    detailBannerRefreshRef.current = server.id;
+    const refreshKey = `${server.id}:${user?.id ?? 'anon'}`;
+    if (detailBannerRefreshRef.current === refreshKey) return;
+    detailBannerRefreshRef.current = refreshKey;
     let cancelled = false;
     void (async () => {
+      // Uses caller JWT when logged in so Discord OAuth (guilds scope) can resolve vanity invites for members.
       await supabase.functions.invoke('servers-enrich-metadata', {
         body: { guild_ids: [server.guild_id], refresh_visuals: true },
       });
@@ -106,7 +108,7 @@ const ServerDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [server?.id, server?.guild_id]);
+  }, [server?.id, server?.guild_id, user?.id]);
 
   useEffect(() => {
     if (!id) return;
@@ -267,11 +269,7 @@ const ServerDetail = () => {
                       <ExternalLink className="h-4 w-4" /> Join Discord
                     </Button>
                   </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground self-center px-1 max-w-[14rem] text-right">
-                    No invite link on file yet — a member can refresh from Edit profile → Customize → Sync from Discord.
-                  </p>
-                )}
+                ) : null}
                 {user && (
                   <Button
                     type="button"
