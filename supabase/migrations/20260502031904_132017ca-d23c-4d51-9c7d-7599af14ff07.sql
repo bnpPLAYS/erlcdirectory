@@ -1,5 +1,5 @@
--- Reviews table for profile reputation
-CREATE TABLE public.reviews (
+-- Reviews table for profile reputation (idempotent for preview / re-run)
+CREATE TABLE IF NOT EXISTS public.reviews (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   reviewee_id UUID NOT NULL,
   reviewer_id UUID NOT NULL,
@@ -12,26 +12,31 @@ CREATE TABLE public.reviews (
 
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Reviews are viewable by everyone" ON public.reviews;
 CREATE POLICY "Reviews are viewable by everyone"
   ON public.reviews FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can create their own reviews" ON public.reviews;
 CREATE POLICY "Users can create their own reviews"
   ON public.reviews FOR INSERT
   WITH CHECK (reviewer_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users can update their own reviews" ON public.reviews;
 CREATE POLICY "Users can update their own reviews"
   ON public.reviews FOR UPDATE
   USING (reviewer_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users can delete their own reviews" ON public.reviews;
 CREATE POLICY "Users can delete their own reviews"
   ON public.reviews FOR DELETE
   USING (reviewer_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
 
+DROP TRIGGER IF EXISTS update_reviews_updated_at ON public.reviews;
 CREATE TRIGGER update_reviews_updated_at
   BEFORE UPDATE ON public.reviews
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE INDEX idx_reviews_reviewee ON public.reviews(reviewee_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewee ON public.reviews(reviewee_id);
 
 -- Recompute aggregate rating on the reviewee profile
 CREATE OR REPLACE FUNCTION public.recompute_profile_rating()
@@ -52,6 +57,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS reviews_recompute_rating ON public.reviews;
 CREATE TRIGGER reviews_recompute_rating
   AFTER INSERT OR UPDATE OR DELETE ON public.reviews
   FOR EACH ROW EXECUTE FUNCTION public.recompute_profile_rating();
