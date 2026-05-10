@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { sendDiscordUserDm } from '../_shared/discordDm.ts'
 import { discordIconCdnUrl, enrichDiscordGuildForDirectory } from '../_shared/discordGuildEnrichment.ts'
+import { fetchMemberDiscordRolesForGuild } from '../_shared/discordMemberRoles.ts'
 import { publicProfileAbsoluteUrl } from '../_shared/publicProfilePath.ts'
 
 const corsHeaders = {
@@ -15,6 +16,8 @@ const json = (body: unknown, status = 200) =>
   })
 
 const ADMIN = 0x8n
+/** Manage Roles — same permission Discord uses for moderators who can assign roles without Administrator. */
+const MANAGE_ROLES = 1n << 28n
 
 /** Must match the authorize URL — one stable `/discord/callback` per site, not per /verify/:token. */
 function isAllowedVerifierRedirectUri(uri: string): boolean {
@@ -129,9 +132,24 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, display_name, discord_username, discord_avatar')
+      .select('id, display_name, discord_username, discord_avatar, discord_id')
       .eq('id', vr.profile_id)
       .maybeSingle()
+
+    let discordRoles: { id: string; name: string }[] = []
+    const botToken = Deno.env.get('DISCORD_BOT_TOKEN')?.trim()
+    if (botToken && profile?.discord_id && vr.guild_id) {
+      try {
+        const { roles } = await fetchMemberDiscordRolesForGuild(
+          botToken,
+          String(vr.guild_id),
+          String(profile.discord_id),
+        )
+        discordRoles = roles
+      } catch (e) {
+        console.error('[experience-verify] discord_roles_lookup_failed', e)
+      }
+    }
 
     // Lookup-only request: just return state
     if (action === 'lookup') {
@@ -147,7 +165,12 @@ Deno.serve(async (req) => {
           approver_discord_username: vr.approver_discord_username,
         },
         experience,
-        member: profile,
+        member: profile
+          ? {
+              ...profile,
+              discord_roles: discordRoles,
+            }
+          : null,
       })
     }
 
@@ -231,12 +254,22 @@ Deno.serve(async (req) => {
       }, 403)
     }
     let perms = 0n
-    try { perms = BigInt(target.permissions ?? '0') } catch { /* ignore */ }
-    const isAdmin = !!target.owner || (perms & ADMIN) === ADMIN
-    if (!isAdmin) {
-      return json({
-        error: `You don't have Administrator permission in "${target.name}". Only an admin can approve this.`,
-      }, 403)
+    try {
+      perms = BigInt(target.permissions ?? '0')
+    } catch {
+      /* ignore */
+    }
+    const canVerify =
+      !!target.owner ||
+      (perms & ADMIN) === ADMIN ||
+      (perms & MANAGE_ROLES) === MANAGE_ROLES
+    if (!canVerify) {
+      return json(
+        {
+          error: `You need Administrator or Manage Roles permission in "${target.name}" to approve or reject this verification.`,
+        },
+        403,
+      )
     }
 
     const decidedAt = new Date().toISOString()
