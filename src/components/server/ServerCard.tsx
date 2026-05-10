@@ -100,12 +100,16 @@ const ServerCard = ({ server }: ServerCardProps) => {
               </div>
               
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                {joinHref && (
+                {joinHref ? (
                   <a href={joinHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
                       <ExternalLink className="h-3 w-3" /> Join server
                     </Button>
                   </a>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground px-1" title="No Discord invite on file yet">
+                    No invite
+                  </span>
                 )}
                 <Link to={`/server/${server.id}`}>
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">

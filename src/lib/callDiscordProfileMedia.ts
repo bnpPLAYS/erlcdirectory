@@ -7,6 +7,8 @@ export type DiscordProfileMediaResult = {
   ok: boolean;
   banner_url?: string | null;
   discord_avatar?: string | null;
+  /** Matching `servers` rows refreshed (banner, invite, etc.) for guilds you are in. */
+  servers_refreshed?: number;
   error?: string;
 };
 
@@ -19,10 +21,12 @@ function parsePayload(data: unknown): DiscordProfileMediaResult {
     return { ok: false, error: typeof d.error === 'string' ? d.error : 'Sync failed' };
   }
   if (d.ok === true) {
+    const sr = d.servers_refreshed;
     return {
       ok: true,
       banner_url: (d.banner_url as string | null) ?? null,
       discord_avatar: (d.discord_avatar as string | null) ?? null,
+      servers_refreshed: typeof sr === 'number' && Number.isFinite(sr) ? Math.max(0, Math.floor(sr)) : undefined,
     };
   }
   return { ok: false, error: 'Unexpected response' };

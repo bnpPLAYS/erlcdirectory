@@ -1,8 +1,14 @@
 /**
  * Pull Discord avatar and/or profile banner (Nitro) from the Discord API using stored OAuth tokens.
  * Request body: `{ "sync": "both" | "banner" | "avatar" }` (default both). Refreshes OAuth on 401.
+ * After a successful profile update, refreshes matching `servers` rows (banner, invite, description, icon)
+ * for Discord guilds you are in that exist on the directory (capped per request).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import {
+  discordIconCdnUrl,
+  enrichDiscordGuildForDirectory,
+} from '../_shared/discordGuildEnrichment.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +89,103 @@ async function fetchDiscordMe(accessToken: string): Promise<{ ok: boolean; user?
   } catch {
     return { ok: false, status: res.status }
   }
+}
+
+async function fetchUserGuildIds(accessToken: string): Promise<string[]> {
+  const res = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) return []
+  try {
+    const arr = (await res.json()) as Array<{ id?: string }>
+    return [...new Set(arr.map((g) => String(g.id ?? '').trim()).filter(Boolean))]
+  } catch {
+    return []
+  }
+}
+
+const MAX_DIRECTORY_SERVERS_PER_SYNC = 40
+const GUILD_ID_QUERY_CHUNK = 80
+
+type ServerRow = {
+  id: string
+  guild_id: string | null
+  discord_invite: string | null
+  banner: string | null
+  description: string | null
+  icon: string | null
+}
+
+/**
+ * Update directory `servers` the user shares with Discord: banners, invites, etc.
+ * Uses the same OAuth token so GET /guilds/:id works for guilds the user is in.
+ */
+async function refreshDirectoryServersForUserGuilds(
+  admin: ReturnType<typeof createClient>,
+  accessToken: string,
+): Promise<number> {
+  const guildIds = await fetchUserGuildIds(accessToken)
+  if (guildIds.length === 0) return 0
+
+  const seen = new Set<string>()
+  const rows: ServerRow[] = []
+
+  for (let i = 0; i < guildIds.length; i += GUILD_ID_QUERY_CHUNK) {
+    const part = guildIds.slice(i, i + GUILD_ID_QUERY_CHUNK)
+    const { data } = await admin
+      .from('servers')
+      .select('id, guild_id, discord_invite, banner, description, icon')
+      .in('guild_id', part)
+
+    for (const r of data ?? []) {
+      const sr = r as ServerRow
+      if (!sr.guild_id || seen.has(sr.id)) continue
+      seen.add(sr.id)
+      rows.push(sr)
+    }
+  }
+
+  const candidates = rows.slice(0, MAX_DIRECTORY_SERVERS_PER_SYNC)
+  const botToken = Deno.env.get('DISCORD_BOT_TOKEN')?.trim()
+  let updated = 0
+
+  for (const srow of candidates) {
+    const guildId = String(srow.guild_id)
+    try {
+      const enriched = await enrichDiscordGuildForDirectory(guildId, null, {
+        userAccessToken: accessToken,
+      })
+
+      const patch: Record<string, unknown> = {}
+      if (enriched.discordInvite?.trim()) patch.discord_invite = enriched.discordInvite.trim()
+      if (enriched.bannerUrl?.trim()) patch.banner = enriched.bannerUrl.trim()
+      if (enriched.description?.trim()) patch.description = enriched.description.trim()
+
+      if (botToken) {
+        const gr = await fetch(`https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}`, {
+          headers: { Authorization: `Bot ${botToken}` },
+        })
+        if (gr.ok) {
+          try {
+            const g = (await gr.json()) as { icon?: string | null }
+            const iconUrl = discordIconCdnUrl(guildId, g.icon ?? null)
+            if (iconUrl) patch.icon = iconUrl
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      if (Object.keys(patch).length === 0) continue
+
+      const { error: upErr } = await admin.from('servers').update(patch).eq('id', srow.id)
+      if (!upErr) updated += 1
+    } catch {
+      /* skip guild */
+    }
+  }
+
+  return updated
 }
 
 Deno.serve(async (req) => {
@@ -212,9 +315,17 @@ Deno.serve(async (req) => {
   const { error: upErr } = await admin.from('profiles').update(patch).eq('id', row.id)
   if (upErr) return json({ ok: false, error: upErr.message }, 500)
 
+  let servers_refreshed = 0
+  try {
+    servers_refreshed = await refreshDirectoryServersForUserGuilds(admin, accessToken)
+  } catch {
+    /* non-fatal — profile sync already succeeded */
+  }
+
   return json({
     ok: true,
     banner_url: bannerUrl,
     discord_avatar: avatarUrl,
+    servers_refreshed,
   })
 })

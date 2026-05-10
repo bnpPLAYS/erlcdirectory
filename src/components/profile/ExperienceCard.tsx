@@ -95,7 +95,7 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
                   ServerHeader
                 )}
               </div>
-              {joinHref && (
+              {joinHref ? (
                 <a
                   href={joinHref}
                   target="_blank"
@@ -105,7 +105,15 @@ const ExperienceCard = ({ experience }: { experience: Experience }) => {
                 >
                   Join server
                 </a>
-              )}
+              ) : serverId ? (
+                <Link
+                  to={`/server/${serverId}`}
+                  className="text-[11px] text-muted-foreground hover:text-foreground shrink-0 underline-offset-2 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View server
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>

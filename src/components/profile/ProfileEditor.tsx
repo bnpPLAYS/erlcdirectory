@@ -830,7 +830,7 @@ const ProfileEditor = ({
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Sync from Discord</p>
                 <p className="text-xs text-muted-foreground leading-snug mb-3">
-                  Uses your linked Discord login. Banner-only leaves your profile picture as-is; picture-only leaves your banner as-is.
+                  Uses your linked Discord login. Banner-only leaves your profile picture as-is; picture-only leaves your banner as-is. Each sync also tries to refresh directory servers you share with the site (banners and invite links).
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
                   <Select
@@ -886,6 +886,13 @@ const ProfileEditor = ({
                         toast.success('Profile picture updated from Discord.');
                       } else {
                         toast.info('No Discord profile image to sync.');
+                      }
+
+                      const refreshed = r.servers_refreshed ?? 0;
+                      if (refreshed > 0) {
+                        toast.message('Server listings refreshed', {
+                          description: `Updated ${refreshed} directory server${refreshed === 1 ? '' : 's'} you’re in — banners and Discord invites when Discord provides them.`,
+                        });
                       }
                     }}
                   >

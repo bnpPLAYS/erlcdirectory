@@ -261,12 +261,16 @@ const ServerDetail = () => {
                     {server.is_verified ? 'Remove verify badge' : 'Grant verify badge'}
                   </Button>
                 )}
-                {joinHref && (
+                {joinHref ? (
                   <a href={joinHref} target="_blank" rel="noopener noreferrer" className="inline-flex">
                     <Button className="gap-2 w-full sm:w-auto">
                       <ExternalLink className="h-4 w-4" /> Join Discord
                     </Button>
                   </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground self-center px-1 max-w-[14rem] text-right">
+                    No invite link on file yet — a member can refresh from Edit profile → Customize → Sync from Discord.
+                  </p>
                 )}
                 {user && (
                   <Button
