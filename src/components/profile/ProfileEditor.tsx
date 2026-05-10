@@ -832,7 +832,7 @@ const ProfileEditor = ({
           >
             {profile.is_pro ? (
               <div className="space-y-4">
-                <p className="text-sm font-medium text-emerald-400/95">Pro is active on this account.</p>
+                <p className="text-sm font-medium text-zinc-200">Pro is active on this account.</p>
                 {profile.roblox_user_id ? (
                   <p className="text-xs text-muted-foreground">
                     Linked Roblox user id: <span className="font-mono">{profile.roblox_user_id}</span>
@@ -853,12 +853,12 @@ const ProfileEditor = ({
                     href={ERLC_PRO_ROBLOX_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-violet-400 hover:underline"
+                    className="text-zinc-200 underline-offset-2 hover:text-white hover:underline"
                   >
                     Roblox catalog
                   </a>
                   . Full details:{' '}
-                  <Link to="/pro" className="text-violet-400 hover:underline">
+                  <Link to="/pro" className="text-zinc-200 underline-offset-2 hover:text-white hover:underline">
                     /pro
                   </Link>
                   .
@@ -881,7 +881,7 @@ const ProfileEditor = ({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-11 rounded-xl shrink-0 border border-amber-500/30 bg-amber-950/30 hover:bg-amber-950/45"
+                    className="h-11 rounded-xl shrink-0 border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
                     disabled={proVerifyBusy || robloxVerifyInput.trim().length < 3}
                     onClick={() => void handleVerifyPro()}
                   >
@@ -1022,7 +1022,7 @@ const ProfileEditor = ({
 
             {profile.is_pro ? (
               <div className="space-y-2 pt-1">
-                <p className="text-xs font-medium text-amber-200/90 uppercase tracking-wide">Pro palettes</p>
+                <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Pro palettes</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {PRESETS_PRO.map((p) => (
                     <button
@@ -1033,9 +1033,9 @@ const ProfileEditor = ({
                         update('accent_color', p.accent);
                       }}
                       className={cn(
-                        'rounded-xl border p-3 text-left transition-all hover:border-amber-400/35 hover:bg-white/[0.06]',
+                        'rounded-xl border p-3 text-left transition-all hover:border-white/25 hover:bg-white/[0.06]',
                         form.theme_preset === p.id
-                          ? 'border-amber-400/50 bg-amber-950/25 ring-1 ring-amber-400/25 shadow-lg shadow-black/40'
+                          ? 'border-white/40 bg-white/[0.08] ring-1 ring-white/25 shadow-lg shadow-black/40'
                           : 'border-white/10 bg-black/20',
                       )}
                     >
@@ -1050,8 +1050,8 @@ const ProfileEditor = ({
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-amber-500/25 bg-amber-950/15 p-4">
-                <p className="text-sm text-amber-100/90 font-medium mb-1">Pro palettes</p>
+              <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.04] p-4">
+                <p className="text-sm text-foreground font-medium mb-1">Pro palettes</p>
                 <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                   Four extra accent themes plus a directory boost. Unlock with ERLC Directory Pro.
                 </p>
