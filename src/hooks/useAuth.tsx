@@ -1,4 +1,12 @@
-import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+  useCallback,
+  useMemo,
+} from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
@@ -72,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Missing row (failed trigger) or not hydrated yet: create/update from Discord session — same source as OAuth callback.
     const {
       data: { session: s },
     } = await supabase.auth.getSession();
@@ -103,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         return;
       }
-      // Initial load awaits `profiles` in getSession() below so `loading` stays true until the first row hydrates.
+      // Initial hydration runs fetchProfile from getSession() below — skip duplicate work.
       if (event === 'INITIAL_SESSION') return;
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setTimeout(() => {
@@ -112,14 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(async ({ data: { session: initial } }) => {
+    void supabase.auth.getSession().then(({ data: { session: initial } }) => {
       if (cancelled) return;
       setSession(initial);
       setUser(initial?.user ?? null);
+      // End global loading immediately so routes paint; profile loads in the background.
+      setLoading(false);
       if (initial?.user) {
-        await fetchProfile(initial.user.id);
+        void fetchProfile(initial.user.id);
       }
-      if (!cancelled) setLoading(false);
     });
 
     return () => {
@@ -146,12 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;
-    const session = data.session;
-    if (!uid || !session) return;
-    await syncDiscordProfileFromSession(session).catch(() => {});
+    const sess = data.session;
+    if (!uid || !sess) return;
+    await syncDiscordProfileFromSession(sess).catch(() => {});
     const row = await supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle();
     if (!row.error && row.data) {
       const p = row.data as Profile;
@@ -163,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setProfile(p);
     }
-  };
+  }, []);
 
   const signInWithDiscord = useCallback(async () => {
     if (typeof window !== 'undefined') {
@@ -194,11 +204,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signInWithDiscord, signOut, refreshProfile }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      profile,
+      loading,
+      signInWithDiscord,
+      signOut,
+      refreshProfile,
+    }),
+    [user, session, profile, loading, signInWithDiscord, signOut, refreshProfile],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

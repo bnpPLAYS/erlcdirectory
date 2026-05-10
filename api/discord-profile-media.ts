@@ -43,6 +43,14 @@ export default async function handler(request: Request): Promise<Response> {
     );
   }
 
+  let forwardBody = '{}';
+  try {
+    const t = await request.text();
+    if (t?.trim()) forwardBody = t;
+  } catch {
+    forwardBody = '{}';
+  }
+
   const target = `${supabaseUrl}/functions/v1/discord-profile-media`;
   const res = await fetch(target, {
     method: 'POST',
@@ -51,7 +59,7 @@ export default async function handler(request: Request): Promise<Response> {
       apikey: anonKey,
       Authorization: auth,
     },
-    body: '{}',
+    body: forwardBody,
   });
 
   const outText = await res.text();

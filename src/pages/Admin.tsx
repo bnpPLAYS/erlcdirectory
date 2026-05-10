@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban } from 'lucide-react';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
+import { reportCategoryLabel } from '@/lib/reportCategories';
 
 type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 
 const Admin = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const [access, setAccess] = useState<StaffAccess | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -31,6 +32,8 @@ const Admin = () => {
   const [newStaffQuery, setNewStaffQuery] = useState('');
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+  const [warnForReportId, setWarnForReportId] = useState<string | null>(null);
+  const [warnBody, setWarnBody] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -62,7 +65,7 @@ const Admin = () => {
       supabase
         .from('moderation_reports')
         .select(
-          'id, kind, reason, status, created_at, reporter_profile_id, review_id, message_id, conversation_id, staff_notes, resolved_at',
+          'id, kind, reason, report_category, status, created_at, reporter_profile_id, review_id, message_id, conversation_id, server_id, staff_notes, resolved_at',
         )
         .order('created_at', { ascending: false })
         .limit(100),
@@ -80,15 +83,61 @@ const Admin = () => {
     if (rep.error) {
       setReports([]);
     } else {
-      const rlist = rep.data || [];
+      let rlist = rep.data || [];
       const rids = [...new Set(rlist.map((x: { reporter_profile_id: string }) => x.reporter_profile_id))];
+      const reporterMap = new Map<string, string>();
       if (rids.length) {
         const { data: rprofs } = await supabase.from('profiles').select('id, display_name, discord_username').in('id', rids);
-        const map = new Map((rprofs || []).map((pr) => [pr.id, (pr.display_name || pr.discord_username || 'Member').trim()]));
-        setReports(rlist.map((row: any) => ({ ...row, reporter_label: map.get(row.reporter_profile_id) || 'Member' })));
-      } else {
-        setReports(rlist.map((row: any) => ({ ...row, reporter_label: '—' })));
+        for (const pr of rprofs || []) {
+          reporterMap.set(pr.id, (pr.display_name || pr.discord_username || 'Member').trim());
+        }
       }
+
+      const serverIds = [...new Set(rlist.map((x: { server_id?: string | null }) => x.server_id).filter(Boolean))] as string[];
+      const serverNameById = new Map<string, string>();
+      if (serverIds.length) {
+        const { data: sv } = await supabase.from('servers').select('id, name').in('id', serverIds);
+        for (const s of sv || []) serverNameById.set(s.id, s.name);
+      }
+
+      const msgIds = [...new Set(rlist.map((x: { message_id?: string | null }) => x.message_id).filter(Boolean))] as string[];
+      const msgExtra = new Map<string, { preview: string; senderLabel: string }>();
+      if (msgIds.length) {
+        const { data: msgs } = await supabase.from('messages').select('id, content, sender_id').in('id', msgIds);
+        const senderIds = [...new Set((msgs || []).map((m) => m.sender_id))];
+        const senderLabel = new Map<string, string>();
+        if (senderIds.length) {
+          const { data: sp } = await supabase
+            .from('profiles')
+            .select('id, display_name, discord_username')
+            .in('id', senderIds);
+          for (const p of sp || []) {
+            senderLabel.set(p.id, (p.display_name || p.discord_username || 'Member').trim());
+          }
+        }
+        for (const m of msgs || []) {
+          const prev = (m.content || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+          msgExtra.set(m.id, {
+            preview: prev || '(empty message)',
+            senderLabel: senderLabel.get(m.sender_id) || 'Unknown',
+          });
+        }
+      }
+
+      setReports(
+        rlist.map((row: Record<string, unknown>) => {
+          const messageId = row.message_id as string | null | undefined;
+          const serverId = row.server_id as string | null | undefined;
+          const msgMeta = messageId ? msgExtra.get(messageId) : undefined;
+          return {
+            ...row,
+            reporter_label: reporterMap.get(row.reporter_profile_id as string) || '—',
+            server_label: serverId ? serverNameById.get(serverId) || null : null,
+            message_preview: msgMeta?.preview,
+            message_sender_label: msgMeta?.senderLabel,
+          };
+        }),
+      );
     }
   };
 
@@ -276,6 +325,53 @@ const Admin = () => {
     refresh();
   };
 
+  const staffReportAction = async (row: any, action: string, opts?: { warn_body?: string }) => {
+    if (!session?.access_token) {
+      toast({ title: 'Session expired. Sign in again.', variant: 'destructive' });
+      return;
+    }
+    if (action === 'ban' && !confirm('Ban this member from logging in? Their Discord sign-in will be blocked.')) return;
+    if (action === 'delete_message' && !confirm('Delete this message permanently?')) return;
+    if (action === 'delete_review' && !confirm('Delete this review permanently?')) return;
+    if (action === 'remove_server' && !confirm('Remove this server listing from the directory?')) return;
+
+    let res: Response;
+    try {
+      res = await fetch('/api/staff-moderation-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          report_id: row.id,
+          action,
+          warn_body: opts?.warn_body,
+        }),
+      });
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+      return;
+    }
+    let data: { ok?: boolean; error?: string } = {};
+    try {
+      data = (await res.json()) as { ok?: boolean; error?: string };
+    } catch {
+      /* ignore */
+    }
+    if (!res.ok || !data.ok) {
+      toast({
+        title: data.error || `Request failed (${res.status})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({ title: 'Action completed' });
+    setWarnForReportId(null);
+    setWarnBody('');
+    refresh();
+  };
+
   const newStaffMatches = newStaffQuery.length >= 2
     ? profiles.filter((p) =>
         !staff.some((s) => s.user_id === p.user_id) &&
@@ -409,54 +505,155 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-2">
-            {filter(reports, ['reason', 'reporter_label', 'kind']).length === 0 ? (
+            {filter(reports, ['reason', 'reporter_label', 'kind', 'report_category', 'server_label', 'message_preview']).length ===
+            0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No user reports yet. Reports appear when someone uses Report on a review or DM.
+                  No user reports yet. Reports appear when someone uses Report on a review, DM, or server.
                 </CardContent>
               </Card>
             ) : (
-              filter(reports, ['reason', 'reporter_label', 'kind']).map((r) => (
-                <Card key={r.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="capitalize">
-                        {r.kind}
-                      </Badge>
-                      <Badge
-                        variant={
-                          r.status === 'open' ? 'secondary' : r.status === 'resolved' ? 'default' : 'outline'
-                        }
-                        className="capitalize text-[10px]"
-                      >
-                        {r.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(r.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      From <span className="text-foreground font-medium">{r.reporter_label}</span>
-                    </p>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{r.reason}</p>
-                    <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground font-mono">
-                      {r.review_id && <span>review: {r.review_id}</span>}
-                      {r.message_id && <span>message: {r.message_id}</span>}
-                      {r.conversation_id && <span>conversation: {r.conversation_id}</span>}
-                    </div>
-                    {r.status === 'open' && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <Button size="sm" variant="secondary" className="gap-1" onClick={() => void resolveReport(r, 'resolved')}>
-                          <Check className="h-3.5 w-3.5" /> Handled
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => void resolveReport(r, 'dismissed')}>
-                          Dismiss
-                        </Button>
+              filter(reports, ['reason', 'reporter_label', 'kind', 'report_category', 'server_label', 'message_preview']).map(
+                (r) => (
+                  <Card key={r.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {r.kind}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] font-normal">
+                          {reportCategoryLabel(r.report_category)}
+                        </Badge>
+                        <Badge
+                          variant={
+                            r.status === 'open' ? 'secondary' : r.status === 'resolved' ? 'default' : 'outline'
+                          }
+                          className="capitalize text-[10px]"
+                        >
+                          {r.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {new Date(r.created_at).toLocaleString()}
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+                      <p className="text-xs text-muted-foreground">
+                        From <span className="text-foreground font-medium">{r.reporter_label}</span>
+                      </p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{r.reason}</p>
+                      {r.message_preview && (
+                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
+                          <p className="text-muted-foreground mb-1">
+                            Message from <span className="text-foreground">{r.message_sender_label}</span>
+                          </p>
+                          <p className="text-foreground/90 whitespace-pre-wrap">{r.message_preview}</p>
+                        </div>
+                      )}
+                      {r.server_label && (
+                        <p className="text-xs text-muted-foreground">
+                          Server: <span className="text-foreground font-medium">{r.server_label}</span>
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground font-mono">
+                        {r.review_id && <span>review: {r.review_id}</span>}
+                        {r.message_id && <span>message: {r.message_id}</span>}
+                        {r.conversation_id && <span>conversation: {r.conversation_id}</span>}
+                        {r.server_id && <span>server: {r.server_id}</span>}
+                      </div>
+                      {r.status === 'open' && (
+                        <>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {r.kind === 'message' && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="gap-1"
+                                onClick={() => void staffReportAction(r, 'delete_message')}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete message
+                              </Button>
+                            )}
+                            {r.kind === 'review' && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="gap-1"
+                                onClick={() => void staffReportAction(r, 'delete_review')}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete review
+                              </Button>
+                            )}
+                            {r.kind === 'server' && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="gap-1"
+                                onClick={() => void staffReportAction(r, 'remove_server')}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Remove server
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1"
+                              onClick={() => {
+                                setWarnForReportId(r.id);
+                                setWarnBody('');
+                              }}
+                            >
+                              <AlertTriangle className="h-3.5 w-3.5" /> Warn member
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1 text-destructive"
+                              onClick={() => void staffReportAction(r, 'ban')}
+                            >
+                              <Ban className="h-3.5 w-3.5" /> Ban member
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1"
+                              onClick={() => void resolveReport(r, 'resolved')}
+                            >
+                              <Check className="h-3.5 w-3.5" /> Mark handled
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => void resolveReport(r, 'dismissed')}>
+                              Dismiss
+                            </Button>
+                          </div>
+                          {warnForReportId === r.id && (
+                            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 space-y-2">
+                              <p className="text-xs text-muted-foreground">Warning text (visible on their profile)</p>
+                              <Textarea
+                                value={warnBody}
+                                onChange={(e) => setWarnBody(e.target.value)}
+                                rows={3}
+                                maxLength={2000}
+                                className="rounded-lg border-white/12 bg-background resize-none text-sm"
+                                placeholder="Reason for warning…"
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => void staffReportAction(r, 'warn', { warn_body: warnBody.trim() })}
+                                  disabled={warnBody.trim().length < 1}
+                                >
+                                  Send warning & resolve
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setWarnForReportId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                ),
+              )
             )}
           </TabsContent>
 

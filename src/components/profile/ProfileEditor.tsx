@@ -52,7 +52,10 @@ import {
   PROFILE_LOCATION_OPTIONS,
 } from '@/lib/profileLocations';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
-import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+import {
+  invokeDiscordProfileMediaSync,
+  type DiscordProfileMediaSyncMode,
+} from '@/lib/callDiscordProfileMedia';
 import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
 
 interface Experience {
@@ -245,6 +248,7 @@ const ProfileEditor = ({
   const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(!!profile.dm_website_updates);
   const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
   const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
+  const [discordSyncTarget, setDiscordSyncTarget] = useState<DiscordProfileMediaSyncMode>('both');
   const [bannerDropActive, setBannerDropActive] = useState(false);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -254,6 +258,15 @@ const ProfileEditor = ({
     onConsumedAddDeepLink?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when deep-link opens add flow
   }, [openAddExperienceOnMount]);
+
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const t = (e as CustomEvent<{ tab: string }>).detail?.tab;
+      if (t === 'general' || t === 'customize' || t === 'experience') setActiveTab(t);
+    };
+    window.addEventListener('erlc-tutorial-set-tab', onTab as EventListener);
+    return () => window.removeEventListener('erlc-tutorial-set-tab', onTab as EventListener);
+  }, []);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -433,7 +446,7 @@ const ProfileEditor = ({
   return (
     <div className="space-y-4">
       {/* Header card: banner + avatar + inline name */}
-      <Card className="card-elevated liquid-edge overflow-hidden">
+      <Card id="tutorial-editor-hero" className="card-elevated liquid-edge overflow-hidden">
         <div className="relative">
           <div className="h-36 sm:h-44 w-full bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent">
             {form.banner_url ? (
@@ -487,7 +500,10 @@ const ProfileEditor = ({
 
       <div className="w-full min-w-0">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EditorTab)} className="w-full min-w-0">
-        <TabsList className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30">
+        <TabsList
+          id="tutorial-editor-tabs"
+          className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30"
+        >
           <TabsTrigger
             value="general"
             className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
@@ -796,7 +812,7 @@ const ProfileEditor = ({
 
           <EditorSection
             title="Banner image"
-            description="Drag a photo below — we crop it to a wide banner (21:9) so it fits your header. Or paste an image URL / sync from Discord if you use a Nitro banner."
+            description="Drag a photo below — we crop it to a wide banner (21:9). Paste a URL, or pull media from Discord (Customize only — choose banner, profile picture, or both)."
             icon={ImageIcon}
           >
             <input
@@ -810,41 +826,90 @@ const ProfileEditor = ({
                 e.target.value = '';
               }}
             />
-            <Field label="Banner URL (optional)">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                <Input
-                  value={form.banner_url.startsWith('data:') ? '' : form.banner_url}
-                  placeholder="https://… or upload / Discord sync below"
-                  maxLength={2048}
-                  onChange={(e) => update('banner_url', e.target.value)}
-                  className={cn(editorInput, 'flex-1')}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="shrink-0 gap-2 sm:self-start"
-                  disabled={discordMediaBusy}
-                  onClick={async () => {
-                    setDiscordMediaBusy(true);
-                    const r = await invokeDiscordProfileMediaSync();
-                    setDiscordMediaBusy(false);
-                    if (!r.ok) {
-                      toast.error(r.error || 'Could not sync from Discord');
-                      return;
-                    }
-                    if (r.banner_url) {
-                      update('banner_url', r.banner_url);
-                      toast.success('Discord banner and avatar updated.');
-                    } else {
-                      toast.success('Discord avatar updated. No Nitro banner found — upload an image below or paste a URL.');
-                    }
-                    onDiscordMediaSynced?.();
-                  }}
-                >
-                  <RefreshCw className={cn('h-4 w-4', discordMediaBusy && 'animate-spin')} />
-                  Sync from Discord
-                </Button>
+            <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Sync from Discord</p>
+                <p className="text-xs text-muted-foreground leading-snug mb-3">
+                  Uses your linked Discord login. Banner-only leaves your profile picture as-is; picture-only leaves your banner as-is. Each sync also tries to refresh directory servers you share with the site (banners and invite links).
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                  <Select
+                    value={discordSyncTarget}
+                    onValueChange={(v) => setDiscordSyncTarget(v as DiscordProfileMediaSyncMode)}
+                  >
+                    <SelectTrigger className={cn(editorSelect, 'sm:max-w-[min(100%,280px)]')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">Banner &amp; profile picture</SelectItem>
+                      <SelectItem value="banner">Banner only (Nitro)</SelectItem>
+                      <SelectItem value="avatar">Profile picture only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="shrink-0 gap-2 sm:self-stretch sm:w-auto"
+                    disabled={discordMediaBusy}
+                    onClick={async () => {
+                      setDiscordMediaBusy(true);
+                      const r = await invokeDiscordProfileMediaSync({ sync: discordSyncTarget });
+                      setDiscordMediaBusy(false);
+                      if (!r.ok) {
+                        toast.error(r.error || 'Could not sync from Discord');
+                        return;
+                      }
+                      if (discordSyncTarget === 'both' || discordSyncTarget === 'banner') {
+                        if (r.banner_url) update('banner_url', r.banner_url);
+                      }
+                      onDiscordMediaSynced?.();
+
+                      if (discordSyncTarget === 'both') {
+                        if (r.banner_url && r.discord_avatar) {
+                          toast.success('Banner and profile picture updated from Discord.');
+                        } else if (r.banner_url) {
+                          toast.success('Banner updated from Discord.');
+                        } else if (r.discord_avatar) {
+                          toast.success(
+                            'Profile picture updated. No Nitro banner on your account — upload one below if you want.',
+                          );
+                        } else {
+                          toast.info('Nothing new from Discord to apply.');
+                        }
+                      } else if (discordSyncTarget === 'banner') {
+                        if (r.banner_url) {
+                          toast.success('Banner updated from Discord.');
+                        } else {
+                          toast.info('No Nitro banner on your Discord account — your saved banner was left unchanged.');
+                        }
+                      } else if (r.discord_avatar) {
+                        toast.success('Profile picture updated from Discord.');
+                      } else {
+                        toast.info('No Discord profile image to sync.');
+                      }
+
+                      const refreshed = r.servers_refreshed ?? 0;
+                      if (refreshed > 0) {
+                        toast.message('Server listings refreshed', {
+                          description: `Updated ${refreshed} directory server${refreshed === 1 ? '' : 's'} you’re in — banners and Discord invites when Discord provides them.`,
+                        });
+                      }
+                    }}
+                  >
+                    <RefreshCw className={cn('h-4 w-4', discordMediaBusy && 'animate-spin')} />
+                    Sync now
+                  </Button>
+                </div>
               </div>
+            </div>
+            <Field label="Banner URL (optional)">
+              <Input
+                value={form.banner_url.startsWith('data:') ? '' : form.banner_url}
+                placeholder="https://… or upload below"
+                maxLength={2048}
+                onChange={(e) => update('banner_url', e.target.value)}
+                className={editorInput}
+              />
               {form.banner_url.startsWith('data:') ? (
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mt-1.5">
                   <p className="text-xs text-muted-foreground">Uploaded image — preview below. Save your profile to publish.</p>
@@ -856,6 +921,7 @@ const ProfileEditor = ({
             </Field>
 
             <button
+              id="tutorial-banner-upload"
               type="button"
               onDragEnter={(e) => {
                 e.preventDefault();
@@ -905,7 +971,13 @@ const ProfileEditor = ({
         {/* EXPERIENCE */}
         <TabsContent value="experience" className="mt-5">
           <div className="flex justify-end mb-3">
-            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} className="gap-2">
+            <Button
+              id="tutorial-add-experience-btn"
+              size="sm"
+              variant="secondary"
+              onClick={() => setAddOpen(true)}
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" /> Add experience
             </Button>
           </div>
