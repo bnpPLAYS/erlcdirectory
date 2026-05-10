@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare } from 'lucide-react';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 
+type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
+
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [access, setAccess] = useState<StaffAccess | null>(null);
 
   const [profiles, setProfiles] = useState<any[]>([]);
   const [servers, setServers] = useState<any[]>([]);
@@ -29,19 +31,19 @@ const Admin = () => {
 
   useEffect(() => {
     if (!user) {
-      setIsAdmin(false);
+      setAccess({ canModerate: false, isSiteOwner: false });
       return;
     }
     let cancelled = false;
-    setIsAdmin(null);
+    setAccess(null);
     void (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('discord_username')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data: prof }, { data: roleRow }] = await Promise.all([
+        supabase.from('profiles').select('discord_username').eq('user_id', user.id).maybeSingle(),
+        supabase.from('user_roles').select('id').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
+      ]);
       if (cancelled) return;
-      setIsAdmin(isSiteOwnerDiscordUsername(data?.discord_username ?? null));
+      const owner = isSiteOwnerDiscordUsername(prof?.discord_username ?? null);
+      setAccess({ canModerate: owner || !!roleRow, isSiteOwner: owner });
     })();
     return () => {
       cancelled = true;
@@ -52,7 +54,7 @@ const Admin = () => {
     const [p, s, po, st] = await Promise.all([
       supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured').order('created_at', { ascending: false }).limit(200),
       supabase.from('servers').select('id, name, icon, member_count, guild_id, is_verified').order('created_at', { ascending: false }).limit(200),
-      supabase.from('posts').select('id, title, type, author_id, created_at').order('created_at', { ascending: false }).limit(200),
+      supabase.from('posts').select('id, title, type, author_id, created_at, status').order('created_at', { ascending: false }).limit(200),
       supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
     ]);
     setProfiles(p.data || []);
@@ -66,13 +68,15 @@ const Admin = () => {
     } else setStaff([]);
   };
 
-  useEffect(() => { if (isAdmin) refresh(); }, [isAdmin]);
+  useEffect(() => {
+    if (access?.canModerate) refresh();
+  }, [access?.canModerate]);
 
-  if (authLoading || isAdmin === null) {
+  if (authLoading || access === null) {
     return <div className="min-h-screen bg-background"><Navbar /><div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div></div>;
   }
   if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) {
+  if (!access.canModerate) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -153,6 +157,26 @@ const Admin = () => {
     const { error } = await supabase.from('posts').delete().eq('id', p.id);
     if (error) return toast({ title: error.message, variant: 'destructive' });
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
+  };
+
+  const setPostStatus = async (p: any, status: 'pending' | 'approved' | 'rejected') => {
+    let { error } = await supabase.rpc('site_owner_set_post_status', {
+      p_post_id: p.id,
+      p_status: status,
+    });
+    const msg = error?.message ?? '';
+    const code = (error as { code?: string } | null)?.code;
+    const rpcUnavailable =
+      !!error &&
+      (code === 'PGRST202' ||
+        /Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_set_post_status/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('posts').update({ status }).eq('id', p.id));
+    }
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setPosts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status } : x)));
+    toast({ title: status === 'approved' ? 'Post approved' : status === 'rejected' ? 'Post rejected' : 'Updated' });
   };
   const addStaff = async (target: any) => {
     let { error } = await supabase.rpc('site_owner_grant_admin_role', {
@@ -242,15 +266,23 @@ const Admin = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="members">
-          <TabsList className="mb-4">
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="servers">Servers</TabsTrigger>
+        <Tabs key={access.isSiteOwner ? 'staff-full' : 'staff-mod'} defaultValue={access.isSiteOwner ? 'members' : 'openings'}>
+          <TabsList className="mb-4 flex flex-wrap">
+            {access.isSiteOwner && (
+              <>
+                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="servers">Servers</TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="openings">Posts</TabsTrigger>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="discord" className="gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5" /> Discord
-            </TabsTrigger>
+            {access.isSiteOwner && (
+              <>
+                <TabsTrigger value="staff">Staff</TabsTrigger>
+                <TabsTrigger value="discord" className="gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5" /> Discord
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <div className="relative mb-4">
@@ -258,6 +290,7 @@ const Admin = () => {
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9" />
           </div>
 
+          {access.isSiteOwner && (
           <TabsContent value="members" className="space-y-2">
             {filter(profiles, ['display_name', 'discord_username']).map((p) => (
               <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
@@ -279,7 +312,9 @@ const Admin = () => {
               </CardContent></Card>
             ))}
           </TabsContent>
+          )}
 
+          {access.isSiteOwner && (
           <TabsContent value="servers" className="space-y-2">
             {filter(servers, ['name']).map((s) => (
               <Card key={s.id}><CardContent className="p-3 flex items-center gap-3">
@@ -298,20 +333,47 @@ const Admin = () => {
               </CardContent></Card>
             ))}
           </TabsContent>
+          )}
 
           <TabsContent value="openings" className="space-y-2">
             {filter(posts, ['title']).map((p) => (
-              <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
-                <Badge variant="outline" className="capitalize">{p.type}</Badge>
+              <Card key={p.id}><CardContent className="p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className="capitalize">{p.type}</Badge>
+                  <Badge
+                    variant={p.status === 'approved' ? 'secondary' : p.status === 'rejected' ? 'destructive' : 'outline'}
+                    className="capitalize text-[10px]"
+                  >
+                    {p.status || 'pending'}
+                  </Badge>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</p>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => removePost(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                  {p.status !== 'approved' && (
+                    <Button size="sm" variant="secondary" className="gap-1" onClick={() => void setPostStatus(p, 'approved')}>
+                      <Check className="h-3.5 w-3.5" /> Approve
+                    </Button>
+                  )}
+                  {p.status !== 'rejected' && (
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => void setPostStatus(p, 'rejected')}>
+                      <Ban className="h-3.5 w-3.5" /> Reject
+                    </Button>
+                  )}
+                  {p.status !== 'pending' && (
+                    <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => void setPostStatus(p, 'pending')}>
+                      Pending
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" onClick={() => removePost(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                </div>
               </CardContent></Card>
             ))}
           </TabsContent>
 
+          {access.isSiteOwner && (
           <TabsContent value="discord" className="space-y-3">
             <Card>
               <CardContent className="p-6 space-y-4">
@@ -340,7 +402,9 @@ const Admin = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
+          {access.isSiteOwner && (
           <TabsContent value="staff" className="space-y-3">
             <Card><CardContent className="p-4 space-y-3">
               <p className="text-sm font-medium flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add a staff member</p>
@@ -378,6 +442,7 @@ const Admin = () => {
               </CardContent></Card>
             ))}
           </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

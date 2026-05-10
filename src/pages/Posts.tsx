@@ -34,6 +34,7 @@ interface Post {
   type: string;
   title: string;
   content: string;
+  status?: string;
   is_open: boolean;
   view_count: number;
   application_count: number;
@@ -195,7 +196,7 @@ function DiscussionThread({ postId }: { postId: string }) {
 }
 
 const Posts = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,7 +212,7 @@ const Posts = () => {
       .from('posts')
       .select(
         `
-        id, type, title, content, is_open, view_count, application_count, created_at, server_id,
+        id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
         application_url, require_guild_membership, requirements,
         profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
         servers(id, name, icon, discord_invite, guild_id)
@@ -358,6 +359,14 @@ const Posts = () => {
                             >
                               {post.is_open ? 'Open' : 'Closed'}
                             </Badge>
+                            {profile?.id === post.profiles?.id && post.status === 'pending' && (
+                              <Badge variant="outline" className="border-amber-400/35 text-amber-100">
+                                Pending review
+                              </Badge>
+                            )}
+                            {profile?.id === post.profiles?.id && post.status === 'rejected' && (
+                              <Badge variant="destructive">Not approved</Badge>
+                            )}
                             <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
                               <Clock className="h-3 w-3" />
                               {formatTimeAgo(post.created_at)}
