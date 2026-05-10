@@ -272,9 +272,11 @@ export type Database = {
           kind: string
           message_id: string | null
           reason: string
+          report_category: string | null
           reporter_profile_id: string
           resolved_at: string | null
           review_id: string | null
+          server_id: string | null
           staff_notes: string | null
           status: string
         }
@@ -285,9 +287,11 @@ export type Database = {
           kind: string
           message_id?: string | null
           reason: string
+          report_category?: string | null
           reporter_profile_id: string
           resolved_at?: string | null
           review_id?: string | null
+          server_id?: string | null
           staff_notes?: string | null
           status?: string
         }
@@ -298,9 +302,11 @@ export type Database = {
           kind?: string
           message_id?: string | null
           reason?: string
+          report_category?: string | null
           reporter_profile_id?: string
           resolved_at?: string | null
           review_id?: string | null
+          server_id?: string | null
           staff_notes?: string | null
           status?: string
         }
@@ -442,6 +448,7 @@ export type Database = {
         Row: {
           accent_color: string | null
           availability: string | null
+          banned_at: string | null
           banner_url: string | null
           bio: string | null
           created_at: string
@@ -474,6 +481,7 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           availability?: string | null
+          banned_at?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
@@ -506,6 +514,7 @@ export type Database = {
         Update: {
           accent_color?: string | null
           availability?: string | null
+          banned_at?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string

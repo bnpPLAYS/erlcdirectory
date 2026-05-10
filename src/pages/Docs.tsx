@@ -318,7 +318,7 @@ const Docs = () => {
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
                 A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (enforced in the database and UI). It includes post moderation and a{' '}
-                <strong className="text-foreground">Reports</strong> queue for flagged reviews and messages.
+                <strong className="text-foreground">Reports</strong> queue for flagged reviews, DMs, and servers — staff can delete content, issue profile warnings, or ban accounts (blocks Discord login).
               </p>
               <p className="mt-3 text-muted-foreground leading-relaxed">
                 To grant Pixelnovaa. admin in one step: open{' '}
@@ -329,12 +329,14 @@ const Docs = () => {
                 Reporting & DB setup
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                Signed-in members can report reviews and DMs. Staff triages under <strong className="text-foreground">Staff panel → Reports</strong>. Production needs{' '}
-                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code> on Vercel for the <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/api/submit-report</code> route.
+                Signed-in members can report reviews, DMs, and server listings (with a category and details). Staff triages under <strong className="text-foreground">Staff panel → Reports</strong>. Production needs{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code> on Vercel for <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/api/submit-report</code> and{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/api/staff-moderation-action</code>.
               </p>
               <p className="mt-3 text-muted-foreground leading-relaxed">
                 If you see <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">moderation_reports</code> / schema cache errors, paste the full file{' '}
-                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> into SQL Editor (entire file — it defines <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code> and <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff</code> first, then tables). For a full ordered history, use <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code>.
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> into SQL Editor (entire file — it defines <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code> and <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff</code> first, then tables). Then run{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260531120000_reports_server_category_bans.sql</code> for report categories, server reports, bans, and staff message deletion. For a full ordered history, use <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code>.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
                 Legal
