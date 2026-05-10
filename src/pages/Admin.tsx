@@ -155,9 +155,27 @@ const Admin = () => {
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
   };
   const addStaff = async (target: any) => {
-    const { error } = await supabase.rpc('site_owner_grant_admin_role', {
+    let { error } = await supabase.rpc('site_owner_grant_admin_role', {
       p_target_user_id: target.user_id,
     });
+    const msg = error?.message ?? '';
+    const code = (error as { code?: string } | null)?.code;
+    const rpcUnavailable =
+      !!error &&
+      (code === 'PGRST202' ||
+        /Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_grant_admin_role/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase.from('user_roles').insert({
+        user_id: target.user_id,
+        role: 'admin',
+      }));
+      const dup =
+        !!error &&
+        (/duplicate key|unique constraint|23505/i.test(error.message ?? '') ||
+          /already exists/i.test(error.message ?? ''));
+      if (dup) error = null;
+    }
     if (error) return toast({ title: error.message, variant: 'destructive' });
     toast({ title: `${target.display_name || target.discord_username || 'Member'} is now staff` });
     setNewStaffQuery('');
@@ -180,9 +198,23 @@ const Admin = () => {
   const removeStaff = async (row: any) => {
     if (row.user_id === user.id) return toast({ title: "You can't remove yourself.", variant: 'destructive' });
     if (!confirm(`Remove staff access from ${row.profile?.display_name || 'this user'}?`)) return;
-    const { error } = await supabase.rpc('site_owner_revoke_admin_role', {
+    let { error } = await supabase.rpc('site_owner_revoke_admin_role', {
       p_target_user_id: row.user_id,
     });
+    const msg = error?.message ?? '';
+    const code = (error as { code?: string } | null)?.code;
+    const rpcUnavailable =
+      !!error &&
+      (code === 'PGRST202' ||
+        /Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
+        /site_owner_revoke_admin_role/i.test(msg));
+    if (rpcUnavailable) {
+      ({ error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', row.user_id)
+        .eq('role', 'admin'));
+    }
     if (error) return toast({ title: error.message, variant: 'destructive' });
     refresh();
   };
