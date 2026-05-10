@@ -301,3 +301,81 @@
     }
   }
 }
+
+/* First-login tour (driver.js) — dark UI + subtle spotlight zoom */
+@layer components {
+  .driverjs-erlc.driver-popover {
+    min-width: 17rem !important;
+    max-width: min(28rem, calc(100vw - 1.5rem)) !important;
+    background-color: hsl(240 6% 10%) !important;
+    color: hsl(0 0% 96%) !important;
+    border: 1px solid hsl(0 0% 100% / 0.14) !important;
+    border-radius: 1rem !important;
+    box-shadow:
+      0 0 0 1px hsl(0 0% 100% / 0.06),
+      0 24px 48px -12px rgb(0 0 0 / 0.65) !important;
+    padding: 1.125rem 1.25rem !important;
+  }
+
+  .driverjs-erlc .driver-popover-title {
+    color: hsl(0 0% 98%) !important;
+    font-size: 1.0625rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em;
+  }
+
+  .driverjs-erlc .driver-popover-description {
+    color: hsl(240 5% 68%) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .driverjs-erlc .driver-popover-progress-text {
+    color: hsl(240 5% 52%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-footer button {
+    background: hsl(0 0% 100% / 0.1) !important;
+    border: 1px solid hsl(0 0% 100% / 0.18) !important;
+    color: hsl(0 0% 96%) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    text-shadow: none !important;
+  }
+
+  .driverjs-erlc .driver-popover-footer button:hover,
+  .driverjs-erlc .driver-popover-footer button:focus {
+    background: hsl(0 0% 100% / 0.16) !important;
+  }
+
+  .driverjs-erlc .driver-popover-close-btn {
+    color: hsl(240 5% 55%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-close-btn:hover,
+  .driverjs-erlc .driver-popover-close-btn:focus {
+    color: hsl(0 0% 92%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-arrow-side-left {
+    border-left-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-right {
+    border-right-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-top {
+    border-top-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-bottom {
+    border-bottom-color: hsl(240 6% 10%) !important;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .driver-active .driver-active-element {
+      transform: scale(1.025) !important;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }
+  }
+}

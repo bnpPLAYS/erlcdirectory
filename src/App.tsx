@@ -24,6 +24,7 @@ import Contact from "./pages/Contact";
 import Docs from "./pages/Docs";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { FirstLoginTutorial } from "@/components/onboarding/FirstLoginTutorial";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
+          <FirstLoginTutorial />
           <AcceptTermsGate>
             <Routes>
               <Route path="/" element={<Index />} />
