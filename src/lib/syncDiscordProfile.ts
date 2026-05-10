@@ -1,43 +1,36 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-/** Discord fields readable from the Supabase session JWT (before `profiles` row hydrates). */
-export type DiscordPresentation = {
-  discordId: string | null;
-  discordUsername: string;
+/** Immediate Discord display fields from the session JWT (no network). */
+export type DiscordSessionDisplay = {
   displayName: string;
+  discordUsername: string;
   avatarUrl: string | null;
 };
 
-function readDiscordPresentation(user: User): DiscordPresentation {
+/** Navbar / chrome: show Discord name & avatar before `profiles` finishes loading. */
+export function getDiscordSessionDisplay(user: User | null | undefined): DiscordSessionDisplay | null {
+  if (!user) return null;
   const discordIdentity = user.identities?.find((i) => i.provider === 'discord');
   const meta = (user.user_metadata || {}) as Record<string, unknown>;
   const custom = (meta.custom_claims || {}) as Record<string, unknown>;
-  const idata =
-    discordIdentity?.identity_data && typeof discordIdentity.identity_data === 'object'
-      ? (discordIdentity.identity_data as Record<string, unknown>)
-      : null;
 
-  const discordIdRaw =
-    discordIdentity?.id ??
-    (typeof meta.provider_id === 'string' ? meta.provider_id : null) ??
-    (typeof meta.sub === 'string' && /^\d+$/.test(String(meta.sub)) ? meta.sub : null) ??
-    (typeof custom.sub === 'string' ? custom.sub : null);
-  const discordId = discordIdRaw != null && String(discordIdRaw).length > 0 ? String(discordIdRaw) : null;
-
-  const discordUsername =
+  const usernameRaw =
     (typeof meta.preferred_username === 'string' ? meta.preferred_username : null) ??
-    (idata && typeof idata.username === 'string' ? idata.username : null) ??
     (typeof meta.full_name === 'string' ? meta.full_name : null) ??
     (typeof meta.name === 'string' ? meta.name : null) ??
-    'Discord User';
+    'user';
+  const discordUsername = usernameRaw.replace(/^@/u, '').trim() || 'user';
 
   let avatarUrl: string | null = typeof meta.avatar_url === 'string' ? meta.avatar_url : null;
   if (!avatarUrl && typeof meta.picture === 'string') {
     avatarUrl = meta.picture;
   }
-  if (!avatarUrl && idata && typeof idata.avatar_url === 'string') {
-    avatarUrl = idata.avatar_url;
+  if (!avatarUrl && discordIdentity?.identity_data && typeof discordIdentity.identity_data === 'object') {
+    const idata = discordIdentity.identity_data as Record<string, unknown>;
+    if (typeof idata.avatar_url === 'string') {
+      avatarUrl = idata.avatar_url;
+    }
   }
 
   const displayName =
@@ -46,37 +39,59 @@ function readDiscordPresentation(user: User): DiscordPresentation {
     (typeof custom.global_name === 'string' ? custom.global_name : null) ??
     discordUsername;
 
-  return { discordId, discordUsername, displayName, avatarUrl };
-}
-
-/** Navbar / UI: show Discord name & avatar immediately while `profiles` is still loading. */
-export function getDiscordSessionDisplay(user: User | null | undefined): DiscordPresentation | null {
-  if (!user) return null;
-  return readDiscordPresentation(user);
+  return { displayName, discordUsername, avatarUrl };
 }
 
 /**
  * Persist Discord identity + tokens on `profiles` after Supabase OAuth (discord-guilds reads tokens from here).
+ * Uses `session.user` only — avoids an extra `getUser()` round trip on every sync.
  */
 export async function syncDiscordProfileFromSession(session: Session): Promise<{ error: Error | null }> {
-  let user = session.user;
+  const user = session.user;
 
-  const { data: refreshed, error: refreshErr } = await supabase.auth.getUser();
-  if (!refreshErr && refreshed.user) {
-    user = refreshed.user;
-  }
+  const discordIdentity = user.identities?.find((i) => i.provider === 'discord');
+  const meta = (user.user_metadata || {}) as Record<string, unknown>;
+  const custom = (meta.custom_claims || {}) as Record<string, unknown>;
 
-  const p = readDiscordPresentation(user);
-  if (!p.discordId) {
+  const discordId =
+    discordIdentity?.id ??
+    (typeof meta.provider_id === 'string' ? meta.provider_id : null) ??
+    (typeof meta.sub === 'string' && String(meta.sub).match(/^\d+$/) ? meta.sub : null) ??
+    (typeof custom.sub === 'string' ? custom.sub : null);
+
+  if (!discordId) {
     console.warn('syncDiscordProfileFromSession: no Discord id in JWT yet; skipping profile patch');
     return { error: null };
   }
 
+  const username =
+    (typeof meta.preferred_username === 'string' ? meta.preferred_username : null) ??
+    (typeof meta.full_name === 'string' ? meta.full_name : null) ??
+    (typeof meta.name === 'string' ? meta.name : null) ??
+    'Discord User';
+
+  let avatarUrl: string | null = typeof meta.avatar_url === 'string' ? meta.avatar_url : null;
+  if (!avatarUrl && typeof meta.picture === 'string') {
+    avatarUrl = meta.picture;
+  }
+  if (!avatarUrl && discordIdentity?.identity_data && typeof discordIdentity.identity_data === 'object') {
+    const idata = discordIdentity.identity_data as Record<string, unknown>;
+    if (typeof idata.avatar_url === 'string') {
+      avatarUrl = idata.avatar_url;
+    }
+  }
+
+  const displayName =
+    (typeof meta.full_name === 'string' ? meta.full_name : null) ??
+    (typeof meta.name === 'string' ? meta.name : null) ??
+    (typeof custom.global_name === 'string' ? custom.global_name : null) ??
+    username;
+
   const patch: Record<string, unknown> = {
-    discord_id: p.discordId,
-    discord_username: p.discordUsername,
-    discord_avatar: p.avatarUrl,
-    display_name: p.displayName,
+    discord_id: String(discordId),
+    discord_username: username,
+    discord_avatar: avatarUrl,
+    display_name: displayName,
     updated_at: new Date().toISOString(),
   };
 
