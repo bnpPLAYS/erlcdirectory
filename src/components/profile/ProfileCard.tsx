@@ -76,7 +76,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
 
               <div className="flex items-center gap-2 flex-wrap mb-2">
                 {profile.is_featured && (
-                  <Badge className="rounded-md border border-violet-400/35 bg-violet-500/15 text-[10px] px-2 py-0 font-medium text-violet-200">
+                  <Badge className="rounded-md border border-white/25 bg-white/[0.08] text-[10px] px-2 py-0 font-medium text-zinc-100">
                     Featured
                   </Badge>
                 )}
@@ -97,8 +97,8 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                   </Badge>
                 )}
                 {profile.is_pro && (
-                  <Badge className="text-[10px] px-2 py-0 gap-1 rounded-md border border-amber-500/35 bg-amber-500/12 text-amber-100">
-                    <Gem className="h-3 w-3 text-amber-300" aria-hidden />
+                  <Badge className="text-[10px] px-2 py-0 gap-1 rounded-md border border-white/22 bg-white/[0.08] text-zinc-100">
+                    <Gem className="h-3 w-3 text-white/85" aria-hidden />
                     Pro
                   </Badge>
                 )}

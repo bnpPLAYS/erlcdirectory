@@ -474,10 +474,10 @@ const Profile = () => {
                       )}
                       {profile.is_pro && (
                         <Badge
-                          className="text-[10px] px-2 py-0.5 gap-1 rounded-md border border-amber-400/40 bg-amber-500/15 text-amber-100"
+                          className="text-[10px] px-2 py-0.5 gap-1 rounded-md border border-white/22 bg-white/[0.08] text-zinc-100"
                           title="ERLC Directory Pro"
                         >
-                          <Gem className="h-3 w-3 text-amber-300" aria-hidden />
+                          <Gem className="h-3 w-3 text-white/85" aria-hidden />
                           Pro
                         </Badge>
                       )}

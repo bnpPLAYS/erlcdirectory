@@ -46,7 +46,14 @@ export default async function handler(request: Request): Promise<Response> {
   const gamePassId = (process.env.ROBLOX_PRO_GAME_PASS_ID || '76823573023998').trim();
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
-    return json(500, { ok: false, error: 'Server missing Supabase configuration.' });
+    const missing: string[] = [];
+    if (!supabaseUrl) missing.push('VITE_SUPABASE_URL or SUPABASE_URL (or VITE_SUPABASE_PROJECT_ID)');
+    if (!anonKey) missing.push('VITE_SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY');
+    if (!serviceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    return json(500, {
+      ok: false,
+      error: `Server missing Supabase configuration (${missing.join(', ')}). Add these in Vercel → Project → Settings → Environment Variables for Production (and Preview if you test there), then redeploy. Supabase Dashboard secrets do not apply to this route.`,
+    });
   }
   if (!robloxKey) {
     return json(500, {
