@@ -19,13 +19,7 @@ function json(status: number, body: Record<string, unknown>) {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type Action =
-  | 'delete_message'
-  | 'delete_review'
-  | 'remove_server'
-  | 'warn'
-  | 'ban'
-  | 'resolve_only';
+type Action = 'delete_message' | 'delete_review' | 'remove_server' | 'warn' | 'ban';
 
 async function assertStaff(
   admin: ReturnType<typeof createClient>,
@@ -112,14 +106,7 @@ export default async function handler(request: Request): Promise<Response> {
   const warnBody = (body.warn_body ?? '').toString().trim();
   const staffNotes = (body.staff_notes ?? '').toString().trim().slice(0, 2000) || null;
 
-  const allowed: Action[] = [
-    'delete_message',
-    'delete_review',
-    'remove_server',
-    'warn',
-    'ban',
-    'resolve_only',
-  ];
+  const allowed: Action[] = ['delete_message', 'delete_review', 'remove_server', 'warn', 'ban'];
   if (!UUID_RE.test(reportId) || !allowed.includes(action)) {
     return json(400, { ok: false, error: 'Invalid request.' });
   }
