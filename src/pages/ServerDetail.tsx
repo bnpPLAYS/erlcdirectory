@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase, Shield } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase, Shield, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
 import { profilePath } from '@/lib/profilePath';
@@ -14,6 +14,7 @@ import { normalizeDiscordInvite } from '@/lib/discordInvite';
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
+import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 
 interface GuildExperienceRow {
   id: string;
@@ -74,7 +75,8 @@ interface CoworkerRow {
 
 const ServerDetail = () => {
   const { id } = useParams();
-  const { profile: meProfile } = useAuth();
+  const { profile: meProfile, user } = useAuth();
+  const [reportServerOpen, setReportServerOpen] = useState(false);
   const isStaffSiteOwner = isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null);
   const [server, setServer] = useState<ServerRow | null>(null);
   const [coworkers, setCoworkers] = useState<CoworkerRow[]>([]);
@@ -266,6 +268,17 @@ const ServerDetail = () => {
                     </Button>
                   </a>
                 )}
+                {user && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-white/15"
+                    onClick={() => setReportServerOpen(true)}
+                  >
+                    <Flag className="h-4 w-4" /> Report
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -327,6 +340,13 @@ const ServerDetail = () => {
           </div>
         </div>
       </div>
+
+      <SubmitReportDialog
+        open={reportServerOpen}
+        onOpenChange={setReportServerOpen}
+        kind="server"
+        serverId={server.id}
+      />
     </div>
   );
 };

@@ -12,6 +12,17 @@ function json(status: number, body: Record<string, unknown>) {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const REPORT_CATEGORIES = new Set([
+  'harassment',
+  'spam',
+  'hate',
+  'impersonation',
+  'scam',
+  'nsfw',
+  'copyright',
+  'other',
+]);
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json(405, { ok: false, error: 'Method not allowed' });
 
@@ -38,9 +49,11 @@ export default async function handler(request: Request): Promise<Response> {
   let body: {
     kind?: string;
     reason?: string;
+    report_category?: string;
     review_id?: string | null;
     message_id?: string | null;
     conversation_id?: string | null;
+    server_id?: string | null;
   };
   try {
     body = await request.json();
@@ -48,25 +61,44 @@ export default async function handler(request: Request): Promise<Response> {
     return json(400, { ok: false, error: 'Invalid JSON' });
   }
 
-  const kind = body.kind === 'message' ? 'message' : body.kind === 'review' ? 'review' : '';
-  if (kind !== 'review' && kind !== 'message') {
+  const kindRaw = (body.kind ?? '').toString();
+  const kind =
+    kindRaw === 'message' ? 'message' : kindRaw === 'review' ? 'review' : kindRaw === 'server' ? 'server' : '';
+  if (kind !== 'review' && kind !== 'message' && kind !== 'server') {
     return json(400, { ok: false, error: 'Invalid kind' });
   }
 
+  const catRaw = (body.report_category ?? 'other').toString().trim();
+  const report_category = REPORT_CATEGORIES.has(catRaw) ? catRaw : null;
+  if (!report_category) {
+    return json(400, { ok: false, error: 'Invalid report category' });
+  }
+
   const reason = (body.reason ?? '').toString().trim();
-  if (reason.length < 3 || reason.length > 2000) {
-    return json(400, { ok: false, error: 'Reason must be 3–2000 characters.' });
+  const minLen = report_category === 'other' ? 8 : 3;
+  if (reason.length < minLen || reason.length > 2000) {
+    return json(400, {
+      ok: false,
+      error:
+        report_category === 'other'
+          ? 'Please explain the issue (8–2000 characters) when you choose Other.'
+          : 'Details must be 3–2000 characters.',
+    });
   }
 
   const reviewId = body.review_id?.toString().trim() || '';
   const messageId = body.message_id?.toString().trim() || '';
   const conversationId = body.conversation_id?.toString().trim() || '';
+  const serverId = body.server_id?.toString().trim() || '';
 
   if (kind === 'review' && !UUID_RE.test(reviewId)) {
     return json(400, { ok: false, error: 'Invalid review_id' });
   }
   if (kind === 'message' && !UUID_RE.test(messageId)) {
     return json(400, { ok: false, error: 'Invalid message_id' });
+  }
+  if (kind === 'server' && !UUID_RE.test(serverId)) {
+    return json(400, { ok: false, error: 'Invalid server_id' });
   }
   if (conversationId && !UUID_RE.test(conversationId)) {
     return json(400, { ok: false, error: 'Invalid conversation_id' });
@@ -96,6 +128,7 @@ export default async function handler(request: Request): Promise<Response> {
     reporter_profile_id: profile.id,
     kind,
     reason,
+    report_category,
     status: 'open',
   };
   if (kind === 'review') row.review_id = reviewId;
@@ -103,15 +136,16 @@ export default async function handler(request: Request): Promise<Response> {
     row.message_id = messageId;
     if (conversationId) row.conversation_id = conversationId;
   }
+  if (kind === 'server') row.server_id = serverId;
 
   const { error: insErr } = await admin.from('moderation_reports').insert(row as never);
   if (insErr) {
     const msg = insErr.message || '';
-    if (/relation|does not exist|schema cache/i.test(msg)) {
+    if (/relation|does not exist|schema cache|report_category|server_id|moderation_reports_kind/i.test(msg)) {
       return json(503, {
         ok: false,
         error:
-          'moderation_reports table is missing. Run the SQL migration from supabase/migrations/20260530120000_staff_warnings_reports.sql in Supabase SQL Editor.',
+          'Reporting schema may be outdated. In Supabase → SQL Editor, run supabase/migrations/20260531120000_reports_server_category_bans.sql (and ensure 20260530120000_staff_warnings_reports.sql was applied).',
       });
     }
     return json(400, { ok: false, error: msg });

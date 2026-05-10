@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
 import { getDiscordRedirectUri } from '@/lib/discordOAuth';
 import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +45,8 @@ interface Profile {
   dm_experience_status_updates?: boolean | null;
   created_at: string;
   updated_at: string;
+  /** Set when staff bans the account; client signs out if present. */
+  banned_at?: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,7 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
 
     if (data) {
-      setProfile(data as Profile);
+      const row = data as Profile;
+      if (row.banned_at) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        toast.error('This account has been suspended.');
+        return;
+      }
+      setProfile(row);
       return;
     }
 
@@ -132,7 +142,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!uid || !session) return;
     await syncDiscordProfileFromSession(session).catch(() => {});
     const row = await supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle();
-    if (!row.error && row.data) setProfile(row.data as Profile);
+    if (!row.error && row.data) {
+      const p = row.data as Profile;
+      if (p.banned_at) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        toast.error('This account has been suspended.');
+        return;
+      }
+      setProfile(p);
+    }
   };
 
   const signInWithDiscord = useCallback(async () => {

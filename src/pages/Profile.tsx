@@ -37,6 +37,7 @@ import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
 import { cn } from '@/lib/utils';
+import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
 
 interface ProfileData {
   id: string;
@@ -492,9 +493,28 @@ const Profile = () => {
                           {profile.availability}
                         </Badge>
                       )}
-                      {profile.location && (
-                        <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {profile.location}</span>
-                      )}
+                      {profile.location &&
+                        (() => {
+                          const loc = getProfileLocationDisplay(profile.location);
+                          if (loc) {
+                            return (
+                              <span
+                                className="flex items-center gap-1.5"
+                                title={loc.fullLabel}
+                              >
+                                <span className="text-base leading-none" aria-hidden>
+                                  {loc.flag}
+                                </span>
+                                <span className="font-medium text-foreground/90 tabular-nums">{loc.code}</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5" /> {profile.location}
+                            </span>
+                          );
+                        })()}
                       {profile.timezone && (
                         <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {profile.timezone}</span>
                       )}

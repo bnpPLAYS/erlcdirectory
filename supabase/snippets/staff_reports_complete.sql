@@ -1,4 +1,4 @@
--- One-paste staff reporting setup:
--- Open supabase/migrations/20260530120000_staff_warnings_reports.sql in this repo,
--- select ALL lines (Ctrl+A), copy, paste into Supabase SQL Editor, Run once.
--- That file includes is_site_owner() + is_staff() + tables + RLS.
+-- Staff reporting + moderation actions (full setup):
+-- 1) Paste ALL of supabase/migrations/20260530120000_staff_warnings_reports.sql → SQL Editor → Run once.
+-- 2) Paste ALL of supabase/migrations/20260531120000_reports_server_category_bans.sql → Run once.
+-- Vercel needs SUPABASE_SERVICE_ROLE_KEY for /api/submit-report and /api/staff-moderation-action.
