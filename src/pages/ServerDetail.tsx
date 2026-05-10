@@ -1,6 +1,17 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase, Shield, Flag } from 'lucide-react';
+import {
+  ArrowLeft,
+  ExternalLink,
+  Users,
+  Server as ServerIcon,
+  CheckCircle2,
+  Briefcase,
+  Shield,
+  Flag,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
 import { profilePath } from '@/lib/profilePath';
@@ -81,32 +92,48 @@ const ServerDetail = () => {
   const [server, setServer] = useState<ServerRow | null>(null);
   const [coworkers, setCoworkers] = useState<CoworkerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inviteEnrichBusy, setInviteEnrichBusy] = useState(false);
+  const [inviteRetryTick, setInviteRetryTick] = useState(0);
   const detailBannerRefreshRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     setServer(null);
     setCoworkers([]);
     setLoading(true);
+    setInviteRetryTick(0);
     detailBannerRefreshRef.current = null;
   }, [id]);
 
   useEffect(() => {
-    if (!server?.id || !server.guild_id) return;
-    if (detailBannerRefreshRef.current === server.id) return;
-    detailBannerRefreshRef.current = server.id;
+    if (!server?.id || !server.guild_id) {
+      setInviteEnrichBusy(false);
+      return;
+    }
+    const refreshKey = `${server.id}:${user?.id ?? 'anon'}:${inviteRetryTick}`;
+    if (detailBannerRefreshRef.current === refreshKey) {
+      setInviteEnrichBusy(false);
+      return;
+    }
+    detailBannerRefreshRef.current = refreshKey;
     let cancelled = false;
+    setInviteEnrichBusy(true);
     void (async () => {
-      await supabase.functions.invoke('servers-enrich-metadata', {
-        body: { guild_ids: [server.guild_id], refresh_visuals: true },
-      });
-      if (cancelled) return;
-      const { data: s } = await supabase.from('servers').select('*').eq('id', server.id).maybeSingle();
-      if (s && !cancelled) setServer(s as ServerRow);
+      try {
+        // Uses caller JWT when logged in so Discord OAuth (guilds scope) can resolve vanity invites for members.
+        await supabase.functions.invoke('servers-enrich-metadata', {
+          body: { guild_ids: [server.guild_id], refresh_visuals: true },
+        });
+        if (cancelled) return;
+        const { data: s } = await supabase.from('servers').select('*').eq('id', server.id).maybeSingle();
+        if (s && !cancelled) setServer(s as ServerRow);
+      } finally {
+        if (!cancelled) setInviteEnrichBusy(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [server?.id, server?.guild_id]);
+  }, [server?.id, server?.guild_id, user?.id, inviteRetryTick]);
 
   useEffect(() => {
     if (!id) return;
@@ -267,11 +294,31 @@ const ServerDetail = () => {
                       <ExternalLink className="h-4 w-4" /> Join Discord
                     </Button>
                   </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground self-center px-1 max-w-[14rem] text-right">
-                    No invite link on file yet — a member can refresh from Edit profile → Customize → Sync from Discord.
-                  </p>
-                )}
+                ) : server.guild_id ? (
+                  inviteEnrichBusy ? (
+                    <Button type="button" disabled variant="secondary" className="gap-2 w-full sm:w-auto">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Looking up invite…
+                    </Button>
+                  ) : (
+                    <div className="flex flex-col gap-1 items-stretch sm:items-end max-w-[16rem]">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="gap-2 w-full sm:w-auto"
+                        onClick={() => {
+                          detailBannerRefreshRef.current = null;
+                          setInviteRetryTick((t) => t + 1);
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4" /> Find join link
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-right leading-snug">
+                        If this stays empty, enable the server widget, add the directory bot with invite permissions, or
+                        sync from Discord under Edit profile → Customize.
+                      </p>
+                    </div>
+                  )
+                ) : null}
                 {user && (
                   <Button
                     type="button"
