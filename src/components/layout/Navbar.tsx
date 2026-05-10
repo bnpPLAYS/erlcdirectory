@@ -62,6 +62,7 @@ const Navbar = () => {
         <div className="max-w-6xl mx-auto flex items-start justify-between gap-3">
           <div className="flex-1 flex justify-center min-w-0">
             <nav
+              id="tutorial-main-nav"
               className={cn(
                 'pointer-events-auto flex items-center gap-0.5 rounded-full px-2 py-1.5',
                 'glass-strong liquid-edge shadow-2xl max-w-full',
@@ -105,6 +106,7 @@ const Navbar = () => {
 
               {user && profile?.id && (
                 <button
+                  id="tutorial-nav-add-experience"
                   type="button"
                   className="hidden md:inline-flex h-9 w-9 rounded-full items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
                   aria-label="Add experience"
@@ -131,6 +133,7 @@ const Navbar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
+                    id="tutorial-nav-account-trigger"
                     className={cn(
                       'glass-strong liquid-edge rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2',
                       'hover:bg-white/5 transition-colors shadow-2xl',

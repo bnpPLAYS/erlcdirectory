@@ -255,6 +255,15 @@ const ProfileEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when deep-link opens add flow
   }, [openAddExperienceOnMount]);
 
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const t = (e as CustomEvent<{ tab: string }>).detail?.tab;
+      if (t === 'general' || t === 'customize' || t === 'experience') setActiveTab(t);
+    };
+    window.addEventListener('erlc-tutorial-set-tab', onTab as EventListener);
+    return () => window.removeEventListener('erlc-tutorial-set-tab', onTab as EventListener);
+  }, []);
+
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const applyBannerFromFile = async (file: File | undefined | null) => {
@@ -433,7 +442,7 @@ const ProfileEditor = ({
   return (
     <div className="space-y-4">
       {/* Header card: banner + avatar + inline name */}
-      <Card className="card-elevated liquid-edge overflow-hidden">
+      <Card id="tutorial-editor-hero" className="card-elevated liquid-edge overflow-hidden">
         <div className="relative">
           <div className="h-36 sm:h-44 w-full bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent">
             {form.banner_url ? (
@@ -487,7 +496,10 @@ const ProfileEditor = ({
 
       <div className="w-full min-w-0">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EditorTab)} className="w-full min-w-0">
-        <TabsList className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30">
+        <TabsList
+          id="tutorial-editor-tabs"
+          className="flex h-auto w-full min-h-[3rem] flex-wrap gap-1 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner shadow-black/30"
+        >
           <TabsTrigger
             value="general"
             className="gap-2 rounded-xl px-4 py-2.5 text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-black/20 data-[state=active]:border data-[state=active]:border-white/25 border border-transparent text-muted-foreground transition-all"
@@ -856,6 +868,7 @@ const ProfileEditor = ({
             </Field>
 
             <button
+              id="tutorial-banner-upload"
               type="button"
               onDragEnter={(e) => {
                 e.preventDefault();
@@ -905,7 +918,13 @@ const ProfileEditor = ({
         {/* EXPERIENCE */}
         <TabsContent value="experience" className="mt-5">
           <div className="flex justify-end mb-3">
-            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} className="gap-2">
+            <Button
+              id="tutorial-add-experience-btn"
+              size="sm"
+              variant="secondary"
+              onClick={() => setAddOpen(true)}
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" /> Add experience
             </Button>
           </div>
