@@ -8,6 +8,7 @@ import { profilePath } from '@/lib/profilePath';
 import { experienceRoleDisplay } from '@/lib/experienceConstants';
 import { cn } from '@/lib/utils';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
+import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 
 interface ExperiencePreview {
   id: string;
@@ -53,6 +54,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const remainingExp = Math.max(0, (profile.experiences?.length || 0) - experiences.length);
   const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
   const showNewBadge = isNewProfile(profile.created_at);
+  const cardAvatarSrc = safeAvatarUrl(profile.discord_avatar);
 
   return (
     <Link to={profilePath(profile)} className="block h-full">
@@ -112,7 +114,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
             </div>
 
             <Avatar className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 ring-2 ring-white/10 group-hover:ring-primary/40 transition-all rounded-full">
-              <AvatarImage src={profile.discord_avatar || undefined} />
+              <AvatarImage src={cardAvatarSrc} referrerPolicy={avatarReferrerPolicy(cardAvatarSrc)} />
               <AvatarFallback className="bg-secondary text-base font-semibold">{initial}</AvatarFallback>
             </Avatar>
           </div>
@@ -140,13 +142,18 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
               <div className="space-y-2">
                 {experiences.map((exp) => {
                   const roleHeadline = experienceRoleDisplay(exp.role, exp.is_verified);
+                  const expIconSrc = safeAvatarUrl(exp.server_icon);
                   return (
                   <div
                     key={exp.id}
                     className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5"
                   >
                     <Avatar className="h-9 w-9 shrink-0 rounded-full ring-1 ring-white/10">
-                      <AvatarImage src={exp.server_icon || undefined} className="object-cover" />
+                      <AvatarImage
+                        src={expIconSrc}
+                        className="object-cover"
+                        referrerPolicy={avatarReferrerPolicy(expIconSrc)}
+                      />
                       <AvatarFallback className="text-xs font-semibold bg-white/10">
                         {exp.server_name.charAt(0).toUpperCase()}
                       </AvatarFallback>

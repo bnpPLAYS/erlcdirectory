@@ -18,6 +18,7 @@ import {
   Bell,
   Eye,
   ChevronDown,
+  Globe,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -58,6 +59,26 @@ import {
   type DiscordProfileMediaSyncMode,
 } from '@/lib/callDiscordProfileMedia';
 import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
+import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
+import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
+import {
+  PROFILE_SOCIAL_KEYS,
+  PROFILE_SOCIAL_LABELS,
+  type ProfileSocialKey,
+  parseProfileSocialLinks,
+  serializeProfileSocialLinks,
+  normalizeSocialInputUrl,
+} from '@/lib/profileSocialLinks';
+import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import type { Json } from '@/integrations/supabase/types';
+
+function buildSocialDraft(social: unknown): Record<ProfileSocialKey, string> {
+  const parsed = parseProfileSocialLinks(social);
+  return Object.fromEntries(PROFILE_SOCIAL_KEYS.map((k) => [k, parsed[k] ?? ''])) as Record<
+    ProfileSocialKey,
+    string
+  >;
+}
 
 interface Experience {
   id: string;
@@ -69,6 +90,7 @@ interface Experience {
   end_date: string | null;
   is_current: boolean;
   is_verified: boolean;
+  show_on_directory_card?: boolean;
   guild_id?: string | null;
   verifier_stated_position?: string | null;
   verifier_review_text?: string | null;
@@ -91,6 +113,8 @@ interface ProfileLike {
   theme_preset?: string | null;
   discord_username?: string | null;
   discord_avatar?: string | null;
+  discord_id?: string | null;
+  social_links?: Json | null;
   dm_website_updates?: boolean | null;
   dm_experience_status_updates?: boolean | null;
   skills: string[];
@@ -253,6 +277,13 @@ const ProfileEditor = ({
   const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
   const [bannerDropActive, setBannerDropActive] = useState(false);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const [socialDraft, setSocialDraft] = useState<Record<ProfileSocialKey, string>>(() =>
+    buildSocialDraft(profile.social_links),
+  );
+
+  useEffect(() => {
+    setSocialDraft(buildSocialDraft(profile.social_links));
+  }, [profile.id]);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -382,6 +413,11 @@ const ProfileEditor = ({
     }
     setSaving(true);
     try {
+      const socialPayload: Partial<Record<ProfileSocialKey, string>> = {};
+      for (const key of PROFILE_SOCIAL_KEYS) {
+        const norm = normalizeSocialInputUrl(socialDraft[key] || '');
+        if (norm) socialPayload[key] = norm;
+      }
       const baseProfileUpdate = {
         display_name: filteredForm.display_name || null,
         bio: filteredForm.bio || null,
@@ -395,7 +431,7 @@ const ProfileEditor = ({
         accent_color: form.accent_color || null,
         theme_preset: form.theme_preset || 'mono',
         skills: filteredSkills,
-        social_links: {},
+        social_links: serializeProfileSocialLinks(socialPayload),
       };
       const dmPrefs = {
         dm_website_updates: dmWebsiteUpdates,
@@ -431,6 +467,7 @@ const ProfileEditor = ({
           start_date: e.start_date,
           end_date: e.is_current ? null : e.end_date,
           is_current: e.is_current,
+          show_on_directory_card: e.show_on_directory_card !== false,
         };
         await supabase.from('experiences').update(payload).eq('id', e.id);
       }
@@ -462,13 +499,21 @@ const ProfileEditor = ({
           </div>
           <div className="relative z-10 px-5 pb-5 -mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10 shrink-0">
-              {profile.discord_avatar ? (
-                <img src={profile.discord_avatar} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full grid place-items-center text-2xl font-semibold">
-                  {(form.display_name || profile.discord_username || '?').charAt(0).toUpperCase()}
-                </div>
-              )}
+              {(() => {
+                const av = safeAvatarUrl(profile.discord_avatar);
+                return av ? (
+                  <img
+                    src={av}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    referrerPolicy={avatarReferrerPolicy(av)}
+                  />
+                ) : (
+                  <div className="h-full w-full grid place-items-center text-2xl font-semibold">
+                    {(form.display_name || profile.discord_username || '?').charAt(0).toUpperCase()}
+                  </div>
+                );
+              })()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -616,6 +661,31 @@ const ProfileEditor = ({
               </Field>
             </div>
 
+            <EditorSection
+              title="Platform links"
+              description="Optional profile buttons with hover tooltips — paste a profile or channel URL for each network you use."
+              icon={Globe}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {PROFILE_SOCIAL_KEYS.map((key) => (
+                  <Field key={key} label={PROFILE_SOCIAL_LABELS[key]} hint="https://… or domain only">
+                    <Input
+                      value={socialDraft[key]}
+                      maxLength={300}
+                      onChange={(e) =>
+                        setSocialDraft((d) => ({
+                          ...d,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      placeholder="https://"
+                      className={editorInput}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </EditorSection>
+
             <Field label="Status" hint={`Shown on your profile — ${form.status.length}/140`}>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-3 mb-2">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Quick emoji</p>
@@ -747,25 +817,46 @@ const ProfileEditor = ({
                     className="absolute bottom-0 left-0 right-0 h-1"
                     style={{ background: `linear-gradient(90deg, transparent, ${form.accent_color}, transparent)` }}
                   />
-                  <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                    <div
-                      className="h-12 w-12 rounded-full ring-2 ring-background shadow-lg"
-                      style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
-                    >
-                      {profile.discord_avatar ? (
-                        <img src={profile.discord_avatar} alt="" className="h-full w-full rounded-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
-                          {(form.display_name || '?').charAt(0).toUpperCase()}
-                        </div>
+                  <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="h-12 w-12 shrink-0 rounded-full ring-2 ring-background shadow-lg"
+                        style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
+                      >
+                        {(() => {
+                          const av = safeAvatarUrl(profile.discord_avatar);
+                          return av ? (
+                            <img
+                              src={av}
+                              alt=""
+                              className="h-full w-full rounded-full object-cover"
+                              referrerPolicy={avatarReferrerPolicy(av)}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+                              {(form.display_name || '?').charAt(0).toUpperCase()}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
+                        <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>
+                          Accent preview
+                        </p>
+                      </div>
+                    </div>
+                    <ProfileSocialBadges
+                      socialLinks={serializeProfileSocialLinks(
+                        PROFILE_SOCIAL_KEYS.reduce((acc, k) => {
+                          const t = socialDraft[k]?.trim();
+                          if (t) acc[k] = t;
+                          return acc;
+                        }, {} as Partial<Record<ProfileSocialKey, string>>),
                       )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
-                      <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>
-                        Accent preview
-                      </p>
-                    </div>
+                      discordHref={discordUserProfileUrl(profile.discord_id)}
+                      className="shrink-0"
+                    />
                   </div>
                 </div>
               </div>
@@ -1066,6 +1157,18 @@ const ProfileEditor = ({
                       </Field>
                     )}
                   </div>
+                  <div className="md:col-span-2 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                    <Switch
+                      checked={e.show_on_directory_card !== false}
+                      onCheckedChange={(c) => updateExp(e.id, { show_on_directory_card: c })}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug">Show on Member Directory</p>
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                        Include this role in the “Recent work” strip on your directory card (up to two visible).
+                      </p>
+                    </div>
+                  </div>
                   <div className="md:col-span-2 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
                       {e.is_verified ? (
@@ -1150,6 +1253,7 @@ const ProfileEditor = ({
             end_date: null,
             is_current: true,
             is_verified: false,
+            show_on_directory_card: true,
             guild_id: row.guild_id,
           });
         }}

@@ -2,6 +2,7 @@
 export function discordUserProfileUrl(discordId: string | null | undefined): string | null {
   if (discordId == null) return null;
   const id = String(discordId).trim();
-  if (!id || !/^\d+$/.test(id)) return null;
+  // Real Discord snowflakes are 17–20 digits; looser patterns often produce "Invalid Resource" pages.
+  if (!id || !/^\d{17,20}$/.test(id)) return null;
   return `https://discord.com/users/${id}`;
 }
