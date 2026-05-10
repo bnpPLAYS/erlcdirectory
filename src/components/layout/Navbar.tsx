@@ -29,20 +29,37 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
+import { supabase } from '@/integrations/supabase/client';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [canSeeStaffPanel, setCanSeeStaffPanel] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      setIsAdmin(false);
+      setCanSeeStaffPanel(false);
       return;
     }
-    setIsAdmin(isSiteOwnerDiscordUsername(profile?.discord_username ?? null));
+    if (isSiteOwnerDiscordUsername(profile?.discord_username ?? null)) {
+      setCanSeeStaffPanel(true);
+      return;
+    }
+    let cancelled = false;
+    void supabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setCanSeeStaffPanel(!!data);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user, profile?.discord_username]);
 
   const navLinks = [
@@ -206,13 +223,13 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  {isAdmin && (
+                  {canSeeStaffPanel && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                       <Link to="/staff">
                         <Shield className="h-4 w-4 text-primary" />
                         <div className="flex flex-col">
                           <span className="text-sm">Staff Panel</span>
-                          <span className="text-[11px] text-muted-foreground">Manage members, servers, and openings</span>
+                          <span className="text-[11px] text-muted-foreground">Moderation and site tools</span>
                         </div>
                       </Link>
                     </DropdownMenuItem>

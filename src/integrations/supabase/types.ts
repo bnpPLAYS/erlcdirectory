@@ -315,6 +315,7 @@ export type Database = {
           requirements: string[] | null
           require_guild_membership: boolean
           server_id: string | null
+          status: string
           title: string
           type: string
           updated_at: string
@@ -331,6 +332,7 @@ export type Database = {
           requirements?: string[] | null
           require_guild_membership?: boolean
           server_id?: string | null
+          status?: string
           title: string
           type: string
           updated_at?: string
@@ -347,6 +349,7 @@ export type Database = {
           requirements?: string[] | null
           require_guild_membership?: boolean
           server_id?: string | null
+          status?: string
           title?: string
           type?: string
           updated_at?: string
@@ -626,6 +629,11 @@ export type Database = {
         Args: { p_server_id: string; p_is_verified: boolean }
         Returns: undefined
       }
+      site_owner_set_post_status: {
+        Args: { p_post_id: string; p_status: string }
+        Returns: undefined
+      }
+      is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
