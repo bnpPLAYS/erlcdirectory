@@ -102,6 +102,33 @@ export async function enrichDiscordGuildForDirectory(
       }
     }
 
+    // Prefer an existing invite (no new invite spam) — needs MANAGE_GUILD on the bot.
+    if (!out.discordInvite) {
+      const invListRes = await fetch(`https://discord.com/api/v10/guilds/${gid}/invites`, { headers: botHeaders })
+      if (invListRes.ok) {
+        try {
+          const list = (await invListRes.json()) as Array<{
+            code?: string
+            max_age?: number
+            expires_at?: string | null
+          }>
+          const withCode = list.filter((i) => typeof i.code === 'string' && i.code.length > 0)
+          if (withCode.length) {
+            const neverExpires = withCode.filter((i) => i.max_age === 0 && !i.expires_at)
+            const pool = neverExpires.length ? neverExpires : withCode
+            const pick = [...pool].sort((a, b) => {
+              const ae = a.expires_at ? new Date(a.expires_at).getTime() : Number.POSITIVE_INFINITY
+              const be = b.expires_at ? new Date(b.expires_at).getTime() : Number.POSITIVE_INFINITY
+              return be - ae
+            })[0]
+            if (pick?.code) out.discordInvite = `https://discord.gg/${pick.code}`
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
     if (!out.discordInvite) {
       const chRes = await fetch(`https://discord.com/api/v10/guilds/${gid}/channels`, { headers: botHeaders })
       if (chRes.ok) {
@@ -127,7 +154,7 @@ export async function enrichDiscordGuildForDirectory(
   }
 
   if (!out.discordInvite) {
-    const wr = await fetch(`https://discord.com/api/guilds/${gid}/widget.json`)
+    const wr = await fetch(`https://discord.com/api/v10/guilds/${gid}/widget.json`)
     if (wr.ok) {
       try {
         const w = (await wr.json()) as { instant_invite?: string | null }
