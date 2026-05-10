@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index";
 import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
@@ -55,6 +56,7 @@ const App = () => (
             </Routes>
           </AcceptTermsGate>
         </BrowserRouter>
+        <Analytics />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
