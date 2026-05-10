@@ -342,8 +342,9 @@ const Docs = () => {
                   In Supabase Dashboard → <strong className="text-foreground">SQL</strong> → New query → paste → Run.
                 </li>
                 <li>
-                  Ensure earlier migrations ran too (especially <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff()</code> from post moderation). Alternatively use{' '}
-                  <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code> from the project folder if the Supabase CLI is installed.
+                  That migration file now creates <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff()</code> at the top so it runs in one paste. If you still see errors about{' '}
+                  <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code>, apply older migrations first (site owner / user roles). Or use{' '}
+                  <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code> from the repo if the CLI is linked.
                 </li>
               </ol>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">

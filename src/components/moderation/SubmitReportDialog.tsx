@@ -74,7 +74,7 @@ export function SubmitReportDialog({
       const msg = error.message ?? '';
       toast.error(
         isModerationReportsSchemaMissingError(msg)
-          ? 'Reporting isn’t enabled on this database yet. In Supabase → SQL Editor, paste the full contents of the file supabase/migrations/20260530120000_staff_warnings_reports.sql (open the file, copy all SQL, run — not the filename). Then try again.'
+          ? 'Reporting isn’t enabled on this database yet. In Supabase → SQL Editor, paste the full contents of supabase/migrations/20260530120000_staff_warnings_reports.sql (all SQL from the file — includes is_staff). If you see is_site_owner errors, run older migrations first.'
           : msg,
       );
       return;
