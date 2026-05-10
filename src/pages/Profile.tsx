@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -38,6 +38,7 @@ import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
+import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 
 interface ProfileData {
   id: string;
@@ -127,6 +128,13 @@ const Profile = () => {
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
   const heroAvatarSrc = profile ? safeAvatarUrl(profile.discord_avatar) : undefined;
+
+  const publicExperiences = useMemo(
+    () => experiences.filter((e) => !isExperienceAwaitingVerification(e)),
+    [experiences],
+  );
+  const hasOnlyPendingExperience =
+    !!isOwner && experiences.length > 0 && publicExperiences.length === 0;
 
   useEffect(() => {
     setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
@@ -421,8 +429,8 @@ const Profile = () => {
         ) : (
           <>
             {/* HERO — Identity */}
-            <Card className="card-elevated liquid-edge overflow-hidden mb-6">
-              <CardContent className="p-5 md:p-7">
+            <Card className="card-elevated liquid-edge overflow-hidden mb-7 border-white/[0.09] shadow-xl shadow-black/20">
+              <CardContent className="p-5 md:p-8">
                 <div className="flex flex-col md:flex-row md:items-end gap-5">
                   <div className="relative shrink-0">
                     <div
@@ -446,7 +454,7 @@ const Profile = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">
+                      <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate text-balance">
                         {profile.display_name || 'Discord member'}
                       </h1>
                       {profile.is_verified && (
@@ -580,10 +588,12 @@ const Profile = () => {
                     </CardContent>
                   </Card>
                 )}
-                <Card className="card-elevated liquid-edge">
-                  <CardContent className="p-5 space-y-4">
+                <Card className="card-elevated liquid-edge border-white/[0.08]">
+                  <CardContent className="p-5 sm:p-6 space-y-4">
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">About</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2.5">
+                        About
+                      </h3>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
                         {profile.bio || (
                           <span className="text-muted-foreground italic">
@@ -610,14 +620,16 @@ const Profile = () => {
 
               <div className="lg:col-span-2">
                 <Tabs defaultValue="experience" className="w-full">
-                  <TabsList className="glass mb-4">
-                    <TabsTrigger value="experience" className="gap-1.5 text-sm">
+                  <TabsList className="glass mb-5 w-full sm:w-auto rounded-xl border border-white/10 bg-black/25 p-1 h-auto">
+                    <TabsTrigger value="experience" className="gap-1.5 text-sm rounded-lg data-[state=active]:bg-white/10">
                       <Briefcase className="h-4 w-4" /> Experience
-                      {experiences.length > 0 && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">({experiences.length})</span>
+                      {publicExperiences.length > 0 && (
+                        <span className="ml-1 text-[10px] text-muted-foreground tabular-nums">
+                          ({publicExperiences.length})
+                        </span>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="reviews" className="gap-1.5 text-sm">
+                    <TabsTrigger value="reviews" className="gap-1.5 text-sm rounded-lg data-[state=active]:bg-white/10">
                       <Star className="h-4 w-4" /> Reviews
                       {profile.review_count > 0 && (
                         <span className="ml-1 text-[10px] text-muted-foreground">({profile.review_count})</span>
@@ -626,14 +638,25 @@ const Profile = () => {
                   </TabsList>
 
                   <TabsContent value="experience" className="space-y-3">
-                    {experiences.length > 0 ? (
-                      <div className="grid md:grid-cols-2 gap-3">
-                        {experiences.map((exp) => (
+                    {publicExperiences.length > 0 ? (
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {publicExperiences.map((exp) => (
                           <ExperienceCard key={exp.id} experience={exp} />
                         ))}
                       </div>
+                    ) : hasOnlyPendingExperience ? (
+                      <Card className="card-elevated border-dashed border-white/15">
+                        <CardContent className="p-10 text-center">
+                          <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                          <h3 className="font-semibold mb-1">Verification in progress</h3>
+                          <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                            Your server experience will show here after an admin approves it. You can track or resend the
+                            verification link from <span className="text-foreground/90">Edit profile</span> → Experience.
+                          </p>
+                        </CardContent>
+                      </Card>
                     ) : (
-                      <Card className="card-elevated">
+                      <Card className="card-elevated border-white/[0.07]">
                         <CardContent className="p-10 text-center">
                           <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                           <h3 className="font-semibold mb-1">No experience yet</h3>
