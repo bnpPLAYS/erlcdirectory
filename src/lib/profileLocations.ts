@@ -1,9 +1,7 @@
 /**
  * Coarse profile regions — avoids exact addresses. Grouped for the editor picker.
- * Existing UK/Ireland strings are unchanged so stored profiles keep working.
+ * Legacy UK/Ireland list matches the original `ukCounties.ts` COUNTY_OPTIONS sort (`en-GB`).
  */
-
-const OUTSIDE_LISTED = 'Outside UK & Ireland';
 
 const US_STATES: string[] = [
   'Alabama',
@@ -94,35 +92,9 @@ const MEXICO_STATES: string[] = [
   'Zacatecas',
 ];
 
-const CANADA_REGIONS: string[] = [
-  'Alberta',
-  'British Columbia',
-  'Manitoba',
-  'New Brunswick',
-  'Newfoundland and Labrador',
-  'Northwest Territories',
-  'Nova Scotia',
-  'Nunavut',
-  'Ontario',
-  'Prince Edward Island',
-  'Quebec',
-  'Saskatchewan',
-  'Yukon',
-];
-
-const AUSTRALIA_REGIONS: string[] = [
-  'Australian Capital Territory',
-  'New South Wales',
-  'Northern Territory',
-  'Queensland',
-  'South Australia',
-  'Tasmania',
-  'Victoria',
-  'Western Australia',
-];
-
-/** Same values as legacy `ukCounties.ts` (minus the leading catch-alls, added below in UK group). */
-const UK_AND_IRELAND_REGIONS: string[] = [
+/** Exact legacy RAW array from original `ukCounties.ts` (before global sort). */
+const UK_IRELAND_LEGACY_RAW: string[] = [
+  'Outside UK & Ireland',
   'Republic of Ireland',
   'Bedfordshire',
   'Berkshire',
@@ -238,6 +210,11 @@ const UK_AND_IRELAND_REGIONS: string[] = [
   'Ards and North Down',
 ];
 
+/** Same ordering as legacy `COUNTY_OPTIONS`: dedupe + `en-GB` sort of all UK/Ireland entries. */
+const UK_IRELAND_LEGACY_SORTED: readonly string[] = Object.freeze(
+  [...new Set(UK_IRELAND_LEGACY_RAW)].sort((a, b) => a.localeCompare(b, 'en-GB')),
+);
+
 export type ProfileLocationGroup = {
   readonly label: string;
   readonly options: readonly string[];
@@ -250,8 +227,8 @@ function prefix(prefix: string, names: readonly string[]): string[] {
 /** Grouped options for the profile editor `<Select />`. */
 export const PROFILE_LOCATION_GROUPS: readonly ProfileLocationGroup[] = [
   {
-    label: 'General',
-    options: [OUTSIDE_LISTED],
+    label: 'United Kingdom & Ireland',
+    options: UK_IRELAND_LEGACY_SORTED,
   },
   {
     label: 'United States',
@@ -260,18 +237,6 @@ export const PROFILE_LOCATION_GROUPS: readonly ProfileLocationGroup[] = [
   {
     label: 'Mexico',
     options: prefix('Mexico — ', MEXICO_STATES),
-  },
-  {
-    label: 'Canada',
-    options: prefix('Canada — ', CANADA_REGIONS),
-  },
-  {
-    label: 'Australia',
-    options: prefix('Australia — ', AUSTRALIA_REGIONS),
-  },
-  {
-    label: 'United Kingdom & Ireland',
-    options: [...UK_AND_IRELAND_REGIONS].sort((a, b) => a.localeCompare(b, 'en-GB')),
   },
 ];
 
