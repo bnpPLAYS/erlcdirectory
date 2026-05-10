@@ -17,6 +17,7 @@ import {
   Sparkles,
   Bell,
   Eye,
+  ChevronDown,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -249,6 +250,7 @@ const ProfileEditor = ({
   const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
   const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
   const [discordSyncTarget, setDiscordSyncTarget] = useState<DiscordProfileMediaSyncMode>('both');
+  const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
   const [bannerDropActive, setBannerDropActive] = useState(false);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -703,49 +705,72 @@ const ProfileEditor = ({
 
         {/* CUSTOMIZE */}
         <TabsContent value="customize" className="mt-5 space-y-6">
-          <EditorSection
-            title="Live preview"
-            description="How accent color reads against your banner."
-            icon={Eye}
-          >
-            <div
-              className="relative overflow-hidden rounded-2xl border border-white/12 shadow-2xl shadow-black/40 aspect-[21/9] min-h-[140px]"
-              style={{
-                boxShadow: `inset 0 -4px 48px ${form.accent_color}22`,
-              }}
+          <section className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 sm:p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04]">
+            <button
+              type="button"
+              onClick={() => setLivePreviewExpanded((v) => !v)}
+              className="flex w-full items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background -m-1 p-1"
+              aria-expanded={livePreviewExpanded}
             >
-              {form.banner_url ? (
-                <img src={form.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-              <div
-                className="absolute bottom-0 left-0 right-0 h-1"
-                style={{ background: `linear-gradient(90deg, transparent, ${form.accent_color}, transparent)` }}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08]">
+                <Eye className="h-5 w-5 text-white/90" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <h3 className="text-base font-semibold tracking-tight text-foreground">Live preview</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  How accent color reads against your banner. Tap to {livePreviewExpanded ? 'hide' : 'show'}.
+                </p>
+              </div>
+              <ChevronDown
+                className={cn(
+                  'mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200',
+                  livePreviewExpanded && 'rotate-180',
+                )}
+                aria-hidden
               />
-              <div className="absolute bottom-4 left-4 flex items-center gap-3">
+            </button>
+            {livePreviewExpanded ? (
+              <div className="mt-5 space-y-4 border-t border-white/[0.06] pt-5">
                 <div
-                  className="h-12 w-12 rounded-full ring-2 ring-background shadow-lg"
-                  style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
+                  className="relative aspect-[21/9] min-h-[140px] overflow-hidden rounded-2xl border border-white/12 shadow-2xl shadow-black/40"
+                  style={{
+                    boxShadow: `inset 0 -4px 48px ${form.accent_color}22`,
+                  }}
                 >
-                  {profile.discord_avatar ? (
-                    <img src={profile.discord_avatar} alt="" className="h-full w-full rounded-full object-cover" />
+                  {form.banner_url ? (
+                    <img src={form.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
-                      {(form.display_name || '?').charAt(0).toUpperCase()}
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent" />
                   )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
-                  <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>
-                    Accent preview
-                  </p>
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-1"
+                    style={{ background: `linear-gradient(90deg, transparent, ${form.accent_color}, transparent)` }}
+                  />
+                  <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                    <div
+                      className="h-12 w-12 rounded-full ring-2 ring-background shadow-lg"
+                      style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
+                    >
+                      {profile.discord_avatar ? (
+                        <img src={profile.discord_avatar} alt="" className="h-full w-full rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+                          {(form.display_name || '?').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
+                      <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>
+                        Accent preview
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </EditorSection>
+            ) : null}
+          </section>
 
           <EditorSection title="Color & theme" description="Choose a preset or tune accent — affects highlights and badges on your profile." icon={Palette}>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">

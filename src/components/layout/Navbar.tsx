@@ -23,13 +23,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { StaffBanner } from '@/components/staff/StaffBanner';
+import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 
 const Navbar = () => {
   const location = useLocation();
@@ -37,6 +38,11 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
   const { isStaff } = useStaffAccess();
+  const discordUi = useMemo(() => getDiscordSessionDisplay(user), [user]);
+  const navDisplayName = profile?.display_name ?? discordUi?.displayName ?? 'Member';
+  const navDiscordUsername = profile?.discord_username ?? discordUi?.discordUsername ?? 'user';
+  const navAvatarUrl = profile?.discord_avatar ?? discordUi?.avatarUrl ?? undefined;
+  const navInitial = (navDisplayName || 'U').charAt(0).toUpperCase();
 
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
@@ -140,17 +146,13 @@ const Navbar = () => {
                     )}
                   >
                     <Avatar className="h-8 w-8 ring-1 ring-white/15">
-                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
-                      <AvatarFallback className="text-xs bg-secondary">
-                        {profile?.display_name?.[0] || 'U'}
-                      </AvatarFallback>
+                      <AvatarImage src={navAvatarUrl} loading="eager" fetchPriority="high" />
+                      <AvatarFallback className="text-xs bg-secondary">{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex flex-col items-start leading-none">
-                      <span className="text-xs font-semibold truncate max-w-[100px]">
-                        {profile?.display_name || 'Member'}
-                      </span>
+                      <span className="text-xs font-semibold truncate max-w-[100px]">{navDisplayName}</span>
                       <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                        @{profile?.discord_username || 'user'}
+                        @{navDiscordUsername}
                       </span>
                     </div>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
@@ -159,14 +161,12 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
-                      <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
+                      <AvatarImage src={navAvatarUrl} loading="eager" fetchPriority="high" />
+                      <AvatarFallback>{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-semibold truncate">{profile?.display_name || 'Member'}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        @{profile?.discord_username || 'user'}
-                      </span>
+                      <span className="text-sm font-semibold truncate">{navDisplayName}</span>
+                      <span className="text-xs text-muted-foreground truncate">@{navDiscordUsername}</span>
                     </div>
                   </div>
                   <DropdownMenuSeparator className="bg-white/10" />
