@@ -264,6 +264,48 @@ export type Database = {
           },
         ]
       }
+      moderation_reports: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          message_id: string | null
+          reason: string
+          reporter_profile_id: string
+          resolved_at: string | null
+          review_id: string | null
+          staff_notes: string | null
+          status: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          message_id?: string | null
+          reason: string
+          reporter_profile_id: string
+          resolved_at?: string | null
+          review_id?: string | null
+          staff_notes?: string | null
+          status?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          message_id?: string | null
+          reason?: string
+          reporter_profile_id?: string
+          resolved_at?: string | null
+          review_id?: string | null
+          staff_notes?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       post_comments: {
         Row: {
           author_id: string
@@ -371,6 +413,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profile_warnings: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          issued_by_profile_id: string
+          subject_profile_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          issued_by_profile_id: string
+          subject_profile_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          issued_by_profile_id?: string
+          subject_profile_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

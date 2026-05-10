@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MessageSquare, Search, Send, ArrowLeft, User } from 'lucide-react';
+import { MessageSquare, Search, Send, ArrowLeft, User, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { pageHeroEnter } from '@/lib/pageHero';
 import { supabase } from '@/integrations/supabase/client';
 import { orderedParticipantIds } from '@/lib/conversationPair';
 import { profilePath } from '@/lib/profilePath';
+import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 
 interface Participant {
   id: string;
@@ -73,6 +74,7 @@ const Messages = () => {
   const [msgLoading, setMsgLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
 
   const loadMessagesForPair = useCallback(async (meId: string, otherId: string) => {
     setMsgLoading(true);
@@ -513,12 +515,24 @@ const Messages = () => {
                             }`}
                           >
                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                            <span className="text-xs opacity-70 mt-1 block">
-                              {new Date(msg.created_at).toLocaleTimeString(undefined, {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })}
-                            </span>
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <span className="text-xs opacity-70">
+                                {new Date(msg.created_at).toLocaleTimeString(undefined, {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                              {profile?.id && msg.sender_id !== profile.id && selected?.conversationId && (
+                                <button
+                                  type="button"
+                                  className="text-[11px] opacity-80 hover:opacity-100 inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                                  onClick={() => setReportMessageId(msg.id)}
+                                >
+                                  <Flag className="h-3 w-3" aria-hidden />
+                                  Report
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -556,6 +570,16 @@ const Messages = () => {
           </Card>
         </div>
       </div>
+
+      <SubmitReportDialog
+        open={!!reportMessageId}
+        onOpenChange={(o) => {
+          if (!o) setReportMessageId(null);
+        }}
+        kind="message"
+        messageId={reportMessageId}
+        conversationId={selected?.conversationId ?? null}
+      />
     </div>
   );
 };
