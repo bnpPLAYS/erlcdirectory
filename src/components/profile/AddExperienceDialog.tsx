@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Server as ServerIcon, UserCheck, Search, RefreshCw, Shield, Users, Sparkles, Globe } from 'lucide-react';
+import {
+  ArrowLeft,
+  Server as ServerIcon,
+  UserCheck,
+  Search,
+  RefreshCw,
+  Shield,
+  Users,
+  Sparkles,
+  Globe,
+  Send,
+  MessageCircleWarning,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,17 +35,27 @@ interface Guild {
   is_admin: boolean;
 }
 
+export type CreatedExperienceSummary = {
+  id: string;
+  guild_id: string | null;
+  server_name: string;
+  server_icon: string | null;
+};
+
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   profileId: string;
   onCreated: () => void;
+  /** Opens verification link UI so the member can copy/send the link to an admin. */
+  onRequestVerification?: (row: CreatedExperienceSummary) => void;
 }
 
-type Step = 'pick' | 'server' | 'direct';
+type Step = 'pick' | 'server' | 'direct' | 'aftercreate';
 
-const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props) => {
+const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated, onRequestVerification }: Props) => {
   const [step, setStep] = useState<Step>('pick');
+  const [savedRow, setSavedRow] = useState<CreatedExperienceSummary | null>(null);
 
   // Server flow
   const [guilds, setGuilds] = useState<Guild[]>([]);
@@ -67,6 +89,7 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
       setEndDate('');
       setIsCurrent(true);
       setSearch('');
+      setSavedRow(null);
     }
   }, [open]);
 
@@ -121,7 +144,11 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
         payload.role = roleF.text.slice(0, 80);
         payload.server_name = directNameF.text.slice(0, 80);
       }
-      const { error } = await supabase.from('experiences').insert(payload);
+      const { data: inserted, error } = await supabase
+        .from('experiences')
+        .insert(payload)
+        .select('id, guild_id, server_name, server_icon')
+        .single();
       if (error) {
         // Unique index on (profile_id, guild_id) for server-linked rows — catch racing double-submits.
         const code = (error as { code?: string }).code;
@@ -134,9 +161,9 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
         }
         throw error;
       }
-      toast.success('Experience added');
       onCreated();
-      onOpenChange(false);
+      setSavedRow(inserted as CreatedExperienceSummary);
+      setStep('aftercreate');
     } catch (e: any) {
       toast.error(e?.message || 'Could not save experience');
     } finally {
@@ -401,6 +428,65 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated }: Props
             <div className="flex pt-2">
               <Button type="button" variant="ghost" onClick={() => setStep('pick')} className="gap-2 rounded-full text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" /> Back to experience types
+              </Button>
+            </div>
+          </>
+        )}
+
+        {step === 'aftercreate' && savedRow && (
+          <>
+            <DialogHeader className="text-center items-center max-w-2xl mx-auto">
+              <div className="h-12 w-12 rounded-2xl bg-amber-500/15 border border-amber-400/25 grid place-items-center mb-3">
+                <MessageCircleWarning className="h-6 w-6 text-amber-200" aria-hidden />
+              </div>
+              <DialogTitle className="text-2xl sm:text-3xl">Next step: send the link to an administrator</DialogTitle>
+              <DialogDescription asChild>
+                <div className="text-base text-left space-y-3 pt-2 text-muted-foreground">
+                  <p className="text-foreground/95">
+                    Your experience is saved as <span className="font-semibold text-foreground">pending</span>. It stays that way until someone who can
+                    approve your role opens your <span className="font-semibold text-foreground">verification link</span> and confirms it.
+                  </p>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>
+                      {savedRow.guild_id ? (
+                        <>
+                          Send the link to a <strong className="text-foreground">Discord administrator</strong> or manager for{' '}
+                          <strong className="text-foreground">{savedRow.server_name}</strong> (or anyone they delegate).
+                        </>
+                      ) : (
+                        <>
+                          Send the link to someone who can verify this work — for example a <strong className="text-foreground">client</strong>,{' '}
+                          <strong className="text-foreground">project lead</strong>, or <strong className="text-foreground">community host</strong>.
+                        </>
+                      )}
+                    </li>
+                    <li>They open the link, sign in with Discord if prompted, and approve. Your directory profile updates when they finish.</li>
+                    <li>Verification links last <strong className="text-foreground">24 hours</strong>. You can create a new link anytime from your experience list.</li>
+                  </ul>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto pt-2">
+              {onRequestVerification ? (
+                <Button
+                  type="button"
+                  className="rounded-full h-11 gap-2"
+                  onClick={() => {
+                    onRequestVerification(savedRow);
+                    onOpenChange(false);
+                  }}
+                >
+                  <Send className="h-4 w-4" aria-hidden />
+                  Get verification link
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant={onRequestVerification ? 'outline' : 'default'}
+                className="rounded-full h-11"
+                onClick={() => onOpenChange(false)}
+              >
+                {onRequestVerification ? "Close — I'll find the link later" : 'Got it'}
               </Button>
             </div>
           </>

@@ -42,12 +42,13 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
-import { isPendingPlaceholderRole } from '@/lib/experienceConstants';
+import { isPendingPlaceholderRole, PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
 import {
   PROFILE_LOCATION_GROUPS,
   normalizeStoredCounty,
+  PROFILE_LOCATION_OPTIONS,
 } from '@/lib/profileLocations';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
@@ -117,7 +118,7 @@ const profileSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine((v) => !v || COUNTY_OPTIONS.includes(v), 'Choose a county or region from the list.'),
+    .refine((v) => !v || PROFILE_LOCATION_OPTIONS.includes(v), 'Choose a county or region from the list.'),
   timezone: z.string().trim().max(40).optional(),
   pronouns: z.string().trim().max(30).optional(),
   status: z.string().trim().max(140).optional(),
@@ -946,6 +947,20 @@ const ProfileEditor = ({
         onOpenChange={setAddOpen}
         profileId={profile.id}
         onCreated={refreshExperiences}
+        onRequestVerification={(row) => {
+          setVerifyTarget({
+            id: row.id,
+            role: PENDING_EXPERIENCE_ROLE,
+            server_name: row.server_name,
+            server_icon: row.server_icon,
+            department: null,
+            start_date: new Date().toISOString(),
+            end_date: null,
+            is_current: true,
+            is_verified: false,
+            guild_id: row.guild_id,
+          });
+        }}
       />
     </div>
   );
