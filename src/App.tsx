@@ -22,6 +22,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Docs from "./pages/Docs";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <AcceptTermsGate>
             <Routes>
               <Route path="/" element={<Index />} />

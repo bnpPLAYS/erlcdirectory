@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Users, Server as ServerIcon, CheckCircle2, Briefcase, Shield } from 'lucide-react';
 import { toast } from 'sonner';
@@ -81,7 +81,10 @@ const ServerDetail = () => {
   const [loading, setLoading] = useState(true);
   const detailBannerRefreshRef = useRef<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setServer(null);
+    setCoworkers([]);
+    setLoading(true);
     detailBannerRefreshRef.current = null;
   }, [id]);
 
