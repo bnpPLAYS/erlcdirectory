@@ -68,7 +68,8 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    /* SPA route changes use ScrollToTop; smooth global scroll fights instant jumps and feels laggy. */
+    scroll-behavior: auto;
   }
 
   body {

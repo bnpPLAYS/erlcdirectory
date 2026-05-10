@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,9 +25,20 @@ import Contact from "./pages/Contact";
 import Docs from "./pages/Docs";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
-import { FirstLoginTutorial } from "@/components/onboarding/FirstLoginTutorial";
 
-const queryClient = new QueryClient();
+const FirstLoginTutorial = lazy(() =>
+  import("@/components/onboarding/FirstLoginTutorial").then((m) => ({ default: m.FirstLoginTutorial })),
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,7 +48,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
-          <FirstLoginTutorial />
+          <Suspense fallback={null}>
+            <FirstLoginTutorial />
+          </Suspense>
           <AcceptTermsGate>
             <Routes>
               <Route path="/" element={<Index />} />
