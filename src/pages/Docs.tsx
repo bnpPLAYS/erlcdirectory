@@ -75,7 +75,7 @@ const SECTION_DATA: Omit<Section, 'body'>[] = [
     id: 'trust-account',
     title: 'Trust, staff & account',
     icon: ShieldCheck,
-    toc: ['Text filtering', 'Staff tools', 'Legal', 'Troubleshooting'],
+    toc: ['Text filtering', 'Staff tools', 'Reporting & DB setup', 'Legal', 'Troubleshooting'],
   },
 ];
 
@@ -317,8 +317,24 @@ const Docs = () => {
                 Staff tools
               </h3>
               <p className="mt-2 text-muted-foreground leading-relaxed">
-                A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (access is enforced in the database and UI). It is not part of the
-                normal member workflow.
+                A restricted <strong className="text-foreground">Staff</strong> area exists for site operators (enforced in the database and UI). It includes post moderation and a{' '}
+                <strong className="text-foreground">Reports</strong> queue for flagged reviews and messages.
+              </p>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                To grant Pixelnovaa. admin in one step: open{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/snippets/grant_staff_pixelnovaa.sql</code>, copy{' '}
+                <strong className="text-foreground">all SQL</strong> into Supabase SQL Editor, run after signing into the site once so a profile row exists.
+              </p>
+              <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-reporting-db">
+                Reporting & DB setup
+              </h3>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Signed-in members can report reviews and DMs. Staff triages under <strong className="text-foreground">Staff panel → Reports</strong>. Production needs{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code> on Vercel for the <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">/api/submit-report</code> route.
+              </p>
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                If you see <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">moderation_reports</code> / schema cache errors, paste the full file{' '}
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> into SQL Editor (entire contents, not the path). If <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code> is missing, run older migrations first or <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code>.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
                 Legal
