@@ -1,0 +1,4 @@
+-- One-paste staff reporting setup:
+-- Open supabase/migrations/20260530120000_staff_warnings_reports.sql in this repo,
+-- select ALL lines (Ctrl+A), copy, paste into Supabase SQL Editor, Run once.
+-- That file includes is_site_owner() + is_staff() + tables + RLS.

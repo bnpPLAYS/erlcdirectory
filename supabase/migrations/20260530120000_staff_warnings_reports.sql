@@ -1,6 +1,22 @@
 -- Directory staff: profile warnings, user reports, review deletion by staff
--- Defines is_staff() first so pasting this whole file in SQL Editor works.
--- Requires public.is_site_owner() from earlier migrations.
+-- Self-contained for SQL Editor: defines is_site_owner() then is_staff(), then tables/policies.
+-- (Matches site-owner logic: Discord username normalizes to pixelnovaa.)
+
+CREATE OR REPLACE FUNCTION public.is_site_owner()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.user_id = auth.uid()
+      AND regexp_replace(lower(trim(coalesce(p.discord_username, ''))), '\.+$', '') = 'pixelnovaa'
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_site_owner() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS boolean
