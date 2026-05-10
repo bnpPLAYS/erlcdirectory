@@ -54,38 +54,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile fetch with setTimeout to prevent deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
-      }
-    );
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setLoading(false);
-    });
+    if (data) {
+      setProfile(data as Profile);
+      return;
+    }
 
-    return () => subscription.unsubscribe();
+    const {
+      data: { session: s },
+    } = await supabase.auth.getSession();
+    if (s?.user?.id === userId) {
+      const syncResult = await syncDiscordProfileFromSession(s);
+      if (!syncResult.error) {
+        const { data: row } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+        if (row) setProfile(row as Profile);
+      }
+    }
   }, []);
 
-  // Refresh session when the tab wakes up or the network returns (keeps login across visits).
+  useEffect(() => {
+    let cancelled = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (!nextSession?.user) {
+        setProfile(null);
+        return;
+      }
+      // Initial load awaits `profiles` in getSession() below so `loading` stays true until the first row hydrates.
+      if (event === 'INITIAL_SESSION') return;
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        setTimeout(() => {
+          void fetchProfile(nextSession.user.id);
+        }, 0);
+      }
+    });
+
+    void supabase.auth.getSession().then(async ({ data: { session: initial } }) => {
+      if (cancelled) return;
+      setSession(initial);
+      setUser(initial?.user ?? null);
+      if (initial?.user) {
+        await fetchProfile(initial.user.id);
+      }
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
+
   useEffect(() => {
     const refresh = () => {
       void supabase.auth.getSession();
@@ -103,27 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', refresh);
     };
   }, []);
-
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
-
-    if (data) {
-      setProfile(data as Profile);
-      return;
-    }
-
-    // Missing row (failed trigger) or not hydrated yet: create/update from Discord session — same source as OAuth callback.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.user?.id === userId) {
-      const syncResult = await syncDiscordProfileFromSession(session);
-      if (!syncResult.error) {
-        const { data: row } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
-        if (row) setProfile(row as Profile);
-      }
-    }
-  };
 
   const refreshProfile = async () => {
     const { data } = await supabase.auth.getSession();

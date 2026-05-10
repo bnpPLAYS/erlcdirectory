@@ -23,9 +23,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
+import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { cn } from '@/lib/utils';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
@@ -37,6 +38,18 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
   const { isStaff } = useStaffAccess();
+
+  const discordUi = useMemo(() => getDiscordSessionDisplay(user), [user]);
+  const navDisplayName = (profile?.display_name || discordUi?.displayName || '').trim();
+  const navHandleRaw = (profile?.discord_username || discordUi?.discordUsername || '').trim();
+  const navHandleLine =
+    navHandleRaw !== ''
+      ? navHandleRaw.startsWith('@')
+        ? navHandleRaw
+        : `@${navHandleRaw}`
+      : null;
+  const navAvatar = profile?.discord_avatar || discordUi?.avatarUrl || undefined;
+  const navInitial = (navDisplayName || navHandleRaw || 'U').replace(/^@/, '').charAt(0).toUpperCase() || 'U';
 
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
@@ -137,18 +150,18 @@ const Navbar = () => {
                     )}
                   >
                     <Avatar className="h-8 w-8 ring-1 ring-white/15">
-                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
-                      <AvatarFallback className="text-xs bg-secondary">
-                        {profile?.display_name?.[0] || 'U'}
-                      </AvatarFallback>
+                      <AvatarImage src={navAvatar} loading="eager" fetchPriority="high" />
+                      <AvatarFallback className="text-xs bg-secondary">{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex flex-col items-start leading-none">
                       <span className="text-xs font-semibold truncate max-w-[100px]">
-                        {profile?.display_name || 'Member'}
+                        {navDisplayName || navHandleRaw || 'Member'}
                       </span>
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                        @{profile?.discord_username || 'user'}
-                      </span>
+                      {navHandleLine && (
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                          {navHandleLine}
+                        </span>
+                      )}
                     </div>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                   </button>
@@ -156,14 +169,16 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={profile?.discord_avatar || undefined} loading="eager" fetchPriority="high" />
-                      <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
+                      <AvatarImage src={navAvatar} loading="eager" fetchPriority="high" />
+                      <AvatarFallback>{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-semibold truncate">{profile?.display_name || 'Member'}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        @{profile?.discord_username || 'user'}
+                      <span className="text-sm font-semibold truncate">
+                        {navDisplayName || navHandleRaw || 'Member'}
                       </span>
+                      {navHandleLine && (
+                        <span className="text-xs text-muted-foreground truncate">{navHandleLine}</span>
+                      )}
                     </div>
                   </div>
                   <DropdownMenuSeparator className="bg-white/10" />
