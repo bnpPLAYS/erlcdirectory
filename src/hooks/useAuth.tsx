@@ -45,6 +45,7 @@ interface Profile {
   dm_experience_status_updates?: boolean | null;
   created_at: string;
   updated_at: string;
+  /** Set when staff bans the account; client signs out if present. */
   banned_at?: string | null;
 }
 
