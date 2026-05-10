@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { isModerationReportsSchemaMissingError } from '@/lib/moderationReportsErrors';
 
 type Props = {
   open: boolean;
@@ -31,7 +31,7 @@ export function SubmitReportDialog({
   messageId,
   conversationId,
 }: Props) {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,28 +54,44 @@ export function SubmitReportDialog({
       return;
     }
 
-    setSubmitting(true);
-    const row: Record<string, unknown> = {
-      reporter_profile_id: profile.id,
-      kind,
-      reason: t.slice(0, 2000),
-      status: 'open',
-    };
-    if (kind === 'review') row.review_id = reviewId;
-    if (kind === 'message') {
-      row.message_id = messageId;
-      if (conversationId) row.conversation_id = conversationId;
+    if (!session?.access_token) {
+      toast.error('Your session expired. Sign in again.');
+      return;
     }
 
-    const { error } = await supabase.from('moderation_reports').insert(row as never);
+    setSubmitting(true);
+    const payload: Record<string, unknown> = {
+      kind,
+      reason: t.slice(0, 2000),
+    };
+    if (kind === 'review') payload.review_id = reviewId;
+    if (kind === 'message') {
+      payload.message_id = messageId;
+      if (conversationId) payload.conversation_id = conversationId;
+    }
+
+    let msg: string | null = null;
+    try {
+      const res = await fetch('/api/submit-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        msg = data.error || `Request failed (${res.status})`;
+      }
+    } catch {
+      msg = 'Network error submitting report.';
+    }
     setSubmitting(false);
-    if (error) {
-      const msg = error.message ?? '';
-      const migrationMissing =
-        /moderation_reports|schema cache/i.test(msg) && /could not find|does not exist/i.test(msg);
+    if (msg) {
       toast.error(
-        migrationMissing
-          ? 'Reports are not live on this database yet. Apply the Supabase migration that creates moderation_reports (see repo migration staff_warnings_reports), then retry.'
+        isModerationReportsSchemaMissingError(msg)
+          ? 'Reporting isn’t enabled on this database yet. In Supabase → SQL Editor, paste the full contents of supabase/migrations/20260530120000_staff_warnings_reports.sql (all SQL from the file). If you see is_site_owner errors, run older migrations first.'
           : msg,
       );
       return;

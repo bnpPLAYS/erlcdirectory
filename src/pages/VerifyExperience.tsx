@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   Shield,
@@ -8,9 +8,6 @@ import {
   Loader2,
   AlertTriangle,
   Star,
-  HelpCircle,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +58,13 @@ type VerificationLookupResult = {
   member: MemberInfo | null;
 };
 
+function experienceDateLabel(exp: ExperienceInfo): string {
+  const start = new Date(exp.start_date).toLocaleDateString();
+  if (exp.is_current) return `${start} — Present`;
+  if (exp.end_date) return `${start} — ${new Date(exp.end_date).toLocaleDateString()}`;
+  return start;
+}
+
 const VerifyExperience = () => {
   const { token } = useParams();
   const { session } = useAuth();
@@ -78,23 +82,6 @@ const VerifyExperience = () => {
   const [verifierPosition, setVerifierPosition] = useState('');
   const [verifierReviewText, setVerifierReviewText] = useState('');
   const [verifierRating, setVerifierRating] = useState<number | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [copiedUri, setCopiedUri] = useState(false);
-
-  /** Stable values we send to Discord — exposed for debugging when rejected as Invalid redirect_uri. */
-  const oauthDebug = useMemo(() => {
-    const redirectUri = getDiscordRedirectUri();
-    const clientId = getDiscordClientId();
-    const usingFallbackClientId =
-      !import.meta.env.VITE_DISCORD_CLIENT_ID || !import.meta.env.VITE_DISCORD_CLIENT_ID.trim();
-    let host = '';
-    try {
-      host = new URL(redirectUri).hostname;
-    } catch {
-      /* ignore */
-    }
-    return { redirectUri, clientId, usingFallbackClientId, host };
-  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -219,16 +206,6 @@ const VerifyExperience = () => {
     }
   };
 
-  const copyRedirectUri = async () => {
-    try {
-      await navigator.clipboard.writeText(oauthDebug.redirectUri);
-      setCopiedUri(true);
-      setTimeout(() => setCopiedUri(false), 1600);
-    } catch {
-      /* ignore */
-    }
-  };
-
   const finalizeDecision = async (action: 'approve' | 'reject', oauthCode?: string) => {
     if (!token) return;
     setSubmitting(true);
@@ -328,17 +305,13 @@ const VerifyExperience = () => {
             </Link>
             <div className="h-px w-16 mx-auto bg-gradient-to-r from-transparent via-white/35 to-transparent" aria-hidden />
             {session?.access_token ? (
-              <p className="text-[12px] leading-relaxed text-zinc-400 max-w-md mx-auto border border-white/10 bg-white/[0.03] px-4 py-3 rounded-md">
-                You&apos;re signed in. Approvals use your directory session — no extra Discord prompt unless your
-                connection needs refreshing.
-              </p>
+              <p className="text-[11px] text-zinc-500 max-w-md mx-auto">Signed in — approval uses your directory account.</p>
             ) : (
-              <p className="text-[12px] leading-relaxed text-zinc-500 max-w-md mx-auto">
-                Already use erlc.directory?{' '}
+              <p className="text-[11px] text-zinc-500 max-w-md mx-auto">
                 <Link to="/auth" className="text-zinc-300 underline-offset-4 hover:underline">
-                  Sign in first
+                  Sign in
                 </Link>{' '}
-                to approve without leaving this page.
+                first to skip an extra Discord step when possible.
               </p>
             )}
           </header>
@@ -379,77 +352,61 @@ const VerifyExperience = () => {
 
             {info && r && (
               <>
-                {m && (
-                  <div className="rounded-lg border border-white/10 bg-black/25 p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={m.discord_avatar || undefined} />
-                        <AvatarFallback>{m.display_name?.[0] || '?'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{m.display_name || 'Member'}</p>
-                        {m.discord_username && <p className="text-xs text-muted-foreground">@{m.discord_username}</p>}
-                      </div>
-                    </div>
-                    {m.discord_roles && m.discord_roles.length > 0 ? (
-                      <div className="space-y-1.5 pt-1 border-t border-white/10">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Roles in this server</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {m.discord_roles.map((role) => (
-                            <Badge key={role.id} variant="secondary" className="font-normal text-xs border-white/15 bg-white/[0.06]">
-                              {role.name}
-                            </Badge>
-                          ))}
+                <div className="flex flex-col gap-3 border-b border-white/10 pb-5 mb-1">
+                  <div className="flex flex-wrap items-start gap-4">
+                    {m && (
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarImage src={m.discord_avatar || undefined} />
+                          <AvatarFallback>{m.display_name?.[0] || '?'}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-zinc-100 truncate">{m.display_name || 'Member'}</p>
+                          {m.discord_username && (
+                            <p className="text-xs text-zinc-500">@{m.discord_username}</p>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground border-t border-white/10 pt-2">
-                        Role list unavailable — ensure the directory bot is in this server with Server Members intent. You can still verify using your knowledge of their role.
-                      </p>
+                    )}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:min-w-[12rem]">
+                      {r.guild_icon ? (
+                        <img src={r.guild_icon} alt="" className="w-9 h-9 rounded-md shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-md bg-zinc-800 flex items-center justify-center shrink-0 text-sm text-zinc-400">
+                          {(r.guild_name || '?')[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-500">Server</p>
+                        <p className="text-sm text-zinc-200 truncate">{r.guild_name || r.guild_id}</p>
+                      </div>
+                    </div>
+                    {e && (
+                      <div className="text-xs text-zinc-500 min-w-0 flex-1 basis-full sm:basis-auto">
+                        {e.role !== PENDING_EXPERIENCE_ROLE && (
+                          <p className="text-zinc-300 font-medium">{e.role}</p>
+                        )}
+                        <p className="truncate">
+                          {e.server_name}
+                          {e.department && ` · ${e.department}`}
+                        </p>
+                        <p>{experienceDateLabel(e)}</p>
+                      </div>
                     )}
                   </div>
-                )}
-
-                {e && (
-                  <div className="rounded-lg border border-white/10 bg-black/25 p-4 space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                      <Shield className="h-3.5 w-3.5" />{' '}
-                      {e.role === PENDING_EXPERIENCE_ROLE ? 'Role' : 'Previous title'}
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold">
-                        {e.role === PENDING_EXPERIENCE_ROLE ? (
-                          <span className="text-muted-foreground font-normal text-base">
-                            Not set yet — you will enter their verified role below.
-                          </span>
-                        ) : (
-                          e.role
-                        )}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {e.server_name}
-                        {e.department && ` · ${e.department}`}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(e.start_date).toLocaleDateString()} —{' '}
-                      {e.is_current ? 'Present' : e.end_date ? new Date(e.end_date).toLocaleDateString() : '—'}
-                    </p>
-                  </div>
-                )}
-
-                <div className="rounded-lg border border-white/10 bg-black/25 p-4 flex items-center gap-3">
-                  {r.guild_icon ? (
-                    <img src={r.guild_icon} alt="" className="w-10 h-10 rounded-md" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center">
-                      {(r.guild_name || '?')[0]}
+                  {m?.discord_roles && m.discord_roles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {m.discord_roles.map((role) => (
+                        <Badge
+                          key={role.id}
+                          variant="secondary"
+                          className="font-normal text-[10px] border-white/12 bg-white/[0.05] text-zinc-300"
+                        >
+                          {role.name}
+                        </Badge>
+                      ))}
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Discord server</p>
-                    <p className="font-semibold truncate">{r.guild_name || r.guild_id}</p>
-                  </div>
                 </div>
 
                 {decisionResult ? (
@@ -565,94 +522,29 @@ const VerifyExperience = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-2 pt-1">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={submitting}
-                          onClick={() => handleRejectClick()}
-                          className="gap-2 rounded-full border-white/20"
-                        >
-                          <XCircle className="h-4 w-4" /> Reject
-                        </Button>
-                        <Button
-                          type="button"
-                          disabled={submitting}
-                          onClick={() => handleApproveClick()}
-                          className="gap-2 rounded-full bg-white text-black hover:bg-zinc-200 border border-white"
-                        >
-                          {submitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4" />
-                          )}
-                          Approve
-                        </Button>
-                      </div>
-                      <p className="text-[11px] text-zinc-500 text-center">
-                        Link expires {new Date(r.expires_at).toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-white/[0.08] bg-black/35 p-3">
-                      <button
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Button
                         type="button"
-                        onClick={() => setShowDebug((v) => !v)}
-                        className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-zinc-500 hover:text-zinc-300"
+                        variant="outline"
+                        disabled={submitting}
+                        onClick={() => handleRejectClick()}
+                        className="gap-2 rounded-full border-white/20"
                       >
-                        <HelpCircle className="h-3.5 w-3.5" />
-                        {showDebug ? 'Hide technical details' : 'OAuth / redirect troubleshooting'}
-                      </button>
-                      {showDebug && (
-                        <div className="mt-3 space-y-3 text-[11px]">
-                          <div>
-                            <p className="text-muted-foreground">Exact redirect_uri sent to Discord:</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <code className="break-all rounded bg-black/50 px-1.5 py-0.5 text-zinc-200">
-                                {oauthDebug.redirectUri}
-                              </code>
-                              <button
-                                type="button"
-                                onClick={() => void copyRedirectUri()}
-                                className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
-                              >
-                                {copiedUri ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                                {copiedUri ? 'Copied' : 'Copy'}
-                              </button>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Client ID:</p>
-                            <code className="mt-1 inline-block break-all rounded bg-black/50 px-1.5 py-0.5 text-zinc-200">
-                              {oauthDebug.clientId}
-                            </code>
-                            {oauthDebug.usingFallbackClientId && (
-                              <p className="mt-1 text-zinc-400">
-                                Note: <code className="text-zinc-300">VITE_DISCORD_CLIENT_ID</code> is unset — confirm the
-                                Discord application matches this deployment.
-                              </p>
-                            )}
-                          </div>
-                          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5 space-y-1.5">
-                            <p className="text-foreground text-[12px] font-medium">
-                              In Discord Developer Portal → OAuth2 → Redirects, paste this URL exactly:
-                            </p>
-                            <code className="block break-all rounded bg-black/50 px-1.5 py-1 text-zinc-200">
-                              {oauthDebug.redirectUri}
-                            </code>
-                            <p className="text-muted-foreground">
-                              No path tokens, no trailing slash. Save changes. The same Client ID above must own this
-                              entry — Discord rejects the URL if it&apos;s on a different app.
-                            </p>
-                            <p className="text-muted-foreground">
-                              Currently signed in via <code className="text-zinc-300">{oauthDebug.host}</code>. If your
-                              Portal entry is on the other host (apex vs www), open this verify link on that host instead
-                              or add both URLs.
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                        <XCircle className="h-4 w-4" /> Reject
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleApproveClick()}
+                        className="gap-2 rounded-full bg-white text-black hover:bg-zinc-200 border border-white"
+                      >
+                        {submitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        Approve
+                      </Button>
                     </div>
                   </>
                 ) : null}
