@@ -130,7 +130,7 @@ export function SubmitReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[min(90vh,40rem)] overflow-y-auto border-white/12 bg-background">
+      <DialogContent className="sm:max-w-md border-white/12 bg-background">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="text-muted-foreground">
