@@ -9,6 +9,7 @@ import {
 } from '@/lib/siteUiPreferences';
 
 const ENTRIES: string[] = [
+  'ERLC Directory Pro (800 Robux): verify on /pro for bonus themes, directory boost, and a Pro badge.',
   'New full-width header — navigation is now a sticky site bar (no floating pill).',
   'Staff: you can minimize the top moderation strip to a single “Staff panel” control.',
   'Profile editor: platform link badges, directory “Recent work” picks, and safer Discord avatars.',

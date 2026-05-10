@@ -466,11 +466,15 @@ export type Database = {
           display_name: string | null
           id: string
           is_featured: boolean | null
+          is_pro: boolean
           is_verified: boolean | null
           location: string | null
           pronouns: string | null
+          pro_badge_label: string | null
+          pro_verified_at: string | null
           rating: number | null
           review_count: number | null
+          roblox_user_id: string | null
           skills: string[] | null
           social_links: Json | null
           status: string | null
@@ -499,11 +503,15 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_featured?: boolean | null
+          is_pro?: boolean
           is_verified?: boolean | null
           location?: string | null
           pronouns?: string | null
+          pro_badge_label?: string | null
+          pro_verified_at?: string | null
           rating?: number | null
           review_count?: number | null
+          roblox_user_id?: string | null
           skills?: string[] | null
           social_links?: Json | null
           status?: string | null
@@ -532,11 +540,15 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_featured?: boolean | null
+          is_pro?: boolean
           is_verified?: boolean | null
           location?: string | null
           pronouns?: string | null
+          pro_badge_label?: string | null
+          pro_verified_at?: string | null
           rating?: number | null
           review_count?: number | null
+          roblox_user_id?: string | null
           skills?: string[] | null
           social_links?: Json | null
           status?: string | null

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Crown,
   AlertTriangle,
+  Gem,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,9 @@ interface ProfileData {
   accent_color: string | null;
   theme_preset: string | null;
   social_links?: Json | null;
+  is_pro?: boolean;
+  pro_badge_label?: string | null;
+  roblox_user_id?: string | null;
 }
 
 interface Experience {
@@ -425,6 +429,7 @@ const Profile = () => {
               setSearchParams(next, { replace: true });
             }}
             onDiscordMediaSynced={() => void fetchProfile()}
+            onProVerified={() => void fetchProfile()}
           />
         ) : (
           <>
@@ -465,6 +470,20 @@ const Profile = () => {
                       {profile.is_featured && (
                         <Badge variant="outline" className="text-[10px] px-2 py-0.5" style={{ background: `${accent}22`, color: accent, borderColor: `${accent}55` }}>
                           Featured
+                        </Badge>
+                      )}
+                      {profile.is_pro && (
+                        <Badge
+                          className="text-[10px] px-2 py-0.5 gap-1 rounded-md border border-amber-400/40 bg-amber-500/15 text-amber-100"
+                          title="ERLC Directory Pro"
+                        >
+                          <Gem className="h-3 w-3 text-amber-300" aria-hidden />
+                          Pro
+                        </Badge>
+                      )}
+                      {profile.is_pro && profile.pro_badge_label && (
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-white/20 text-muted-foreground">
+                          {profile.pro_badge_label}
                         </Badge>
                       )}
                       {profile.pronouns && (

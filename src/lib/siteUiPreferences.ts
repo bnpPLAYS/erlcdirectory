@@ -2,7 +2,7 @@
 
 export const STAFF_BANNER_COMPACT_KEY = 'erlc-directory-staff-banner-compact';
 
-export const SITE_CHANGELOG_VERSION = '2026-02-10-nav-staff';
+export const SITE_CHANGELOG_VERSION = '2026-02-11-pro';
 
 export const CHANGELOG_DISMISSED_KEY = 'erlc-directory-changelog-dismissed';
 

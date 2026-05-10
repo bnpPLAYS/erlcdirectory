@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Crown, CheckCircle2, Star, Users } from 'lucide-react';
+import { Crown, CheckCircle2, Star, Users, Gem } from 'lucide-react';
 import SkillBadge from '@/components/ui/skill-badge';
 import { profilePath } from '@/lib/profilePath';
 import { experienceRoleDisplay } from '@/lib/experienceConstants';
@@ -28,6 +28,8 @@ interface ProfileCardProps {
     bio: string | null;
     is_verified: boolean;
     is_featured: boolean;
+    is_pro?: boolean;
+    pro_badge_label?: string | null;
     rating: number;
     review_count: number;
     skills: string[];
@@ -94,6 +96,21 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                     <CheckCircle2 className="h-3 w-3" /> Verified
                   </Badge>
                 )}
+                {profile.is_pro && (
+                  <Badge className="text-[10px] px-2 py-0 gap-1 rounded-md border border-amber-500/35 bg-amber-500/12 text-amber-100">
+                    <Gem className="h-3 w-3 text-amber-300" aria-hidden />
+                    Pro
+                  </Badge>
+                )}
+                {profile.is_pro && profile.pro_badge_label ? (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-2 py-0 rounded-md border-white/15 text-muted-foreground max-w-[8rem] truncate"
+                    title={profile.pro_badge_label}
+                  >
+                    {profile.pro_badge_label}
+                  </Badge>
+                ) : null}
               </div>
 
               {/* Rating + aggregated reach */}

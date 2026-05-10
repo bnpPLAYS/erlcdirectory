@@ -13,6 +13,7 @@ import {
   Plus,
   ChevronDown,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -53,6 +54,7 @@ const Navbar = () => {
     { path: '/browse', label: 'Members', icon: Users },
     { path: '/servers', label: 'Servers', icon: Building2 },
     { path: '/posts', label: 'Posts', icon: FileText },
+    { path: '/pro', label: 'Pro', icon: Sparkles },
     { path: '/messages', label: 'Messages', icon: MessageSquare, auth: true },
   ];
 
