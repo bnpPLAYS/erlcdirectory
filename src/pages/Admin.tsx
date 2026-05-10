@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
@@ -166,15 +167,12 @@ const Admin = () => {
         /Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
         /site_owner_grant_admin_role/i.test(msg));
     if (rpcUnavailable) {
-      ({ error } = await supabase.from('user_roles').insert({
-        user_id: target.user_id,
-        role: 'admin',
-      }));
-      const dup =
-        !!error &&
-        (/duplicate key|unique constraint|23505/i.test(error.message ?? '') ||
-          /already exists/i.test(error.message ?? ''));
-      if (dup) error = null;
+      const proxy = await callSiteOwnerStaffRole('grant', target.user_id);
+      if (proxy.error) return toast({ title: proxy.error, variant: 'destructive' });
+      toast({ title: `${target.display_name || target.discord_username || 'Member'} is now staff` });
+      setNewStaffQuery('');
+      refresh();
+      return;
     }
     if (error) return toast({ title: error.message, variant: 'destructive' });
     toast({ title: `${target.display_name || target.discord_username || 'Member'} is now staff` });
@@ -209,11 +207,10 @@ const Admin = () => {
         /Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
         /site_owner_revoke_admin_role/i.test(msg));
     if (rpcUnavailable) {
-      ({ error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', row.user_id)
-        .eq('role', 'admin'));
+      const proxy = await callSiteOwnerStaffRole('revoke', row.user_id);
+      if (proxy.error) return toast({ title: proxy.error, variant: 'destructive' });
+      refresh();
+      return;
     }
     if (error) return toast({ title: error.message, variant: 'destructive' });
     refresh();
