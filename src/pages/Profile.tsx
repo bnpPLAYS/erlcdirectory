@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -106,6 +106,16 @@ const Profile = () => {
     { id: string; body: string; created_at: string; issued_by_profile_id: string }[]
   >([]);
   const [warningIssuerLabels, setWarningIssuerLabels] = useState<Record<string, string>>({});
+
+  /** Clear previous member’s data before paint so route changes never flash stale profile. */
+  useLayoutEffect(() => {
+    setProfile(null);
+    setExperiences([]);
+    setLoading(true);
+    setEditMode(false);
+    setProfileWarnings([]);
+    setWarningIssuerLabels({});
+  }, [profileSlug]);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);

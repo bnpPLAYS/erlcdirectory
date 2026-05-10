@@ -208,4 +208,96 @@
   .stagger-2 { animation-delay: 0.1s; }
   .stagger-3 { animation-delay: 0.15s; }
   .stagger-4 { animation-delay: 0.2s; }
+
+  @keyframes homeHeroIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes homeHeroGlow {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  /** Hero load-in (respect reduced motion below) */
+  .home-hero-aurora {
+    position: relative;
+  }
+  .home-hero-aurora::before {
+    content: '';
+    position: absolute;
+    inset: -30% -15% auto;
+    height: 70%;
+    background: radial-gradient(ellipse 80% 70% at 50% 0%, hsl(255 42% 32% / 0.28), transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+    animation: homeHeroGlow 10s ease-in-out infinite;
+  }
+  .home-hero-aurora > .container {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .home-hero-item {
+      animation: homeHeroIn 0.72s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(1) {
+      animation-delay: 0.04s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(4) {
+      animation-delay: 0.22s;
+    }
+    .home-hero-side-preview {
+      animation-delay: 0.14s;
+    }
+  }
+
+  .home-reveal-row {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .home-reveal-row.home-reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .home-hero-aurora::before {
+      animation: none !important;
+      opacity: 0.4;
+    }
+    .home-hero-item {
+      animation: none !important;
+      opacity: 1;
+      transform: none;
+    }
+    .home-reveal-row {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
 }

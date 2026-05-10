@@ -334,7 +334,7 @@ const Docs = () => {
               </p>
               <p className="mt-3 text-muted-foreground leading-relaxed">
                 If you see <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">moderation_reports</code> / schema cache errors, paste the full file{' '}
-                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> into SQL Editor (entire contents, not the path). If <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code> is missing, run older migrations first or <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code>.
+                <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase/migrations/20260530120000_staff_warnings_reports.sql</code> into SQL Editor (entire file — it defines <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_site_owner</code> and <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">is_staff</code> first, then tables). For a full ordered history, use <code className="text-xs rounded bg-white/10 px-1.5 py-0.5">supabase db push</code>.
               </p>
               <h3 className="text-lg font-semibold text-foreground mt-8 scroll-mt-28" id="trust-legal">
                 Legal

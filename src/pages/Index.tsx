@@ -4,6 +4,7 @@ import { ArrowRight, Users, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
+import { useInViewOnce } from '@/hooks/useInViewOnce';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 import homePublicProfile from '@/assets/home-features/home-public-profile.png';
@@ -12,7 +13,6 @@ import homeCreatePost from '@/assets/home-features/home-create-post.png';
 import homeConnections from '@/assets/home-features/home-connections.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
-import { pageHeroEnter } from '@/lib/pageHero';
 import { profileEditorPath } from '@/lib/profilePath';
 
 const PRODUCT_SCREENSHOTS: {
@@ -47,6 +47,86 @@ const PRODUCT_SCREENSHOTS: {
   },
 ];
 
+function HomeSectionIntro() {
+  const { ref, visible } = useInViewOnce<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={cn('max-w-2xl mb-12 md:mb-14 home-reveal-row', visible && 'home-reveal-visible')}
+    >
+      <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">How it works</h2>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        Screens from the live site — no mockups.
+      </p>
+    </div>
+  );
+}
+
+function HomeFeatureRow({
+  item,
+  i,
+}: {
+  item: (typeof PRODUCT_SCREENSHOTS)[number];
+  i: number;
+}) {
+  const { ref, visible } = useInViewOnce<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'grid gap-8 md:gap-10 md:grid-cols-2 md:items-center home-reveal-row',
+        visible && 'home-reveal-visible',
+      )}
+    >
+      <div className={cn('py-0.5', i % 2 === 1 && 'md:order-2')}>
+        <div className="home-image-pop rounded-xl border border-white/[0.08] bg-zinc-950/40 p-1.5">
+          <div className="rounded-lg overflow-hidden">
+            <img
+              src={item.image}
+              alt={item.alt}
+              width={1156}
+              height={810}
+              className="block w-full h-auto"
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
+        </div>
+      </div>
+      <div className={cn('space-y-2', i % 2 === 1 && 'md:order-1')}>
+        <p className="text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
+          {String(i + 1).padStart(2, '0')}
+        </p>
+        <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">{item.title}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function HomeCtaBar({ signedIn }: { signedIn: boolean }) {
+  const { ref, visible } = useInViewOnce<HTMLElement>();
+  return (
+    <section
+      ref={ref}
+      className={cn(
+        'py-12 border-t border-white/[0.06] home-reveal-row',
+        visible && 'home-reveal-visible',
+      )}
+    >
+      <div className="container mx-auto px-4 text-center md:text-left">
+        <Link to={signedIn ? '/browse' : '/auth'}>
+          <Button size="lg" className="rounded-md px-8 font-medium gap-2">
+            {signedIn ? 'Browse members' : 'Get started'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 const Index = () => {
   const { user, profile } = useAuth();
   const [stats, setStats] = useState({ profiles: 0, servers: 0 });
@@ -78,11 +158,11 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <section className="relative border-b border-white/[0.06]">
+      <section className="relative border-b border-white/[0.06] home-hero-aurora overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center py-14 md:py-20 lg:py-24">
-            <div className={`text-center lg:text-left order-2 lg:order-1 space-y-8 ${pageHeroEnter}`}>
-              <div className="inline-flex items-center gap-3">
+            <div className="text-center lg:text-left order-2 lg:order-1 space-y-8 home-hero-stagger">
+              <div className="home-hero-item inline-flex items-center gap-3">
                 <img
                   src={logo}
                   alt=""
@@ -98,7 +178,7 @@ const Index = () => {
                 </span>
               </div>
 
-              <div className="space-y-4">
+              <div className="home-hero-item space-y-4">
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-semibold tracking-tight text-foreground leading-[1.06]">
                   Staff, resumes, and connections for ER:LC communities.
                 </h1>
@@ -107,7 +187,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+              <div className="home-hero-item flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
                 {user ? (
                   <>
                     <Link to={profile?.id ? profileEditorPath(profile) : '/browse'}>
@@ -156,14 +236,14 @@ const Index = () => {
               </div>
 
               {(stats.profiles > 0 || stats.servers > 0) && (
-                <p className="text-sm text-muted-foreground">
+                <p className="home-hero-item text-sm text-muted-foreground">
                   <span className="tabular-nums text-foreground font-medium">{stats.profiles}</span> members ·{' '}
                   <span className="tabular-nums text-foreground font-medium">{stats.servers}</span> servers
                 </p>
               )}
             </div>
 
-            <div className="order-1 lg:order-2">
+            <div className="order-1 lg:order-2 home-hero-item home-hero-side-preview">
               <div className="home-image-pop rounded-xl border border-white/[0.08] bg-zinc-950/40 p-1.5">
                 <div className="rounded-lg overflow-hidden">
                   <img
@@ -185,60 +265,17 @@ const Index = () => {
 
       <section className="py-14 md:py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mb-12 md:mb-14">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">How it works</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Screens from the live site — no mockups.
-            </p>
-          </div>
+          <HomeSectionIntro />
 
           <div className="flex flex-col gap-14 md:gap-20">
             {PRODUCT_SCREENSHOTS.map((item, i) => (
-              <div
-                key={item.title}
-                className="grid gap-8 md:gap-10 md:grid-cols-2 md:items-center"
-              >
-                <div className={cn('py-0.5', i % 2 === 1 && 'md:order-2')}>
-                  <div className="home-image-pop rounded-xl border border-white/[0.08] bg-zinc-950/40 p-1.5">
-                    <div className="rounded-lg overflow-hidden">
-                      <img
-                        src={item.image}
-                        alt={item.alt}
-                        width={1156}
-                        height={810}
-                        className="block w-full h-auto"
-                        loading="lazy"
-                        decoding="async"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className={cn('space-y-2', i % 2 === 1 && 'md:order-1')}>
-                  <p className="text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
-                    {String(i + 1).padStart(2, '0')}
-                  </p>
-                  <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                </div>
-              </div>
+              <HomeFeatureRow key={item.title} item={item} i={i} />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-12 border-t border-white/[0.06]">
-        <div className="container mx-auto px-4 text-center md:text-left">
-          <Link to={user ? '/browse' : '/auth'}>
-            <Button size="lg" className="rounded-md px-8 font-medium gap-2">
-              {user ? 'Browse members' : 'Get started'}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+      <HomeCtaBar signedIn={!!user} />
 
       <SiteFooter />
     </div>
