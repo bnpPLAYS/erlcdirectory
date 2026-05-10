@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useRef,
   createContext,
   useContext,
   ReactNode,
@@ -12,7 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
 import { getDiscordRedirectUri } from '@/lib/discordOAuth';
 import { toast } from 'sonner';
-import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
+import {
+  pullDiscordProfileAfterOAuth,
+  syncDiscordProfileFromSession,
+} from '@/lib/syncDiscordProfile';
 
 interface AuthContextType {
   user: User | null;
@@ -64,6 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Dedupe rapid double hydration (e.g. getSession + SIGNED_IN) within a few seconds. */
+  const lastDiscordMediaPullRef = useRef<{ userId: string; at: number } | null>(null);
+
+  const pullDiscordAvatarBannerAfterLogin = useCallback(async (session: Session) => {
+    const uid = session.user.id;
+    const now = Date.now();
+    const prev = lastDiscordMediaPullRef.current;
+    if (prev?.userId === uid && now - prev.at < 10_000) {
+      await syncDiscordProfileFromSession(session);
+      return;
+    }
+    lastDiscordMediaPullRef.current = { userId: uid, at: now };
+    await pullDiscordProfileAfterOAuth(session);
+  }, []);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
@@ -85,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { session: s },
     } = await supabase.auth.getSession();
     if (s?.user?.id === userId) {
-      const syncResult = await syncDiscordProfileFromSession(s);
+      const syncResult = await pullDiscordProfileAfterOAuth(s);
       if (!syncResult.error) {
         const { data: row } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
         if (row) {
@@ -114,7 +132,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       // Initial hydration runs fetchProfile from getSession() below — skip duplicate work.
       if (event === 'INITIAL_SESSION') return;
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_IN') {
+        setTimeout(() => {
+          void (async () => {
+            await pullDiscordAvatarBannerAfterLogin(nextSession);
+            await fetchProfile(nextSession.user.id);
+          })();
+        }, 0);
+        return;
+      }
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setTimeout(() => {
           void fetchProfile(nextSession.user.id);
         }, 0);
@@ -128,7 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // End global loading immediately so routes paint; profile loads in the background.
       setLoading(false);
       if (initial?.user) {
-        void fetchProfile(initial.user.id);
+        void (async () => {
+          await pullDiscordAvatarBannerAfterLogin(initial);
+          await fetchProfile(initial.user.id);
+        })();
       }
     });
 
@@ -136,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, pullDiscordAvatarBannerAfterLogin]);
 
   useEffect(() => {
     const refresh = () => {
@@ -161,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = data.session?.user?.id;
     const sess = data.session;
     if (!uid || !sess) return;
-    await syncDiscordProfileFromSession(sess).catch(() => {});
+    await pullDiscordProfileAfterOAuth(sess).catch(() => {});
     const row = await supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle();
     if (!row.error && row.data) {
       const p = row.data as Profile;
