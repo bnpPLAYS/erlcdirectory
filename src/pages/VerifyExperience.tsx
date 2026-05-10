@@ -13,6 +13,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,8 @@ interface MemberInfo {
   display_name: string | null;
   discord_username: string | null;
   discord_avatar: string | null;
+  /** Role names in this Discord server (from bot API when bot shares the server). */
+  discord_roles?: { id: string; name: string }[];
 }
 
 type VerificationLookupResult = {
@@ -304,15 +307,33 @@ const VerifyExperience = () => {
             {info && r && (
               <>
                 {m && (
-                  <div className="glass rounded-xl p-4 flex items-center gap-3 border border-white/10">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={m.discord_avatar || undefined} />
-                      <AvatarFallback>{m.display_name?.[0] || '?'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{m.display_name || 'Member'}</p>
-                      {m.discord_username && <p className="text-xs text-muted-foreground">@{m.discord_username}</p>}
+                  <div className="glass rounded-xl p-4 space-y-3 border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={m.discord_avatar || undefined} />
+                        <AvatarFallback>{m.display_name?.[0] || '?'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{m.display_name || 'Member'}</p>
+                        {m.discord_username && <p className="text-xs text-muted-foreground">@{m.discord_username}</p>}
+                      </div>
                     </div>
+                    {m.discord_roles && m.discord_roles.length > 0 ? (
+                      <div className="space-y-1.5 pt-1 border-t border-white/10">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Roles in this server</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {m.discord_roles.map((role) => (
+                            <Badge key={role.id} variant="secondary" className="font-normal text-xs border-white/15 bg-white/[0.06]">
+                              {role.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground border-t border-white/10 pt-2">
+                        Role list unavailable — ensure the directory bot is in this server with Server Members intent. You can still verify using your knowledge of their role.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -381,8 +402,9 @@ const VerifyExperience = () => {
                     <div className="rounded-xl border border-white/12 bg-white/[0.03] p-4 space-y-4">
                       <p className="text-sm font-medium text-foreground">Before you approve</p>
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        You must sign in with Discord so we can confirm you have <strong>Administrator</strong> in{' '}
-                        <strong>{r.guild_name || 'this server'}</strong>.
+                        Sign in with Discord so we can confirm you have <strong>Administrator</strong> or{' '}
+                        <strong>Manage Roles</strong> in <strong>{r.guild_name || 'this server'}</strong> (server owner always
+                        qualifies).
                       </p>
                       <div className="space-y-2">
                         <Label htmlFor="member-role" className="text-xs uppercase tracking-wide text-muted-foreground">
