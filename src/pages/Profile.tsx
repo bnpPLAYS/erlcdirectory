@@ -103,6 +103,7 @@ const Profile = () => {
     { id: string; body: string; created_at: string; issued_by_profile_id: string }[]
   >([]);
   const [warningIssuerLabels, setWarningIssuerLabels] = useState<Record<string, string>>({});
+  const [bannerLoadFailed, setBannerLoadFailed] = useState(false);
 
   /** Clear previous member’s data before paint so route changes never flash stale profile. */
   useLayoutEffect(() => {
@@ -112,7 +113,12 @@ const Profile = () => {
     setEditMode(false);
     setProfileWarnings([]);
     setWarningIssuerLabels({});
+    setBannerLoadFailed(false);
   }, [profileSlug]);
+
+  useEffect(() => {
+    setBannerLoadFailed(false);
+  }, [profile?.banner_url]);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
@@ -316,8 +322,13 @@ const Profile = () => {
 
       {/* Banner — taller, accent-aware */}
       <div className="relative h-56 md:h-72 w-full overflow-hidden border-b border-white/10">
-        {profile.banner_url ? (
-          <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
+        {profile.banner_url && !bannerLoadFailed ? (
+          <img
+            src={profile.banner_url}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setBannerLoadFailed(true)}
+          />
         ) : (
           <div
             className="w-full h-full"

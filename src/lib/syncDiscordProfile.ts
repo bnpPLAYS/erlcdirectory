@@ -1,5 +1,15 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+
+/** Discord CDN avatar URL from user id + avatar hash (OAuth sometimes omits full `avatar_url` in JWT). */
+export function discordAvatarCdnUrl(userId: string, avatarHash: string | null | undefined): string | null {
+  if (!userId || avatarHash == null) return null;
+  const h = String(avatarHash).trim();
+  if (!h) return null;
+  const ext = h.startsWith('a_') ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/avatars/${userId}/${h}.${ext}?size=256`;
+}
 
 /** Immediate Discord display fields from the session JWT (no network). */
 export type DiscordSessionDisplay = {
@@ -14,6 +24,11 @@ export function getDiscordSessionDisplay(user: User | null | undefined): Discord
   const discordIdentity = user.identities?.find((i) => i.provider === 'discord');
   const meta = (user.user_metadata || {}) as Record<string, unknown>;
   const custom = (meta.custom_claims || {}) as Record<string, unknown>;
+  const discordIdForAvatar =
+    discordIdentity?.id ??
+    (typeof meta.provider_id === 'string' ? meta.provider_id : null) ??
+    (typeof meta.sub === 'string' && String(meta.sub).match(/^\d+$/) ? meta.sub : null) ??
+    (typeof custom.sub === 'string' ? custom.sub : null);
 
   const usernameRaw =
     (typeof meta.preferred_username === 'string' ? meta.preferred_username : null) ??
@@ -30,6 +45,9 @@ export function getDiscordSessionDisplay(user: User | null | undefined): Discord
     const idata = discordIdentity.identity_data as Record<string, unknown>;
     if (typeof idata.avatar_url === 'string') {
       avatarUrl = idata.avatar_url;
+    }
+    if (!avatarUrl && typeof idata.avatar === 'string' && discordIdForAvatar) {
+      avatarUrl = discordAvatarCdnUrl(String(discordIdForAvatar), idata.avatar);
     }
   }
 
@@ -79,6 +97,9 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     if (typeof idata.avatar_url === 'string') {
       avatarUrl = idata.avatar_url;
     }
+    if (!avatarUrl && typeof idata.avatar === 'string') {
+      avatarUrl = discordAvatarCdnUrl(String(discordId), idata.avatar);
+    }
   }
 
   const displayName =
@@ -118,4 +139,22 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     ...patch,
   });
   return { error: error ? new Error(error.message) : null };
+}
+
+/**
+ * After Discord OAuth: persist identity + tokens, then pull avatar/banner from Discord API into `profiles`.
+ * Safe to call on every sign-in; media step no-ops if the edge function is unavailable.
+ */
+export async function pullDiscordProfileAfterOAuth(session: Session): Promise<{ error: Error | null }> {
+  const syncResult = await syncDiscordProfileFromSession(session);
+  if (syncResult.error) return syncResult;
+  try {
+    const r = await invokeDiscordProfileMediaSync();
+    if (!r.ok && r.error) {
+      console.warn('pullDiscordProfileAfterOAuth: media sync', r.error);
+    }
+  } catch (e) {
+    console.warn('pullDiscordProfileAfterOAuth: media sync threw', e);
+  }
+  return { error: null };
 }
