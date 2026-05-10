@@ -70,7 +70,14 @@ export function SubmitReportDialog({
     const { error } = await supabase.from('moderation_reports').insert(row as never);
     setSubmitting(false);
     if (error) {
-      toast.error(error.message);
+      const msg = error.message ?? '';
+      const migrationMissing =
+        /moderation_reports|schema cache/i.test(msg) && /could not find|does not exist/i.test(msg);
+      toast.error(
+        migrationMissing
+          ? 'Reports are not live on this database yet. Apply the Supabase migration that creates moderation_reports (see repo migration staff_warnings_reports), then retry.'
+          : msg,
+      );
       return;
     }
     toast.success('Report sent. Staff will review it.');
