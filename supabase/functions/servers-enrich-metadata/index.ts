@@ -15,6 +15,61 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 
+async function refreshDiscordAccessToken(refreshToken: string): Promise<{
+  access_token: string
+  refresh_token?: string
+} | null> {
+  const clientId = Deno.env.get('DISCORD_CLIENT_ID')?.trim()
+  const clientSecret = Deno.env.get('DISCORD_CLIENT_SECRET')?.trim()
+  if (!clientId || !clientSecret) return null
+  const res = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  })
+  if (!res.ok) return null
+  try {
+    const d = (await res.json()) as { access_token?: string; refresh_token?: string }
+    if (!d.access_token) return null
+    return { access_token: d.access_token, refresh_token: d.refresh_token }
+  } catch {
+    return null
+  }
+}
+
+/** OAuth access token for the Supabase user (guilds scope) — enables GET /guilds/:id for servers they're in. */
+async function callerDiscordAccessToken(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string | null> {
+  const { data: row } = await admin
+    .from('profiles')
+    .select('discord_access_token, discord_refresh_token')
+    .eq('user_id', userId)
+    .maybeSingle()
+  let access = row?.discord_access_token?.trim() ?? ''
+  const refresh = row?.discord_refresh_token?.trim() ?? ''
+  if (!access && refresh) {
+    const r = await refreshDiscordAccessToken(refresh)
+    if (r?.access_token) {
+      access = r.access_token
+      await admin
+        .from('profiles')
+        .update({
+          discord_access_token: access,
+          discord_refresh_token: r.refresh_token ?? refresh,
+        })
+        .eq('user_id', userId)
+    }
+  }
+  return access || null
+}
+
 const MAX_PER_RUN = 40
 
 type EnrichBody = {
@@ -29,9 +84,26 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
   const admin = createClient(supabaseUrl, serviceKey)
+
+  let userOAuthForGuild: string | null = null
+  const authHeader = req.headers.get('Authorization') ?? ''
+  if (authHeader.includes('Bearer')) {
+    const jwt = authHeader.replace(/^Bearer\s+/i, '').trim()
+    const userClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const {
+      data: { user: authUser },
+      error: authErr,
+    } = await userClient.auth.getUser(jwt)
+    if (!authErr && authUser) {
+      userOAuthForGuild = await callerDiscordAccessToken(admin, authUser.id)
+    }
+  }
 
   const body = (await req.json().catch(() => ({}))) as EnrichBody
   const mode = body.mode ?? 'missing'
@@ -72,7 +144,9 @@ Deno.serve(async (req) => {
   for (const row of candidates) {
     const guildId = String(row.guild_id)
     try {
-      const enriched = await enrichDiscordGuildForDirectory(guildId, null, {})
+      const enriched = await enrichDiscordGuildForDirectory(guildId, null, {
+        userAccessToken: userOAuthForGuild,
+      })
 
       const patch: Record<string, unknown> = {}
 
