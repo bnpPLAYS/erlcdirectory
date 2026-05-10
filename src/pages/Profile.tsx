@@ -185,8 +185,12 @@ const Profile = () => {
       toast.error(r.error || 'Could not sync from Discord');
       return;
     }
-    toast.success('Banner and avatar updated from Discord');
     await fetchProfile();
+    if (r.banner_url) {
+      toast.success('Discord banner and avatar updated.');
+    } else {
+      toast.success('Discord avatar updated. No Nitro banner on your account — edit profile to upload a banner image.');
+    }
   }, [fetchProfile]);
 
   useEffect(() => {

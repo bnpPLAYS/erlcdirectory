@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Plus,
@@ -13,6 +13,7 @@ import {
   Pencil,
   ImageIcon,
   RefreshCw,
+  Upload,
   Sparkles,
   Bell,
   Eye,
@@ -52,6 +53,7 @@ import {
 } from '@/lib/profileLocations';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
 
 interface Experience {
   id: string;
@@ -123,10 +125,18 @@ const profileSchema = z.object({
   pronouns: z.string().trim().max(30).optional(),
   status: z.string().trim().max(140).optional(),
   availability: z.string().trim().max(40).optional(),
-  banner_url: z.string().trim().max(500).optional().refine(
-    (v) => !v || /^https?:\/\//i.test(v),
-    'Banner URL must start with http:// or https://'
-  ),
+  banner_url: z
+    .string()
+    .trim()
+    .max(4_000_000)
+    .optional()
+    .refine(
+      (v) =>
+        !v ||
+        /^https?:\/\//i.test(v) ||
+        /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(v),
+      'Banner must be an https URL or an uploaded image.',
+    ),
 });
 
 /** Shared field chrome — matches site dark glass UI (neutral white focus, not purple) */
@@ -235,6 +245,8 @@ const ProfileEditor = ({
   const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(!!profile.dm_website_updates);
   const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
   const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
+  const [bannerDropActive, setBannerDropActive] = useState(false);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -244,6 +256,25 @@ const ProfileEditor = ({
   }, [openAddExperienceOnMount]);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const applyBannerFromFile = async (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please use an image file (PNG, JPG, or WebP).');
+      return;
+    }
+    if (file.size > 18 * 1024 * 1024) {
+      toast.error('Image is too large (max 18 MB).');
+      return;
+    }
+    try {
+      const dataUrl = await imageFileToBannerDataUrl(file);
+      update('banner_url', dataUrl);
+      toast.success('Banner cropped to a wide fit — click Save to publish.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not process that image.');
+    }
+  };
 
   const addSkill = () => {
     const { text: sRaw, blockedHits } = filterPlaintext(skillInput.trim());
@@ -765,14 +796,26 @@ const ProfileEditor = ({
 
           <EditorSection
             title="Banner image"
-            description="Wide image behind your header — sync from Discord (uses your Nitro banner when available) or paste a URL."
+            description="Drag a photo below — we crop it to a wide banner (21:9) so it fits your header. Or paste an image URL / sync from Discord if you use a Nitro banner."
             icon={ImageIcon}
           >
-            <Field label="Banner URL">
+            <input
+              ref={bannerFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              aria-hidden
+              onChange={(e) => {
+                void applyBannerFromFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+            <Field label="Banner URL (optional)">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <Input
-                  value={form.banner_url}
-                  maxLength={500}
+                  value={form.banner_url.startsWith('data:') ? '' : form.banner_url}
+                  placeholder="https://… or upload / Discord sync below"
+                  maxLength={2048}
                   onChange={(e) => update('banner_url', e.target.value)}
                   className={cn(editorInput, 'flex-1')}
                 />
@@ -789,8 +832,12 @@ const ProfileEditor = ({
                       toast.error(r.error || 'Could not sync from Discord');
                       return;
                     }
-                    if (r.banner_url) update('banner_url', r.banner_url);
-                    toast.success('Discord banner and avatar updated');
+                    if (r.banner_url) {
+                      update('banner_url', r.banner_url);
+                      toast.success('Discord banner and avatar updated.');
+                    } else {
+                      toast.success('Discord avatar updated. No Nitro banner found — upload an image below or paste a URL.');
+                    }
                     onDiscordMediaSynced?.();
                   }}
                 >
@@ -798,9 +845,57 @@ const ProfileEditor = ({
                   Sync from Discord
                 </Button>
               </div>
+              {form.banner_url.startsWith('data:') ? (
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mt-1.5">
+                  <p className="text-xs text-muted-foreground">Uploaded image — preview below. Save your profile to publish.</p>
+                  <Button type="button" variant="ghost" size="sm" className="h-8 text-xs shrink-0 self-start sm:self-auto" onClick={() => update('banner_url', '')}>
+                    Remove upload
+                  </Button>
+                </div>
+              ) : null}
             </Field>
+
+            <button
+              type="button"
+              onDragEnter={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setBannerDropActive(true);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setBannerDropActive(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setBannerDropActive(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setBannerDropActive(false);
+                const f = e.dataTransfer.files?.[0];
+                void applyBannerFromFile(f);
+              }}
+              onClick={() => bannerFileInputRef.current?.click()}
+              className={cn(
+                'w-full rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors cursor-pointer',
+                bannerDropActive
+                  ? 'border-white/45 bg-white/[0.08]'
+                  : 'border-white/18 bg-black/25 hover:border-white/30 hover:bg-white/[0.04]',
+              )}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-90" aria-hidden />
+              <p className="text-sm font-medium text-foreground">Drop an image here or click to upload</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Auto-cropped to a wide banner (center, 21:9). JPG output — best for photos.
+              </p>
+            </button>
+
             {form.banner_url ? (
-              <div className="mt-2 overflow-hidden rounded-xl border border-white/12 aspect-[21/8]">
+              <div className="mt-3 overflow-hidden rounded-xl border border-white/12 aspect-[21/9] max-h-[220px]">
                 <img src={form.banner_url} alt="Banner preview" className="h-full w-full object-cover" />
               </div>
             ) : null}

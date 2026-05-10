@@ -23,22 +23,9 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.is_staff() TO authenticated;
 
--- Used by author UPDATE policy to compare new status with stored row without RLS recursion.
-CREATE OR REPLACE FUNCTION public.post_status_by_id(_id uuid)
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT status FROM public.posts WHERE id = _id;
-$$;
-
-REVOKE ALL ON FUNCTION public.post_status_by_id(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.post_status_by_id(uuid) TO authenticated;
-
 -- ---------------------------------------------------------------------------
 -- posts.status: pending | approved | rejected (existing rows → approved)
+-- Must run BEFORE post_status_by_id() — function body references posts.status.
 -- ---------------------------------------------------------------------------
 ALTER TABLE public.posts
   ADD COLUMN IF NOT EXISTS status TEXT;
@@ -61,6 +48,20 @@ ALTER TABLE public.posts
   CHECK (status IN ('pending', 'approved', 'rejected'));
 
 CREATE INDEX IF NOT EXISTS idx_posts_status ON public.posts(status);
+
+-- Used by author UPDATE policy to compare new status with stored row without RLS recursion.
+CREATE OR REPLACE FUNCTION public.post_status_by_id(_id uuid)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT status FROM public.posts WHERE id = _id;
+$$;
+
+REVOKE ALL ON FUNCTION public.post_status_by_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.post_status_by_id(uuid) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- RLS: public board sees approved only; authors see own; staff sees all
