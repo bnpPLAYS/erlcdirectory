@@ -96,7 +96,7 @@ export function FirstLoginTutorial() {
           popover: {
             title: 'Banner upload',
             description:
-              'Drop an image or click to upload — we crop to a wide 21:9 banner. You can also paste a URL or use Sync from Discord.',
+              'Drop an image or click to upload — we crop to a wide 21:9 banner. You can also paste a URL or sync banner and/or profile picture from Discord.',
             side: 'top',
             align: 'center',
           },

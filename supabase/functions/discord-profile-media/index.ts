@@ -1,6 +1,6 @@
 /**
- * Pull latest Discord avatar + profile banner (Nitro) from Discord API using stored OAuth tokens.
- * Refreshes OAuth access token when Discord returns 401.
+ * Pull Discord avatar and/or profile banner (Nitro) from the Discord API using stored OAuth tokens.
+ * Request body: `{ "sync": "both" | "banner" | "avatar" }` (default both). Refreshes OAuth on 401.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 
@@ -88,6 +88,18 @@ async function fetchDiscordMe(accessToken: string): Promise<{ ok: boolean; user?
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
+
+  let syncMode: 'banner' | 'avatar' | 'both' = 'both'
+  try {
+    const raw = await req.text()
+    if (raw.trim()) {
+      const parsed = JSON.parse(raw) as { sync?: unknown }
+      const s = parsed?.sync
+      if (s === 'banner' || s === 'avatar' || s === 'both') syncMode = s
+    }
+  } catch {
+    /* invalid or empty body — default both */
+  }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -190,8 +202,9 @@ Deno.serve(async (req) => {
     updated_at: new Date().toISOString(),
   }
   // Only overwrite media URLs when Discord returns hashes — avoid wiping a custom banner/avatar.
-  if (avatarUrl != null) patch.discord_avatar = avatarUrl
-  if (bannerUrl != null) patch.banner_url = bannerUrl
+  // Respect syncMode so "banner only" does not replace the profile picture (and vice versa).
+  if (syncMode !== 'banner' && avatarUrl != null) patch.discord_avatar = avatarUrl
+  if (syncMode !== 'avatar' && bannerUrl != null) patch.banner_url = bannerUrl
   if (oauthExpiresIn != null && oauthExpiresIn > 0) {
     patch.discord_token_expires_at = new Date(Date.now() + oauthExpiresIn * 1000).toISOString()
   }
