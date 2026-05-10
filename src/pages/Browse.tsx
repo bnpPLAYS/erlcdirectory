@@ -49,6 +49,26 @@ const SORT_OPTIONS: { id: SortMode; label: string }[] = [
   { id: 'az', label: 'A–Z' },
 ];
 
+function finiteNum(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function createdTime(iso: string | undefined): number {
+  if (!iso) return 0;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Tie-break so sort never returns NaN (which makes Array.prototype.sort a no-op in practice). */
+function idCmp(a: Profile, b: Profile): number {
+  return a.id.localeCompare(b.id);
+}
+
+function displaySortKey(p: Profile): string {
+  return (p.display_name || p.discord_username || 'zzz').trim() || 'zzz';
+}
+
 /** Staff-pinned featured profiles stay at the top for every sort mode and filter result. */
 function featuredFirstCmp(a: Profile, b: Profile): number {
   const af = !!a.is_featured;
@@ -64,34 +84,45 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        const d = createdTime(b.created_at) - createdTime(a.created_at);
+        if (d !== 0) return d;
+        return idCmp(a, b);
       });
     case 'top_rated':
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
-        return (b.review_count || 0) - (a.review_count || 0);
+        const rd = finiteNum(b.rating) - finiteNum(a.rating);
+        if (rd !== 0) return rd;
+        const rc = finiteNum(b.review_count) - finiteNum(a.review_count);
+        if (rc !== 0) return rc;
+        return idCmp(a, b);
       });
     case 'most_members':
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        return (b.total_members ?? 0) - (a.total_members ?? 0);
+        const m = finiteNum(b.total_members) - finiteNum(a.total_members);
+        if (m !== 0) return m;
+        return idCmp(a, b);
       });
     case 'most_experience':
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        return (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0);
+        const e = (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0);
+        if (e !== 0) return e;
+        return idCmp(a, b);
       });
     case 'az':
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        return (a.display_name || 'zzz').localeCompare(b.display_name || 'zzz', undefined, {
+        const c = displaySortKey(a).localeCompare(displaySortKey(b), undefined, {
           sensitivity: 'base',
         });
+        if (c !== 0) return c;
+        return idCmp(a, b);
       });
     default:
       return copy;
@@ -144,9 +175,10 @@ const Browse = () => {
 
     const enriched: Profile[] = data.map((p) => {
       let userExps = (exps || []).filter((e) => e.profile_id === p.id);
-      userExps.sort(
-        (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
-      );
+      userExps.sort((a, b) => {
+        const d = createdTime(b.start_date) - createdTime(a.start_date);
+        return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
+      });
 
       const total = userExps.reduce(
         (sum, e) => sum + (e.guild_id ? memberByGuild.get(e.guild_id) ?? 0 : 0),
@@ -155,6 +187,10 @@ const Browse = () => {
 
       return {
         ...p,
+        is_verified: !!p.is_verified,
+        is_featured: !!p.is_featured,
+        rating: finiteNum(p.rating),
+        review_count: finiteNum(p.review_count),
         created_at: p.created_at,
         experiences: userExps.map((e) => ({
           id: e.id,
@@ -179,7 +215,7 @@ const Browse = () => {
     let list = profiles;
 
     if (verifiedOnly) {
-      list = list.filter((p) => p.is_verified);
+      list = list.filter((p) => p.is_verified === true);
     }
 
     if (q) {
@@ -258,7 +294,11 @@ const Browse = () => {
 
             {/* Verified only */}
             <div className="flex items-center justify-center gap-3 mb-10">
-              <Switch id="verified-only" checked={verifiedOnly} onCheckedChange={setVerifiedOnly} />
+              <Switch
+                id="verified-only"
+                checked={verifiedOnly}
+                onCheckedChange={(v) => setVerifiedOnly(v === true)}
+              />
               <Label htmlFor="verified-only" className="text-sm text-muted-foreground cursor-pointer">
                 Verified only
               </Label>
