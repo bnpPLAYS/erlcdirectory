@@ -38,7 +38,11 @@ interface Profile {
     start_date: string;
     member_count?: number | null;
   }>;
+  /** Sum of directory server member counts for guilds where this member has verified experience only. */
   total_members?: number;
+  /** Verified experience rows (for search & sorting). */
+  experience_search_meta?: Array<{ role: string; server_name: string }>;
+  verified_experience_count?: number;
 }
 
 const SORT_OPTIONS: { id: SortMode; label: string }[] = [
@@ -110,7 +114,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const e = (b.experiences?.length ?? 0) - (a.experiences?.length ?? 0);
+        const e =
+          finiteNum(b.verified_experience_count) - finiteNum(a.verified_experience_count);
         if (e !== 0) return e;
         return idCmp(a, b);
       });
@@ -159,7 +164,7 @@ const Browse = () => {
     const { data: exps } = await supabase
       .from('experiences')
       .select(
-        'id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date',
+        'id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date, show_on_directory_card',
       )
       .in('profile_id', ids);
 
@@ -180,7 +185,10 @@ const Browse = () => {
         return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
       });
 
-      const total = userExps.reduce(
+      const dirExps = userExps.filter((e) => e.show_on_directory_card !== false);
+      const verifiedExps = userExps.filter((e) => e.is_verified === true);
+
+      const total = verifiedExps.reduce(
         (sum, e) => sum + (e.guild_id ? memberByGuild.get(e.guild_id) ?? 0 : 0),
         0,
       );
@@ -192,16 +200,21 @@ const Browse = () => {
         rating: finiteNum(p.rating),
         review_count: finiteNum(p.review_count),
         created_at: p.created_at,
-        experiences: userExps.map((e) => ({
+        experiences: dirExps.map((e) => ({
           id: e.id,
           role: e.role,
           server_name: e.server_name,
           server_icon: e.server_icon,
-          is_verified: e.is_verified,
+          is_verified: !!e.is_verified,
           guild_id: e.guild_id,
           start_date: e.start_date,
           member_count: e.guild_id ? memberByGuild.get(e.guild_id) ?? 0 : 0,
         })),
+        experience_search_meta: userExps.map((e) => ({
+          role: e.role,
+          server_name: e.server_name,
+        })),
+        verified_experience_count: verifiedExps.length,
         total_members: total,
       };
     });
@@ -223,7 +236,7 @@ const Browse = () => {
         const nameMatch = profile.display_name?.toLowerCase().includes(q);
         const bioMatch = profile.bio?.toLowerCase().includes(q);
         const skillMatch = profile.skills?.some((s) => s.toLowerCase().includes(q));
-        const expMatch = profile.experiences?.some(
+        const expMatch = profile.experience_search_meta?.some(
           (e) =>
             e.role.toLowerCase().includes(q) || e.server_name.toLowerCase().includes(q),
         );

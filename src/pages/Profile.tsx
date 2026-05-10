@@ -35,6 +35,9 @@ import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
+import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
+import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import type { Json } from '@/integrations/supabase/types';
 
 interface ProfileData {
   id: string;
@@ -57,6 +60,7 @@ interface ProfileData {
   banner_url: string | null;
   accent_color: string | null;
   theme_preset: string | null;
+  social_links?: Json | null;
 }
 
 interface Experience {
@@ -122,6 +126,7 @@ const Profile = () => {
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
+  const heroAvatarSrc = profile ? safeAvatarUrl(profile.discord_avatar) : undefined;
 
   useEffect(() => {
     setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
@@ -429,7 +434,12 @@ const Profile = () => {
                       className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
                       style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
                     >
-                      <AvatarImage src={profile.discord_avatar || undefined} loading="eager" fetchPriority="high" />
+                      <AvatarImage
+                        src={heroAvatarSrc}
+                        loading="eager"
+                        fetchPriority="high"
+                        referrerPolicy={avatarReferrerPolicy(heroAvatarSrc)}
+                      />
                       <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
                     </Avatar>
                   </div>
@@ -511,6 +521,12 @@ const Profile = () => {
                           </span>
                         ))}
                     </div>
+
+                    <ProfileSocialBadges
+                      socialLinks={profile.social_links}
+                      discordHref={discordProfileHref}
+                      className="mt-3"
+                    />
                   </div>
 
                   <div className="flex md:flex-col md:items-end gap-3 md:min-w-[180px]">

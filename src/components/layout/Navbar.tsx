@@ -31,6 +31,7 @@ import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { StaffBanner } from '@/components/staff/StaffBanner';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
+import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 
 const Navbar = () => {
   const location = useLocation();
@@ -41,7 +42,7 @@ const Navbar = () => {
   const discordUi = useMemo(() => getDiscordSessionDisplay(user), [user]);
   const navDisplayName = profile?.display_name ?? discordUi?.displayName ?? 'Member';
   const navDiscordUsername = profile?.discord_username ?? discordUi?.discordUsername ?? 'user';
-  const navAvatarUrl = profile?.discord_avatar ?? discordUi?.avatarUrl ?? undefined;
+  const navAvatarUrl = safeAvatarUrl(profile?.discord_avatar ?? discordUi?.avatarUrl ?? null);
   const navInitial = (navDisplayName || 'U').charAt(0).toUpperCase();
 
   const navLinks = [
@@ -146,7 +147,12 @@ const Navbar = () => {
                     )}
                   >
                     <Avatar className="h-8 w-8 ring-1 ring-white/15">
-                      <AvatarImage src={navAvatarUrl} loading="eager" fetchPriority="high" />
+                      <AvatarImage
+                        src={navAvatarUrl}
+                        loading="eager"
+                        fetchPriority="high"
+                        referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
+                      />
                       <AvatarFallback className="text-xs bg-secondary">{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex flex-col items-start leading-none">
@@ -161,7 +167,12 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-64 glass-strong border-white/10">
                   <div className="flex items-center gap-3 p-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={navAvatarUrl} loading="eager" fetchPriority="high" />
+                      <AvatarImage
+                        src={navAvatarUrl}
+                        loading="eager"
+                        fetchPriority="high"
+                        referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
+                      />
                       <AvatarFallback>{navInitial}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">

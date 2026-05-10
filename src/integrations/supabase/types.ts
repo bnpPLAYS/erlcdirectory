@@ -162,6 +162,7 @@ export type Database = {
           role: string
           server_icon: string | null
           server_name: string
+          show_on_directory_card: boolean
           start_date: string
           verified_at: string | null
           verified_by_discord_id: string | null
@@ -183,6 +184,7 @@ export type Database = {
           role: string
           server_icon?: string | null
           server_name: string
+          show_on_directory_card?: boolean
           start_date?: string
           verified_at?: string | null
           verified_by_discord_id?: string | null
@@ -204,6 +206,7 @@ export type Database = {
           role?: string
           server_icon?: string | null
           server_name?: string
+          show_on_directory_card?: boolean
           start_date?: string
           verified_at?: string | null
           verified_by_discord_id?: string | null
