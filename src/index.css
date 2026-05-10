@@ -35,7 +35,7 @@
 
     --border: 240 5% 18%;
     --input: 240 6% 12%;
-    --ring: 250 25% 45%;
+    --ring: 0 0% 78%;
 
     --radius: 0.875rem;
 
@@ -58,7 +58,7 @@
     --sidebar-accent: 240 5% 14%;
     --sidebar-accent-foreground: 0 0% 96%;
     --sidebar-border: 240 5% 16%;
-    --sidebar-ring: 250 25% 45%;
+    --sidebar-ring: 0 0% 78%;
   }
 }
 
