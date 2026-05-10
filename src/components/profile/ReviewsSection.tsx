@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Star, MessageSquareText, Server as ServerIcon, X } from 'lucide-react';
+import { Star, MessageSquareText, Server as ServerIcon, X, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 
 type ProfileChip = {
   id: string;
@@ -80,11 +81,13 @@ interface Props {
   serverName?: string;
   /** Coworkers on this server; enables “review about [member]” on the server reviews card. */
   serverReviewTargets?: ServerReviewTarget[];
+  /** Directory staff: remove inappropriate reviews from this list. */
+  staffTools?: boolean;
 }
 
 const GENERAL_SERVER_REVIEW = '__general__';
 
-const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets }: Props) => {
+const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, staffTools }: Props) => {
   const { profile: me } = useAuth();
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,7 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets }
   /** Server reviews: general feedback vs a specific member profile id. */
   const [reviewAboutId, setReviewAboutId] = useState<string>(GENERAL_SERVER_REVIEW);
   const [memberServers, setMemberServers] = useState<MemberServer[]>([]);
+  const [reportReviewId, setReportReviewId] = useState<string | null>(null);
 
   const isOwn = !!profileId && me?.id === profileId;
 
@@ -256,6 +260,18 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets }
     }
     setContent('');
     setRating(5);
+    fetchReviews();
+  };
+
+  const staffRemoveReview = async (reviewId: string) => {
+    if (!staffTools) return;
+    if (!window.confirm('Remove this review permanently?')) return;
+    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+    if (error) {
+      toast({ title: 'Could not remove review', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Review removed' });
     fetchReviews();
   };
 
@@ -427,15 +443,50 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets }
                     {r.content && (
                       <p className="text-sm text-muted-foreground/90 mt-1 whitespace-pre-wrap">{r.content}</p>
                     )}
-                    <p className="text-[11px] text-muted-foreground/60 mt-1.5">
-                      {new Date(r.created_at).toLocaleDateString()}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-white/[0.06]">
+                      <p className="text-[11px] text-muted-foreground/60">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        {me && r.reviewer_id !== me.id && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                            onClick={() => setReportReviewId(r.id)}
+                          >
+                            <Flag className="h-3 w-3" />
+                            Report
+                          </Button>
+                        )}
+                        {staffTools && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
+                            onClick={() => void staffRemoveReview(r.id)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+        <SubmitReportDialog
+          open={!!reportReviewId}
+          onOpenChange={(o) => {
+            if (!o) setReportReviewId(null);
+          }}
+          kind="review"
+          reviewId={reportReviewId}
+        />
       </CardContent>
     </Card>
   );

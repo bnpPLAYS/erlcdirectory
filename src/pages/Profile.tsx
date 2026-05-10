@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Crown,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,9 @@ import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { ProfileStaffTools } from '@/components/staff/ProfileStaffTools';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
@@ -92,12 +95,17 @@ const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile: meProfile, loading: authLoading } = useAuth();
+  const { isStaff } = useStaffAccess();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
+  const [profileWarnings, setProfileWarnings] = useState<
+    { id: string; body: string; created_at: string; issued_by_profile_id: string }[]
+  >([]);
+  const [warningIssuerLabels, setWarningIssuerLabels] = useState<Record<string, string>>({});
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
@@ -105,6 +113,43 @@ const Profile = () => {
   useEffect(() => {
     setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
   }, [meProfile?.discord_username]);
+
+  useEffect(() => {
+    if (!profile?.id || !(isOwner || (isStaff && !isOwner))) {
+      setProfileWarnings([]);
+      setWarningIssuerLabels({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('profile_warnings')
+        .select('id, body, created_at, issued_by_profile_id')
+        .eq('subject_profile_id', profile.id)
+        .order('created_at', { ascending: false });
+      if (cancelled || error) return;
+      const rows = data ?? [];
+      setProfileWarnings(rows);
+      const issuerIds = [...new Set(rows.map((w) => w.issued_by_profile_id))];
+      if (issuerIds.length === 0) {
+        setWarningIssuerLabels({});
+        return;
+      }
+      const { data: issuers } = await supabase
+        .from('profiles')
+        .select('id, display_name, discord_username')
+        .in('id', issuerIds);
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      (issuers ?? []).forEach((p) => {
+        map[p.id] = (p.display_name || p.discord_username || 'Staff').trim();
+      });
+      setWarningIssuerLabels(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, isOwner, isStaff]);
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -478,6 +523,37 @@ const Profile = () => {
 
             <div className="grid lg:grid-cols-3 gap-6">
               <aside className="lg:col-span-1 space-y-4">
+                {isStaff && !isOwner && profile && (
+                  <ProfileStaffTools subjectProfileId={profile.id} subjectDisplayName={profile.display_name} />
+                )}
+                {(isOwner || (isStaff && !isOwner)) && profileWarnings.length > 0 && (
+                  <Card className="border-amber-500/35 bg-amber-950/10 liquid-edge">
+                    <CardContent className="p-5 space-y-3">
+                      <div className="flex items-center gap-2 text-amber-100">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                        <h3 className="text-xs font-semibold uppercase tracking-wider">Staff notices</h3>
+                      </div>
+                      <ul className="space-y-3">
+                        {profileWarnings.map((w) => (
+                          <li key={w.id} className="rounded-lg border border-white/10 bg-black/20 p-3 text-sm">
+                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{w.body}</p>
+                            <p className="text-[11px] text-muted-foreground/70 mt-2">
+                              {warningIssuerLabels[w.issued_by_profile_id] ?? 'Staff'} ·{' '}
+                              {new Date(w.created_at).toLocaleString()}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+                {isStaff && !isOwner && profile && profileWarnings.length === 0 && (
+                  <Card className="border-white/10 bg-white/[0.02]">
+                    <CardContent className="p-4 text-xs text-muted-foreground">
+                      No warnings on file for this member yet.
+                    </CardContent>
+                  </Card>
+                )}
                 <Card className="card-elevated liquid-edge">
                   <CardContent className="p-5 space-y-4">
                     <div>
@@ -544,7 +620,7 @@ const Profile = () => {
                   </TabsContent>
 
                   <TabsContent value="reviews">
-                    <ReviewsSection profileId={profile.id} />
+                    <ReviewsSection profileId={profile.id} staffTools={isStaff && !isOwner} />
                   </TabsContent>
                 </Tabs>
               </div>

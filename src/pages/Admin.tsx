@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,11 +20,13 @@ type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
   const [access, setAccess] = useState<StaffAccess | null>(null);
+  const [searchParams] = useSearchParams();
 
   const [profiles, setProfiles] = useState<any[]>([]);
   const [servers, setServers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [q, setQ] = useState('');
   const [newStaffQuery, setNewStaffQuery] = useState('');
   const [broadcastText, setBroadcastText] = useState('');
@@ -52,11 +54,18 @@ const Admin = () => {
   }, [user]);
 
   const refresh = async () => {
-    const [p, s, po, st] = await Promise.all([
+    const [p, s, po, st, rep] = await Promise.all([
       supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured').order('created_at', { ascending: false }).limit(200),
       supabase.from('servers').select('id, name, icon, member_count, guild_id, is_verified').order('created_at', { ascending: false }).limit(200),
       supabase.from('posts').select('id, title, type, author_id, created_at, status').order('created_at', { ascending: false }).limit(200),
       supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
+      supabase
+        .from('moderation_reports')
+        .select(
+          'id, kind, reason, status, created_at, reporter_profile_id, review_id, message_id, conversation_id, staff_notes, resolved_at',
+        )
+        .order('created_at', { ascending: false })
+        .limit(100),
     ]);
     setProfiles(p.data || []);
     setServers(s.data || []);
@@ -67,6 +76,20 @@ const Admin = () => {
       const { data: sp } = await supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar').in('user_id', ids);
       setStaff((st.data || []).map((r) => ({ ...r, profile: sp?.find((x) => x.user_id === r.user_id) })));
     } else setStaff([]);
+
+    if (rep.error) {
+      setReports([]);
+    } else {
+      const rlist = rep.data || [];
+      const rids = [...new Set(rlist.map((x: { reporter_profile_id: string }) => x.reporter_profile_id))];
+      if (rids.length) {
+        const { data: rprofs } = await supabase.from('profiles').select('id, display_name, discord_username').in('id', rids);
+        const map = new Map((rprofs || []).map((pr) => [pr.id, (pr.display_name || pr.discord_username || 'Member').trim()]));
+        setReports(rlist.map((row: any) => ({ ...row, reporter_label: map.get(row.reporter_profile_id) || 'Member' })));
+      } else {
+        setReports(rlist.map((row: any) => ({ ...row, reporter_label: '—' })));
+      }
+    }
   };
 
   useEffect(() => {
@@ -243,6 +266,16 @@ const Admin = () => {
   const filter = (list: any[], keys: string[]) =>
     !q ? list : list.filter((x) => keys.some((k) => (x[k] || '').toString().toLowerCase().includes(q.toLowerCase())));
 
+  const resolveReport = async (row: any, status: 'resolved' | 'dismissed') => {
+    const { error } = await supabase
+      .from('moderation_reports')
+      .update({ status, resolved_at: new Date().toISOString() })
+      .eq('id', row.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    toast({ title: 'Report updated' });
+    refresh();
+  };
+
   const newStaffMatches = newStaffQuery.length >= 2
     ? profiles.filter((p) =>
         !staff.some((s) => s.user_id === p.user_id) &&
@@ -250,6 +283,10 @@ const Admin = () => {
          (p.discord_username || '').toLowerCase().includes(newStaffQuery.toLowerCase()))
       ).slice(0, 6)
     : [];
+
+  const tabParam = searchParams.get('tab');
+  const defaultTab =
+    tabParam === 'reports' ? 'reports' : access.isSiteOwner ? 'members' : 'openings';
 
   return (
     <div className="min-h-screen bg-background">
@@ -263,7 +300,7 @@ const Admin = () => {
           </div>
         </div>
 
-        <Tabs key={access.isSiteOwner ? 'staff-full' : 'staff-mod'} defaultValue={access.isSiteOwner ? 'members' : 'openings'}>
+        <Tabs key={`${access.isSiteOwner ? 'full' : 'mod'}-${defaultTab}`} defaultValue={defaultTab}>
           <TabsList className="mb-4 flex flex-wrap">
             {access.isSiteOwner && (
               <>
@@ -272,6 +309,7 @@ const Admin = () => {
               </>
             )}
             <TabsTrigger value="openings">Posts</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             {access.isSiteOwner && (
               <>
                 <TabsTrigger value="staff">Staff</TabsTrigger>
@@ -368,6 +406,58 @@ const Admin = () => {
                 </div>
               </CardContent></Card>
             ))}
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-2">
+            {filter(reports, ['reason', 'reporter_label', 'kind']).length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                  No user reports yet. Reports appear when someone uses Report on a review or DM.
+                </CardContent>
+              </Card>
+            ) : (
+              filter(reports, ['reason', 'reporter_label', 'kind']).map((r) => (
+                <Card key={r.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="capitalize">
+                        {r.kind}
+                      </Badge>
+                      <Badge
+                        variant={
+                          r.status === 'open' ? 'secondary' : r.status === 'resolved' ? 'default' : 'outline'
+                        }
+                        className="capitalize text-[10px]"
+                      >
+                        {r.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {new Date(r.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      From <span className="text-foreground font-medium">{r.reporter_label}</span>
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{r.reason}</p>
+                    <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground font-mono">
+                      {r.review_id && <span>review: {r.review_id}</span>}
+                      {r.message_id && <span>message: {r.message_id}</span>}
+                      {r.conversation_id && <span>conversation: {r.conversation_id}</span>}
+                    </div>
+                    {r.status === 'open' && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Button size="sm" variant="secondary" className="gap-1" onClick={() => void resolveReport(r, 'resolved')}>
+                          <Check className="h-3.5 w-3.5" /> Handled
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => void resolveReport(r, 'dismissed')}>
+                          Dismiss
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           {access.isSiteOwner && (

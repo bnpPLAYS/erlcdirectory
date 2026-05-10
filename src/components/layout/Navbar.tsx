@@ -23,44 +23,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
-import { supabase } from '@/integrations/supabase/client';
+import { useStaffAccess } from '@/hooks/useStaffAccess';
+import { StaffBanner } from '@/components/staff/StaffBanner';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
-  const [canSeeStaffPanel, setCanSeeStaffPanel] = useState(false);
-
-  useEffect(() => {
-    if (!user) {
-      setCanSeeStaffPanel(false);
-      return;
-    }
-    if (isSiteOwnerDiscordUsername(profile?.discord_username ?? null)) {
-      setCanSeeStaffPanel(true);
-      return;
-    }
-    let cancelled = false;
-    void supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setCanSeeStaffPanel(!!data);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, profile?.discord_username]);
+  const { isStaff } = useStaffAccess();
 
   const navLinks = [
     { path: '/browse', label: 'Members', icon: Users },
@@ -74,9 +50,15 @@ const Navbar = () => {
 
   return (
     <>
-      <div className="h-24" aria-hidden />
+      <StaffBanner visible={!!user && isStaff} />
+      <div className={cn(isStaff && user ? 'h-[8.5rem]' : 'h-24')} aria-hidden />
 
-      <header className="fixed top-0 inset-x-0 z-50 px-4 pt-4 pointer-events-none">
+      <header
+        className={cn(
+          'fixed inset-x-0 z-50 px-4 pt-4 pointer-events-none',
+          user && isStaff ? 'top-10' : 'top-0',
+        )}
+      >
         <div className="max-w-6xl mx-auto flex items-start justify-between gap-3">
           <div className="flex-1 flex justify-center min-w-0">
             <nav
@@ -223,7 +205,7 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  {canSeeStaffPanel && (
+                  {user && isStaff && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                       <Link to="/staff">
                         <Shield className="h-4 w-4 text-primary" />
