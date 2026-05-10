@@ -28,6 +28,15 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
+function normalizeProfileRow(row: Profile): Profile {
+  return {
+    ...row,
+    is_pro: !!row.is_pro,
+    pro_badge_label: row.pro_badge_label ?? null,
+    roblox_user_id: row.roblox_user_id ?? null,
+  };
+}
+
 interface Profile {
   id: string;
   user_id: string;
@@ -40,6 +49,9 @@ interface Profile {
   timezone: string | null;
   is_verified: boolean;
   is_featured: boolean;
+  is_pro: boolean;
+  pro_badge_label: string | null;
+  roblox_user_id: string | null;
   rating: number;
   review_count: number;
   skills: string[];
@@ -87,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
 
     if (data) {
-      const row = data as Profile;
+      const row = normalizeProfileRow(data as Profile);
       if (row.banned_at) {
         await supabase.auth.signOut();
         setProfile(null);
@@ -107,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!syncResult.error) {
         const { data: row } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
         if (row) {
-          const p = row as Profile;
+          const p = normalizeProfileRow(row as Profile);
           if (p.banned_at) {
             await supabase.auth.signOut();
             setProfile(null);

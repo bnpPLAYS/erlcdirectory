@@ -23,6 +23,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Docs from "./pages/Docs";
+import Pro from "./pages/Pro";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/docs" element={<Docs />} />
+              <Route path="/pro" element={<Pro />} />
               <Route path="/:profileSlug" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -19,6 +19,7 @@ export const RESERVED_PROFILE_SLUGS = new Set([
   'privacy',
   'contact',
   'docs',
+  'pro',
   'profile',
   'me',
   'settings',

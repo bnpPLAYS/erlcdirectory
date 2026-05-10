@@ -25,6 +25,8 @@ interface Profile {
   bio: string | null;
   is_verified: boolean;
   is_featured: boolean;
+  is_pro: boolean;
+  pro_badge_label?: string | null;
   rating: number;
   review_count: number;
   skills: string[];
@@ -82,6 +84,14 @@ function featuredFirstCmp(a: Profile, b: Profile): number {
   return af ? -1 : 1;
 }
 
+/** Pro members rank after featured, before everyone else (directory boost). */
+function proBoostCmp(a: Profile, b: Profile): number {
+  const ap = !!a.is_pro;
+  const bp = !!b.is_pro;
+  if (ap === bp) return 0;
+  return ap ? -1 : 1;
+}
+
 function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
   const copy = [...list];
   switch (mode) {
@@ -89,6 +99,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const p = proBoostCmp(a, b);
+        if (p !== 0) return p;
         const d = createdTime(b.created_at) - createdTime(a.created_at);
         if (d !== 0) return d;
         return idCmp(a, b);
@@ -97,6 +109,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const p = proBoostCmp(a, b);
+        if (p !== 0) return p;
         const rd = finiteNum(b.rating) - finiteNum(a.rating);
         if (rd !== 0) return rd;
         const rc = finiteNum(b.review_count) - finiteNum(a.review_count);
@@ -107,6 +121,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const p = proBoostCmp(a, b);
+        if (p !== 0) return p;
         const m = finiteNum(b.total_members) - finiteNum(a.total_members);
         if (m !== 0) return m;
         return idCmp(a, b);
@@ -115,6 +131,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const p = proBoostCmp(a, b);
+        if (p !== 0) return p;
         const e =
           finiteNum(b.verified_experience_count) - finiteNum(a.verified_experience_count);
         if (e !== 0) return e;
@@ -124,6 +142,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const p = proBoostCmp(a, b);
+        if (p !== 0) return p;
         const c = displaySortKey(a).localeCompare(displaySortKey(b), undefined, {
           sensitivity: 'base',
         });
@@ -151,7 +171,7 @@ const Browse = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, rating, review_count, skills, created_at',
+        'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, is_pro, pro_badge_label, rating, review_count, skills, created_at',
       )
       .limit(150);
 
@@ -200,6 +220,8 @@ const Browse = () => {
         ...p,
         is_verified: !!p.is_verified,
         is_featured: !!p.is_featured,
+        is_pro: !!p.is_pro,
+        pro_badge_label: p.pro_badge_label ?? null,
         rating: finiteNum(p.rating),
         review_count: finiteNum(p.review_count),
         created_at: p.created_at,

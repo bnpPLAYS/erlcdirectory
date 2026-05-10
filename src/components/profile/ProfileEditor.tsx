@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   Plus,
@@ -19,6 +20,7 @@ import {
   Eye,
   ChevronDown,
   Globe,
+  Gem,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -71,6 +73,8 @@ import {
 } from '@/lib/profileSocialLinks';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
+import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
+import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
 
 function buildSocialDraft(social: unknown): Record<ProfileSocialKey, string> {
   const parsed = parseProfileSocialLinks(social);
@@ -118,6 +122,9 @@ interface ProfileLike {
   dm_website_updates?: boolean | null;
   dm_experience_status_updates?: boolean | null;
   skills: string[];
+  is_pro?: boolean;
+  pro_badge_label?: string | null;
+  roblox_user_id?: string | null;
 }
 
 const EDITOR_TABS = ['general', 'customize', 'experience'] as const;
@@ -139,6 +146,8 @@ interface Props {
   onConsumedAddDeepLink?: () => void;
   /** Called after Discord banner/avatar sync so the parent can reload profile data. */
   onDiscordMediaSynced?: () => void;
+  /** After Roblox Pro verification succeeds. */
+  onProVerified?: () => void;
 }
 
 const profileSchema = z.object({
@@ -187,6 +196,15 @@ const PRESETS = [
   { id: 'violet', label: 'Violet', accent: '#a78bfa', hint: 'Brand tone' },
   { id: 'lilac', label: 'Lilac', accent: '#d8b4fe', hint: 'Soft purple' },
 ] as const;
+
+const PRESETS_PRO = [
+  { id: 'aurora', label: 'Aurora', accent: '#22d3ee', hint: 'Pro — cyan glow' },
+  { id: 'crimson', label: 'Crimson', accent: '#f43f5e', hint: 'Pro — bold red' },
+  { id: 'midnight', label: 'Midnight', accent: '#818cf8', hint: 'Pro — indigo' },
+  { id: 'neonlime', label: 'Neon lime', accent: '#a3e635', hint: 'Pro — high contrast' },
+] as const;
+
+const PRO_THEME_IDS = new Set<string>(PRESETS_PRO.map((p) => p.id));
 
 const ACCENT_SWATCHES = [
   '#ffffff',
@@ -248,6 +266,7 @@ const ProfileEditor = ({
   openAddExperienceOnMount,
   onConsumedAddDeepLink,
   onDiscordMediaSynced,
+  onProVerified,
 }: Props) => {
   const [form, setForm] = useState({
     display_name: profile.display_name || '',
@@ -280,10 +299,17 @@ const ProfileEditor = ({
   const [socialDraft, setSocialDraft] = useState<Record<ProfileSocialKey, string>>(() =>
     buildSocialDraft(profile.social_links),
   );
+  const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
+  const [robloxVerifyInput, setRobloxVerifyInput] = useState('');
+  const [proVerifyBusy, setProVerifyBusy] = useState(false);
 
   useEffect(() => {
     setSocialDraft(buildSocialDraft(profile.social_links));
   }, [profile.id]);
+
+  useEffect(() => {
+    setProBadgeLabel(profile.pro_badge_label || '');
+  }, [profile.id, profile.pro_badge_label]);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -347,6 +373,26 @@ const ProfileEditor = ({
   const deleteExp = (id: string) => {
     setExps(exps.filter((e) => e.id !== id));
     setRemovedExpIds((r) => [...r, id]);
+  };
+
+  const handleVerifyPro = async () => {
+    if (robloxVerifyInput.trim().length < 3) {
+      toast.error('Enter your Roblox username (3+ characters).');
+      return;
+    }
+    setProVerifyBusy(true);
+    try {
+      const r = await invokeVerifyRobloxPro({ roblox_username: robloxVerifyInput.trim() });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success('Pro unlocked!');
+      setRobloxVerifyInput('');
+      onProVerified?.();
+    } finally {
+      setProVerifyBusy(false);
+    }
   };
 
   /** Server-linked: copy link in place. No guild: open picker dialog. */
@@ -418,6 +464,10 @@ const ProfileEditor = ({
         const norm = normalizeSocialInputUrl(socialDraft[key] || '');
         if (norm) socialPayload[key] = norm;
       }
+      const badgeF = filterPlaintext(proBadgeLabel.trim());
+      filterHits += badgeF.blockedHits;
+      const safeTheme =
+        profile.is_pro || !PRO_THEME_IDS.has(form.theme_preset) ? form.theme_preset || 'mono' : 'mono';
       const baseProfileUpdate = {
         display_name: filteredForm.display_name || null,
         bio: filteredForm.bio || null,
@@ -429,9 +479,12 @@ const ProfileEditor = ({
         website: null,
         banner_url: filteredForm.banner_url || null,
         accent_color: form.accent_color || null,
-        theme_preset: form.theme_preset || 'mono',
+        theme_preset: safeTheme,
         skills: filteredSkills,
         social_links: serializeProfileSocialLinks(socialPayload),
+        ...(profile.is_pro
+          ? { pro_badge_label: badgeF.text.slice(0, 28) || null }
+          : {}),
       };
       const dmPrefs = {
         dm_website_updates: dmWebsiteUpdates,
@@ -771,6 +824,83 @@ const ProfileEditor = ({
               </div>
             </div>
           </EditorSection>
+
+          <EditorSection
+            title="ERLC Directory Pro"
+            description={`${ERLC_PRO_PRICE_ROBUX} Robux on Roblox — bonus themes, directory visibility boost, and a Pro badge on your profile.`}
+            icon={Gem}
+          >
+            {profile.is_pro ? (
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-emerald-400/95">Pro is active on this account.</p>
+                {profile.roblox_user_id ? (
+                  <p className="text-xs text-muted-foreground">
+                    Linked Roblox user id: <span className="font-mono">{profile.roblox_user_id}</span>
+                  </p>
+                ) : null}
+                <Field label="Custom tag next to Pro" hint="Optional · max 28 characters · Save profile to publish">
+                  <Input
+                    value={proBadgeLabel}
+                    maxLength={28}
+                    onChange={(e) => setProBadgeLabel(e.target.value)}
+                    className={editorInput}
+                    placeholder="e.g. LEO Trainer"
+                  />
+                </Field>
+                <p className="text-xs text-muted-foreground">
+                  Pass listing:{' '}
+                  <a
+                    href={ERLC_PRO_ROBLOX_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-violet-400 hover:underline"
+                  >
+                    Roblox catalog
+                  </a>
+                  . Full details:{' '}
+                  <Link to="/pro" className="text-violet-400 hover:underline">
+                    /pro
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Purchase on Roblox, then verify with the username that owns the pass. Set Roblox privacy → inventory
+                  visible to Everyone if verification fails.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
+                  <Input
+                    value={robloxVerifyInput}
+                    onChange={(e) => setRobloxVerifyInput(e.target.value)}
+                    placeholder="Roblox username"
+                    maxLength={64}
+                    className={editorInput}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl shrink-0 border border-amber-500/30 bg-amber-950/30 hover:bg-amber-950/45"
+                    disabled={proVerifyBusy || robloxVerifyInput.trim().length < 3}
+                    onClick={() => void handleVerifyPro()}
+                  >
+                    {proVerifyBusy ? 'Checking…' : 'Verify purchase'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild type="button" size="sm" variant="outline" className="rounded-xl">
+                    <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer">
+                      Buy on Roblox
+                    </a>
+                  </Button>
+                  <Button asChild type="button" size="sm" variant="ghost" className="rounded-xl">
+                    <Link to="/pro">About Pro</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </EditorSection>
         </TabsContent>
 
         {/* CUSTOMIZE */}
@@ -889,6 +1019,47 @@ const ProfileEditor = ({
                 </button>
               ))}
             </div>
+
+            {profile.is_pro ? (
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium text-amber-200/90 uppercase tracking-wide">Pro palettes</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {PRESETS_PRO.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        update('theme_preset', p.id);
+                        update('accent_color', p.accent);
+                      }}
+                      className={cn(
+                        'rounded-xl border p-3 text-left transition-all hover:border-amber-400/35 hover:bg-white/[0.06]',
+                        form.theme_preset === p.id
+                          ? 'border-amber-400/50 bg-amber-950/25 ring-1 ring-amber-400/25 shadow-lg shadow-black/40'
+                          : 'border-white/10 bg-black/20',
+                      )}
+                    >
+                      <span
+                        className="mb-2 block h-8 w-full rounded-lg ring-1 ring-white/10"
+                        style={{ background: p.accent }}
+                      />
+                      <span className="text-sm font-medium block">{p.label}</span>
+                      <span className="text-[11px] text-muted-foreground line-clamp-1">{p.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-amber-500/25 bg-amber-950/15 p-4">
+                <p className="text-sm text-amber-100/90 font-medium mb-1">Pro palettes</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  Four extra accent themes plus a directory boost. Unlock with ERLC Directory Pro.
+                </p>
+                <Button asChild size="sm" variant="secondary" className="rounded-xl">
+                  <Link to="/pro">View Pro</Link>
+                </Button>
+              </div>
+            )}
 
             <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Quick accent</p>
