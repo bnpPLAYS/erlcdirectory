@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
+import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 
 type SortMode = 'newest' | 'top_rated' | 'most_members' | 'most_experience' | 'az';
 
@@ -185,7 +186,9 @@ const Browse = () => {
         return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
       });
 
-      const dirExps = userExps.filter((e) => e.show_on_directory_card !== false);
+      const dirExps = userExps.filter(
+        (e) => e.show_on_directory_card !== false && !isExperienceAwaitingVerification(e),
+      );
       const verifiedExps = userExps.filter((e) => e.is_verified === true);
 
       const total = verifiedExps.reduce(
