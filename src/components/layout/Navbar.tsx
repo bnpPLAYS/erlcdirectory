@@ -35,7 +35,9 @@ import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import { readStaffBannerCompact, writeStaffBannerCompact } from '@/lib/siteUiPreferences';
 
-const HEADER_PX = 64;
+const NAV_FLOAT_TOP_PX = 12;
+const NAV_BAR_H_PX = 56;
+const NAV_FLOAT_BOTTOM_PX = 12;
 
 const Navbar = () => {
   const location = useLocation();
@@ -74,7 +76,7 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
   const visibleLinks = navLinks.filter((l) => !l.auth || user);
   const staffStripPx = user && isStaff ? staffBannerHeightPx(staffBarCompact) : 0;
-  const layoutTopSpacer = staffStripPx + HEADER_PX;
+  const layoutTopSpacer = staffStripPx + NAV_FLOAT_TOP_PX + NAV_BAR_H_PX + NAV_FLOAT_BOTTOM_PX;
 
   return (
     <>
@@ -82,16 +84,20 @@ const Navbar = () => {
       <div style={{ height: layoutTopSpacer }} aria-hidden />
 
       <header
-        className={cn(
-          'fixed left-0 right-0 z-50 border-b border-white/[0.08]',
-          'bg-zinc-950/90 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/75',
-        )}
-        style={{ top: staffStripPx }}
+        className="fixed left-0 right-0 z-50 flex justify-center px-3 sm:px-5 pointer-events-none"
+        style={{ top: staffStripPx + NAV_FLOAT_TOP_PX }}
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 sm:gap-6 pointer-events-auto">
+        <div
+          className={cn(
+            'pointer-events-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-white/[0.09]',
+            'bg-zinc-950/90 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/75',
+            'shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_10px_40px_-10px_rgba(0,0,0,0.65),0_0_28px_-12px_rgba(255,255,255,0.12)]',
+          )}
+        >
+          <div className="flex h-14 items-center gap-2 sm:gap-4 px-3 sm:px-4">
           <Link
             to="/"
-            className="flex items-center gap-2.5 shrink-0 group rounded-md outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+            className="flex items-center gap-2.5 shrink-0 group rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
             <img
               src={logo}
@@ -127,11 +133,11 @@ const Navbar = () => {
                       : 'text-zinc-500 hover:text-zinc-100 hover:bg-white/[0.05]',
                   )}
                 >
-                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-violet-300' : 'opacity-80')} />
+                  <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'opacity-80')} />
                   <span className="hidden lg:inline">{label}</span>
                   {active ? (
                     <span
-                      className="absolute bottom-0 left-2 right-2 h-px rounded-full bg-gradient-to-r from-transparent via-violet-400 to-transparent opacity-90"
+                      className="absolute bottom-0 left-2 right-2 h-px rounded-full bg-gradient-to-r from-transparent via-white/55 to-transparent opacity-90"
                       aria-hidden
                     />
                   ) : null}
@@ -145,7 +151,7 @@ const Navbar = () => {
               <button
                 id="tutorial-nav-add-experience"
                 type="button"
-                className="hidden md:inline-flex h-9 w-9 rounded-md items-center justify-center bg-violet-600 text-white hover:bg-violet-500 transition-colors shadow-lg shadow-violet-950/40"
+                className="hidden md:inline-flex h-9 w-9 rounded-lg items-center justify-center border border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.13] transition-colors shadow-lg shadow-white/12"
                 aria-label="Add experience"
                 onClick={() =>
                   navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }))
@@ -249,7 +255,7 @@ const Navbar = () => {
                   {user && isStaff && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
                       <Link to="/staff">
-                        <Shield className="h-4 w-4 text-violet-400" />
+                        <Shield className="h-4 w-4 text-zinc-400" />
                         <div className="flex flex-col">
                           <span className="text-sm">Staff Panel</span>
                           <span className="text-[11px] text-muted-foreground">Moderation and site tools</span>
@@ -285,7 +291,7 @@ const Navbar = () => {
         </div>
 
         {mobileMenuOpen ? (
-          <div className="md:hidden border-t border-white/[0.07] bg-zinc-950/98 backdrop-blur-md px-4 py-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden border-t border-white/[0.07] bg-zinc-950/98 backdrop-blur-md px-4 py-3 rounded-b-2xl animate-in slide-in-from-top-2 duration-200">
             <div className="flex flex-col gap-1 max-w-lg mx-auto">
               {visibleLinks.map(({ path, label, icon: Icon }) => (
                 <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}>
@@ -304,7 +310,7 @@ const Navbar = () => {
               {user && profile?.id && (
                 <Button
                   variant="secondary"
-                  className="w-full justify-start gap-3 mt-1 h-11 rounded-lg bg-violet-600/90 hover:bg-violet-600 text-white border-0"
+                  className="w-full justify-start gap-3 mt-1 h-11 rounded-lg border border-white/15 bg-white/[0.1] hover:bg-white/[0.15] text-white shadow-md shadow-white/10"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }));
@@ -322,6 +328,7 @@ const Navbar = () => {
             </div>
           </div>
         ) : null}
+        </div>
       </header>
     </>
   );

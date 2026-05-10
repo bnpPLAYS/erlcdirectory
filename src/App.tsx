@@ -27,7 +27,6 @@ import Pro from "./pages/Pro";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
-import { SiteUpdateLog } from "@/components/layout/SiteUpdateLog";
 
 const FirstLoginTutorial = lazy(() =>
   import("@/components/onboarding/FirstLoginTutorial").then((m) => ({ default: m.FirstLoginTutorial })),
@@ -52,7 +51,6 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <BetaBugReportLink />
-          <SiteUpdateLog />
           <Suspense fallback={null}>
             <FirstLoginTutorial />
           </Suspense>
