@@ -19,6 +19,13 @@ const ADMIN = 0x8n
 /** Manage Roles — same permission Discord uses for moderators who can assign roles without Administrator. */
 const MANAGE_ROLES = 1n << 28n
 
+interface DiscordVerifierUser {
+  id: string
+  username?: string
+  global_name?: string | null
+  avatar?: string | null
+}
+
 /** Must match the authorize URL — one stable `/discord/callback` per site, not per /verify/:token. */
 function isAllowedVerifierRedirectUri(uri: string): boolean {
   const raw = uri.trim()
@@ -51,6 +58,96 @@ function isAllowedVerifierRedirectUri(uri: string): boolean {
   }
 
   return false
+}
+
+async function refreshDiscordAccessToken(
+  refreshToken: string,
+  clientId: string,
+  clientSecret: string,
+): Promise<{ access_token: string; refresh_token?: string; expires_in: number } | null> {
+  const res = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  })
+  if (!res.ok) return null
+  const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number }
+  if (!d.access_token) return null
+  return {
+    access_token: d.access_token,
+    refresh_token: d.refresh_token,
+    expires_in: Number(d.expires_in ?? 604800),
+  }
+}
+
+/**
+ * Use stored Discord OAuth tokens from the verifier's profile (same Supabase session as the website).
+ * Avoids sending verifiers through Discord OAuth again when they are already signed in.
+ */
+async function tryDiscordViaSupabaseSession(
+  authHeader: string,
+  supabaseUrl: string,
+  anonKey: string,
+  admin: SupabaseClient,
+  clientId: string,
+  clientSecret: string,
+): Promise<{ accessToken: string; me: DiscordVerifierUser } | null> {
+  if (!authHeader.startsWith('Bearer ')) return null
+  const jwt = authHeader.slice(7).trim()
+  if (!jwt || jwt === anonKey) return null
+
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  })
+  const {
+    data: { user },
+    error: userErr,
+  } = await userClient.auth.getUser(jwt)
+  if (userErr || !user) return null
+
+  const { data: row } = await admin
+    .from('profiles')
+    .select('id, discord_id, discord_access_token, discord_refresh_token, discord_token_expires_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!row?.id) return null
+  if (!row.discord_refresh_token && !row.discord_access_token) return null
+
+  let accessToken = (row.discord_access_token ?? '').trim()
+  const expMs = row.discord_token_expires_at ? new Date(row.discord_token_expires_at).getTime() : 0
+  const stale = !accessToken || Date.now() > expMs - 90_000
+
+  if (stale && row.discord_refresh_token) {
+    const refreshed = await refreshDiscordAccessToken(row.discord_refresh_token, clientId, clientSecret)
+    if (!refreshed?.access_token) return null
+    accessToken = refreshed.access_token
+    const expireIso = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+    await admin
+      .from('profiles')
+      .update({
+        discord_access_token: refreshed.access_token,
+        discord_refresh_token: refreshed.refresh_token ?? row.discord_refresh_token,
+        discord_token_expires_at: expireIso,
+      })
+      .eq('id', row.id)
+  }
+
+  if (!accessToken) return null
+
+  const meRes = await fetch('https://discord.com/api/users/@me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const me = (await meRes.json()) as DiscordVerifierUser
+  if (!me?.id) return null
+  if (row.discord_id && String(row.discord_id) !== String(me.id)) return null
+
+  return { accessToken, me }
 }
 
 async function notifyExperienceDecisionDm(
@@ -174,26 +271,13 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Decision actions require a Discord OAuth code from the verifier
+    // Decision actions: OAuth redirect callback OR signed-in directory session (stored Discord tokens)
     if (action !== 'approve' && action !== 'reject') {
       return json({ error: 'Unsupported action.' }, 400)
     }
 
     if (status !== 'pending') {
       return json({ error: `This request is already ${status}.` }, 400)
-    }
-
-    const code = (body.code ?? '').toString()
-    const redirectUri = (body.redirectUri ?? '').toString()
-    if (!code || !redirectUri) return json({ error: 'Missing Discord authorization.' }, 400)
-    if (!isAllowedVerifierRedirectUri(redirectUri)) {
-      return json(
-        {
-          error:
-            'Invalid OAuth redirect. Use the site Discord callback only — add https://www.erlc.directory/discord/callback in Discord Developer Portal (not a separate URL per verification link).',
-        },
-        400,
-      )
     }
 
     let memberRole = ''
@@ -221,25 +305,58 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Exchange code for token
-    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-      }),
-    })
-    const tokenData = await tokenRes.json()
-    if (!tokenRes.ok) return json({ error: 'Discord rejected the sign-in.', details: tokenData }, 400)
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const code = (body.code ?? '').toString().trim()
+    const redirectUri = (body.redirectUri ?? '').toString().trim()
 
-    const me = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    }).then((r) => r.json())
-    if (!me?.id) return json({ error: 'Could not read Discord account.' }, 400)
+    let tokenData: { access_token: string; refresh_token?: string; expires_in?: number }
+    let me: DiscordVerifierUser
+
+    if (code && redirectUri) {
+      if (!isAllowedVerifierRedirectUri(redirectUri)) {
+        return json(
+          {
+            error:
+              'Invalid OAuth redirect. Use the site Discord callback only — add https://www.erlc.directory/discord/callback in Discord Developer Portal (not a separate URL per verification link).',
+          },
+          400,
+        )
+      }
+      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+        }),
+      })
+      tokenData = (await tokenRes.json()) as typeof tokenData
+      if (!tokenRes.ok) return json({ error: 'Discord rejected the sign-in.', details: tokenData }, 400)
+      if (!tokenData.access_token) return json({ error: 'Discord rejected the sign-in.' }, 400)
+
+      me = (await fetch('https://discord.com/api/users/@me', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }).then((r) => r.json())) as DiscordVerifierUser
+      if (!me?.id) return json({ error: 'Could not read Discord account.' }, 400)
+    } else {
+      if (!anonKey) return json({ error: 'Server misconfigured.' }, 500)
+      const sess = await tryDiscordViaSupabaseSession(authHeader, supabaseUrl, anonKey, admin, clientId, clientSecret)
+      if (!sess) {
+        return json(
+          {
+            error:
+              'Discord authorization required. Sign in to erlc.directory with Discord in this browser first, or use Continue with Discord below.',
+          },
+          401,
+        )
+      }
+      tokenData = { access_token: sess.accessToken }
+      me = sess.me
+    }
 
     const guildsRes = await fetch('https://discord.com/api/users/@me/guilds?with_counts=true', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
