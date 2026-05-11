@@ -37,12 +37,15 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return json({ ok: false, error: 'Server configuration error.' }, 500)
   }
-  if (!clientId || !clientSecret || !redirectUri) {
+  const missingComplete: string[] = []
+  if (!clientId) missingComplete.push('ROBLOX_OAUTH_CLIENT_ID')
+  if (!clientSecret) missingComplete.push('ROBLOX_OAUTH_CLIENT_SECRET')
+  if (!redirectUri) missingComplete.push('ROBLOX_OAUTH_REDIRECT_URI')
+  if (missingComplete.length) {
     return json(
       {
         ok: false,
-        error:
-          'Roblox sign-in is not configured. The site owner must set ROBLOX_OAUTH_CLIENT_ID, ROBLOX_OAUTH_CLIENT_SECRET, and ROBLOX_OAUTH_REDIRECT_URI on Supabase Edge Function secrets.',
+        error: `Roblox sign-in is not configured: missing ${missingComplete.join(', ')}. Add them in Supabase Dashboard → Edge Functions → Secrets (not Vercel). ROBLOX_OAUTH_REDIRECT_URI must match the Roblox OAuth app redirect exactly.`,
       },
       503,
     )
