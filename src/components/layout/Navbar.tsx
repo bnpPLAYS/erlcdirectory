@@ -107,12 +107,7 @@ const Navbar = () => {
               height={28}
               aria-hidden
             />
-            <div className="flex min-w-0 flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight text-white truncate">ERLC Directory</span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 hidden sm:block">
-                Staff &amp; servers
-              </span>
-            </div>
+            <span className="text-sm font-semibold tracking-tight text-white truncate min-w-0">ERLC Directory</span>
           </Link>
 
           <nav

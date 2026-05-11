@@ -7,10 +7,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useInViewOnce } from '@/hooks/useInViewOnce';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
-import homePublicProfile from '@/assets/home-features/home-public-profile.png';
-import homeProfileEditor from '@/assets/home-features/home-profile-editor.png';
-import homeCreatePost from '@/assets/home-features/home-create-post.png';
-import homeConnections from '@/assets/home-features/home-connections.png';
+import homeHeroProfile from '@/assets/home-features/public-profile.png';
+import homeFeatureProfileEditor from '@/assets/home-features/profile-editor.png';
+import homeFeatureCreatePost from '@/assets/home-features/create-post.png';
+import homeFeatureConnections from '@/assets/home-features/connections.png';
+import homeFeatureServerDetail from '@/assets/home-features/server-detail.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { profileEditorPath } from '@/lib/profilePath';
@@ -24,26 +25,26 @@ const PRODUCT_SCREENSHOTS: {
   {
     title: 'Profile',
     description: 'Edit your listing, banner, and verified roles in one place.',
-    image: homeProfileEditor,
+    image: homeFeatureProfileEditor,
     alt: 'Profile editor on erlc.directory',
   },
   {
     title: 'Posts',
     description: 'Hiring, looking for work, announcements, and discussion.',
-    image: homeCreatePost,
+    image: homeFeatureCreatePost,
     alt: 'Create post on erlc.directory',
   },
   {
     title: 'Network',
     description: 'Connections and requests — find people through the directory.',
-    image: homeConnections,
+    image: homeFeatureConnections,
     alt: 'Connections on erlc.directory',
   },
   {
-    title: 'Public profiles',
-    description: 'Verified experience and clear identity for communities.',
-    image: homePublicProfile,
-    alt: 'Public profile on erlc.directory',
+    title: 'Servers',
+    description: 'Community pages with join links, members who work there, and reviews.',
+    image: homeFeatureServerDetail,
+    alt: 'Server directory page on erlc.directory',
   },
 ];
 
@@ -247,7 +248,7 @@ const Index = () => {
               <div className="home-image-pop rounded-xl border border-white/[0.08] bg-zinc-950/40 p-1.5">
                 <div className="rounded-lg overflow-hidden">
                   <img
-                    src={homePublicProfile}
+                    src={homeHeroProfile}
                     alt="Public profile on erlc.directory"
                     width={1156}
                     height={810}
