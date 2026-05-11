@@ -1,9 +1,11 @@
 /**
- * Verifies the signed-in user owns the ERLC Directory Pro game pass (Roblox Open Cloud inventory),
- * then sets profiles.is_pro (service role).
+ * Verifies the signed-in user owns ERLC Directory Pro via Roblox Open Cloud inventory.
+ *
+ * Roblox may sell the product as a **game pass** or a **catalog / collectible asset** (same numeric id
+ * on the store URL). We check **gamePassIds** first, then **assetIds**, so both shapes verify.
  *
  * Secrets: ROBLOX_OPEN_CLOUD_API_KEY (Supabase → Edge Functions → Secrets).
- * Optional: ROBLOX_PRO_GAME_PASS_ID
+ * Optional: ROBLOX_PRO_GAME_PASS_ID (defaults to site catalog id).
  * SUPABASE_* injected automatically.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
@@ -21,25 +23,29 @@ const json = (body: unknown, status = 200) =>
 
 const DEFAULT_GAME_PASS_ID = '76823573023998'
 
-type InvItem = { gamePassDetails?: { gamePassId?: string } }
+type InvItem = {
+  gamePassDetails?: { gamePassId?: string }
+  assetDetails?: { assetId?: string }
+}
 
-async function userOwnsGamePass(params: {
-  robloxUserId: number
-  gamePassId: string
-  apiKey: string
-}): Promise<
+type ScanResult =
   | { kind: 'owns' }
   | { kind: 'not_owned' }
   | { kind: 'privacy_blocked' }
   | { kind: 'roblox_error'; status: number; snippet: string }
-> {
-  const targetId = String(params.gamePassId).trim()
+
+async function scanInventoryFilter(params: {
+  robloxUserId: number
+  filter: string
+  apiKey: string
+  match: (it: InvItem) => boolean
+}): Promise<ScanResult> {
   let pageToken: string | undefined
 
   for (let page = 0; page < 25; page++) {
     const url = new URL(`https://apis.roblox.com/cloud/v2/users/${params.robloxUserId}/inventory-items`)
     url.searchParams.set('maxPageSize', '50')
-    url.searchParams.set('filter', `gamePassIds=${targetId}`)
+    url.searchParams.set('filter', params.filter)
     if (pageToken) url.searchParams.set('pageToken', pageToken)
 
     const inv = await fetch(url.toString(), {
@@ -64,16 +70,44 @@ async function userOwnsGamePass(params: {
 
     const items = Array.isArray(invJson.inventoryItems) ? invJson.inventoryItems : []
     for (const it of items) {
-      const gid = it.gamePassDetails?.gamePassId
-      if (gid != null && String(gid) === targetId) {
-        return { kind: 'owns' }
-      }
+      if (params.match(it)) return { kind: 'owns' }
     }
 
     const next = invJson.nextPageToken?.trim()
     if (!next) break
     pageToken = next
   }
+
+  return { kind: 'not_owned' }
+}
+
+/** Catalog listing may be game pass and/or ownable asset — try both inventory filters. */
+async function userOwnsProListing(params: {
+  robloxUserId: number
+  listingId: string
+  apiKey: string
+}): Promise<ScanResult> {
+  const id = String(params.listingId).trim()
+
+  const asGamePass = await scanInventoryFilter({
+    robloxUserId: params.robloxUserId,
+    filter: `gamePassIds=${id}`,
+    apiKey: params.apiKey,
+    match: (it) => String(it.gamePassDetails?.gamePassId ?? '') === id,
+  })
+  if (asGamePass.kind === 'owns' || asGamePass.kind === 'privacy_blocked') return asGamePass
+
+  const asAsset = await scanInventoryFilter({
+    robloxUserId: params.robloxUserId,
+    filter: `assetIds=${id}`,
+    apiKey: params.apiKey,
+    match: (it) => String(it.assetDetails?.assetId ?? '') === id,
+  })
+  if (asAsset.kind === 'owns' || asAsset.kind === 'privacy_blocked') return asAsset
+
+  if (asGamePass.kind === 'roblox_error' && asGamePass.status !== 400) return asGamePass
+  if (asAsset.kind === 'roblox_error') return asAsset
+  if (asGamePass.kind === 'roblox_error') return asGamePass
 
   return { kind: 'not_owned' }
 }
@@ -95,7 +129,7 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim() || ''
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() || ''
   const robloxKey = Deno.env.get('ROBLOX_OPEN_CLOUD_API_KEY')?.trim() || ''
-  const gamePassId = (Deno.env.get('ROBLOX_PRO_GAME_PASS_ID') || DEFAULT_GAME_PASS_ID).trim()
+  const listingId = (Deno.env.get('ROBLOX_PRO_GAME_PASS_ID') || DEFAULT_GAME_PASS_ID).trim()
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return json({ ok: false, error: 'Server configuration error.' }, 500)
@@ -154,7 +188,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Enter a valid Roblox username (3–64 characters).' }, 400)
   }
 
-  const own = await userOwnsGamePass({ robloxUserId, gamePassId, apiKey: robloxKey })
+  const own = await userOwnsProListing({ robloxUserId, listingId, apiKey: robloxKey })
 
   if (own.kind === 'privacy_blocked') {
     return json(
