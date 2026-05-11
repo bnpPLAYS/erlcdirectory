@@ -64,12 +64,14 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return json({ ok: false, error: 'Server configuration error.' }, 500)
   }
-  if (!clientId || !redirectUri) {
+  const missingStart: string[] = []
+  if (!clientId) missingStart.push('ROBLOX_OAUTH_CLIENT_ID')
+  if (!redirectUri) missingStart.push('ROBLOX_OAUTH_REDIRECT_URI')
+  if (missingStart.length) {
     return json(
       {
         ok: false,
-        error:
-          'Roblox sign-in is not configured. The site owner must register an OAuth app on Roblox Creator, then set ROBLOX_OAUTH_CLIENT_ID and ROBLOX_OAUTH_REDIRECT_URI (and deploy roblox-oauth-start / roblox-oauth-complete).',
+        error: `Roblox sign-in is not configured: missing ${missingStart.join(' and ')}. Add these in Supabase Dashboard → Edge Functions → Secrets (Vercel env vars are not used here). Register the same redirect URL in Roblox Creator OAuth (e.g. https://www.erlc.directory/roblox/callback) and set ROBLOX_OAUTH_REDIRECT_URI to match it exactly. Deploy roblox-oauth-start and roblox-oauth-complete if they are not live yet.`,
       },
       503,
     )
