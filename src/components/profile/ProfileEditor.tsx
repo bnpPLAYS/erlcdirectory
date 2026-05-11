@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Globe,
   Gem,
+  Gamepad2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -74,14 +75,20 @@ import {
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
+import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
+import { robloxWebProfileUrl } from '@/lib/robloxProfileUrl';
+import { profileEditorPath } from '@/lib/profilePath';
+import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
+
+/** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
+const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
 
 function buildSocialDraft(social: unknown): Record<ProfileSocialKey, string> {
   const parsed = parseProfileSocialLinks(social);
-  return Object.fromEntries(PROFILE_SOCIAL_KEYS.map((k) => [k, parsed[k] ?? ''])) as Record<
-    ProfileSocialKey,
-    string
-  >;
+  return Object.fromEntries(
+    PROFILE_SOCIAL_KEYS.map((k) => [k, k === 'roblox' ? '' : (parsed[k] ?? '')]),
+  ) as Record<ProfileSocialKey, string>;
 }
 
 interface Experience {
@@ -125,6 +132,7 @@ interface ProfileLike {
   is_pro?: boolean;
   pro_badge_label?: string | null;
   roblox_user_id?: string | null;
+  roblox_verified_at?: string | null;
 }
 
 const EDITOR_TABS = ['general', 'customize', 'experience'] as const;
@@ -302,6 +310,7 @@ const ProfileEditor = ({
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
   const [robloxVerifyInput, setRobloxVerifyInput] = useState('');
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
+  const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
 
   useEffect(() => {
     setSocialDraft(buildSocialDraft(profile.social_links));
@@ -395,6 +404,21 @@ const ProfileEditor = ({
     }
   };
 
+  const handleStartRobloxOAuth = async () => {
+    setRobloxOAuthBusy(true);
+    try {
+      const r = await invokeRobloxOAuthStart();
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      sessionStorage.setItem(ROBLOX_OAUTH_RETURN_PATH_KEY, profileEditorPath(profile));
+      window.location.assign(r.url);
+    } finally {
+      setRobloxOAuthBusy(false);
+    }
+  };
+
   /** Server-linked: copy link in place. No guild: open picker dialog. */
   const copyVerifyLinkForExperience = async (e: Experience, forceNew: boolean) => {
     if (!e.guild_id) {
@@ -461,6 +485,7 @@ const ProfileEditor = ({
     try {
       const socialPayload: Partial<Record<ProfileSocialKey, string>> = {};
       for (const key of PROFILE_SOCIAL_KEYS) {
+        if (key === 'roblox') continue;
         const norm = normalizeSocialInputUrl(socialDraft[key] || '');
         if (norm) socialPayload[key] = norm;
       }
@@ -716,11 +741,11 @@ const ProfileEditor = ({
 
             <EditorSection
               title="Platform links"
-              description="Optional profile buttons with hover tooltips — paste a profile or channel URL for each network you use."
+              description="Optional profile buttons with hover tooltips — paste a profile or channel URL. Roblox is linked separately below via official Roblox sign-in, not as a URL here."
               icon={Globe}
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                {PROFILE_SOCIAL_KEYS.map((key) => (
+                {EDITOR_SOCIAL_URL_KEYS.map((key) => (
                   <Field key={key} label={PROFILE_SOCIAL_LABELS[key]} hint="https://… or domain only">
                     <Input
                       value={socialDraft[key]}
@@ -737,6 +762,66 @@ const ProfileEditor = ({
                   </Field>
                 ))}
               </div>
+            </EditorSection>
+
+            <EditorSection
+              title="Roblox profile"
+              description="You are sent to Roblox to approve access (official OAuth). We only read your Roblox user id to show the profile link — no inventory checks and no purchases required for linking."
+              icon={Gamepad2}
+            >
+              {profile.roblox_user_id ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-zinc-200">
+                    Linked:{' '}
+                    {robloxWebProfileUrl(profile.roblox_user_id) ? (
+                      <a
+                        href={robloxWebProfileUrl(profile.roblox_user_id)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-zinc-100 underline-offset-2 hover:underline"
+                      >
+                        {profile.roblox_user_id}
+                      </a>
+                    ) : (
+                      <span className="font-mono">{profile.roblox_user_id}</span>
+                    )}
+                  </p>
+                  {profile.roblox_verified_at ? (
+                    <p className="text-xs text-muted-foreground">
+                      Last verified {new Date(profile.roblox_verified_at).toLocaleString()}
+                    </p>
+                  ) : null}
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Use the button below to sign in with a different Roblox account and replace this link. Buying
+                    Directory Pro still uses the separate Roblox purchase check in the Pro section.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
+                    disabled={robloxOAuthBusy}
+                    onClick={() => void handleStartRobloxOAuth()}
+                  >
+                    {robloxOAuthBusy ? 'Opening Roblox…' : 'Connect a different Roblox account'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Click below to open Roblox and approve the link. When you return here, your Roblox profile button
+                    will use the account you signed in with.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
+                    disabled={robloxOAuthBusy}
+                    onClick={() => void handleStartRobloxOAuth()}
+                  >
+                    {robloxOAuthBusy ? 'Opening Roblox…' : 'Continue with Roblox'}
+                  </Button>
+                </div>
+              )}
             </EditorSection>
 
             <Field label="Status" hint={`Shown on your profile — ${form.status.length}/140`}>
@@ -979,12 +1064,14 @@ const ProfileEditor = ({
                     <ProfileSocialBadges
                       socialLinks={serializeProfileSocialLinks(
                         PROFILE_SOCIAL_KEYS.reduce((acc, k) => {
+                          if (k === 'roblox') return acc;
                           const t = socialDraft[k]?.trim();
                           if (t) acc[k] = t;
                           return acc;
                         }, {} as Partial<Record<ProfileSocialKey, string>>),
                       )}
                       discordHref={discordUserProfileUrl(profile.discord_id)}
+                      robloxUserId={profile.roblox_user_id}
                       className="shrink-0"
                     />
                   </div>

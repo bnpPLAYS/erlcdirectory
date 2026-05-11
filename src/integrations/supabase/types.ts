@@ -475,6 +475,7 @@ export type Database = {
           rating: number | null
           review_count: number | null
           roblox_user_id: string | null
+          roblox_verified_at: string | null
           skills: string[] | null
           social_links: Json | null
           status: string | null
@@ -512,6 +513,7 @@ export type Database = {
           rating?: number | null
           review_count?: number | null
           roblox_user_id?: string | null
+          roblox_verified_at?: string | null
           skills?: string[] | null
           social_links?: Json | null
           status?: string | null
@@ -549,6 +551,7 @@ export type Database = {
           rating?: number | null
           review_count?: number | null
           roblox_user_id?: string | null
+          roblox_verified_at?: string | null
           skills?: string[] | null
           social_links?: Json | null
           status?: string | null
@@ -591,6 +594,30 @@ export type Database = {
           reviewer_id?: string
           server_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      roblox_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          expires_at: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          expires_at: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          expires_at?: string
+          state?: string
+          user_id?: string
         }
         Relationships: []
       }

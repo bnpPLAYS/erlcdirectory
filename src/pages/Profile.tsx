@@ -303,6 +303,14 @@ const Profile = () => {
     }
   }, [isOwner, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get('roblox_linked') !== '1') return;
+    void fetchProfile();
+    const next = new URLSearchParams(searchParams);
+    next.delete('roblox_linked');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, fetchProfile, setSearchParams]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -552,6 +560,7 @@ const Profile = () => {
                     <ProfileSocialBadges
                       socialLinks={profile.social_links}
                       discordHref={discordProfileHref}
+                      robloxUserId={profile.roblox_user_id}
                       className="mt-3"
                     />
                   </div>

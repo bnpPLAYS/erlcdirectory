@@ -16,6 +16,7 @@ import Connections from "./pages/Connections";
 import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import DiscordCallback from "./pages/DiscordCallback";
+import RobloxOAuthCallback from "./pages/RobloxOAuthCallback";
 import VerifyExperience from "./pages/VerifyExperience";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/messages" element={<Messages />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/discord/callback" element={<DiscordCallback />} />
+              <Route path="/roblox/callback" element={<RobloxOAuthCallback />} />
               <Route path="/verify/:token" element={<VerifyExperience />} />
               <Route path="/staff" element={<Admin />} />
               <Route path="/terms" element={<Terms />} />

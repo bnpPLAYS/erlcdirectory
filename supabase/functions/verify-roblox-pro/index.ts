@@ -1,14 +1,9 @@
 /**
- * Verifies the signed-in user owns ERLC Directory Pro via Roblox Open Cloud inventory.
- *
- * Roblox may sell the product as a **game pass** or a **catalog / collectible asset** (same numeric id
- * on the store URL). We check **gamePassIds** first, then **assetIds**, so both shapes verify.
- *
- * Secrets: ROBLOX_OPEN_CLOUD_API_KEY (Supabase → Edge Functions → Secrets).
- * Optional: ROBLOX_PRO_GAME_PASS_ID (defaults to site catalog id).
- * SUPABASE_* injected automatically.
+ * Verifies ERLC Directory Pro ownership (Roblox Open Cloud inventory) and sets is_pro.
+ * See _shared/robloxInventoryOwnership.ts for inventory logic.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { userOwnsRobloxListing } from '../_shared/robloxInventoryOwnership.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,95 +17,6 @@ const json = (body: unknown, status = 200) =>
   })
 
 const DEFAULT_GAME_PASS_ID = '76823573023998'
-
-type InvItem = {
-  gamePassDetails?: { gamePassId?: string }
-  assetDetails?: { assetId?: string }
-}
-
-type ScanResult =
-  | { kind: 'owns' }
-  | { kind: 'not_owned' }
-  | { kind: 'privacy_blocked' }
-  | { kind: 'roblox_error'; status: number; snippet: string }
-
-async function scanInventoryFilter(params: {
-  robloxUserId: number
-  filter: string
-  apiKey: string
-  match: (it: InvItem) => boolean
-}): Promise<ScanResult> {
-  let pageToken: string | undefined
-
-  for (let page = 0; page < 25; page++) {
-    const url = new URL(`https://apis.roblox.com/cloud/v2/users/${params.robloxUserId}/inventory-items`)
-    url.searchParams.set('maxPageSize', '50')
-    url.searchParams.set('filter', params.filter)
-    if (pageToken) url.searchParams.set('pageToken', pageToken)
-
-    const inv = await fetch(url.toString(), {
-      headers: { 'x-api-key': params.apiKey },
-    })
-
-    if (inv.status === 403) {
-      return { kind: 'privacy_blocked' }
-    }
-
-    if (!inv.ok) {
-      const t = await inv.text().catch(() => '')
-      return { kind: 'roblox_error', status: inv.status, snippet: t.slice(0, 240) }
-    }
-
-    let invJson: { inventoryItems?: InvItem[]; nextPageToken?: string }
-    try {
-      invJson = (await inv.json()) as typeof invJson
-    } catch {
-      return { kind: 'roblox_error', status: 502, snippet: 'invalid_json' }
-    }
-
-    const items = Array.isArray(invJson.inventoryItems) ? invJson.inventoryItems : []
-    for (const it of items) {
-      if (params.match(it)) return { kind: 'owns' }
-    }
-
-    const next = invJson.nextPageToken?.trim()
-    if (!next) break
-    pageToken = next
-  }
-
-  return { kind: 'not_owned' }
-}
-
-/** Catalog listing may be game pass and/or ownable asset — try both inventory filters. */
-async function userOwnsProListing(params: {
-  robloxUserId: number
-  listingId: string
-  apiKey: string
-}): Promise<ScanResult> {
-  const id = String(params.listingId).trim()
-
-  const asGamePass = await scanInventoryFilter({
-    robloxUserId: params.robloxUserId,
-    filter: `gamePassIds=${id}`,
-    apiKey: params.apiKey,
-    match: (it) => String(it.gamePassDetails?.gamePassId ?? '') === id,
-  })
-  if (asGamePass.kind === 'owns' || asGamePass.kind === 'privacy_blocked') return asGamePass
-
-  const asAsset = await scanInventoryFilter({
-    robloxUserId: params.robloxUserId,
-    filter: `assetIds=${id}`,
-    apiKey: params.apiKey,
-    match: (it) => String(it.assetDetails?.assetId ?? '') === id,
-  })
-  if (asAsset.kind === 'owns' || asAsset.kind === 'privacy_blocked') return asAsset
-
-  if (asGamePass.kind === 'roblox_error' && asGamePass.status !== 400) return asGamePass
-  if (asAsset.kind === 'roblox_error') return asAsset
-  if (asGamePass.kind === 'roblox_error') return asGamePass
-
-  return { kind: 'not_owned' }
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -188,7 +94,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Enter a valid Roblox username (3–64 characters).' }, 400)
   }
 
-  const own = await userOwnsProListing({ robloxUserId, listingId, apiKey: robloxKey })
+  const own = await userOwnsRobloxListing({ robloxUserId, listingId, apiKey: robloxKey })
 
   if (own.kind === 'privacy_blocked') {
     return json(
@@ -242,6 +148,7 @@ Deno.serve(async (req) => {
       is_pro: true,
       roblox_user_id: String(robloxUserId),
       pro_verified_at: now,
+      roblox_verified_at: now,
     })
     .eq('id', profile.id)
 
