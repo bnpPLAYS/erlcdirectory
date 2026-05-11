@@ -1,6 +1,8 @@
 /**
- * Verifies ERLC Directory Pro ownership (Roblox Open Cloud inventory) and sets is_pro.
- * See _shared/robloxInventoryOwnership.ts for inventory logic.
+ * Links a verified Roblox account to the directory profile (no Pro).
+ * User must own a dedicated free catalog / game pass item (inventory proof), same Open Cloud flow as Pro.
+ *
+ * Secrets: ROBLOX_OPEN_CLOUD_API_KEY, ROBLOX_ACCOUNT_LINK_VERIFY_ID (Roblox catalog listing id for the free link item).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { userOwnsRobloxListing } from '../_shared/robloxInventoryOwnership.ts'
@@ -15,8 +17,6 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-
-const DEFAULT_GAME_PASS_ID = '76823573023998'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim() || ''
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() || ''
   const robloxKey = Deno.env.get('ROBLOX_OPEN_CLOUD_API_KEY')?.trim() || ''
-  const listingId = (Deno.env.get('ROBLOX_PRO_GAME_PASS_ID') || DEFAULT_GAME_PASS_ID).trim()
+  const listingId = Deno.env.get('ROBLOX_ACCOUNT_LINK_VERIFY_ID')?.trim() || ''
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return json({ ok: false, error: 'Server configuration error.' }, 500)
@@ -45,9 +45,19 @@ Deno.serve(async (req) => {
       {
         ok: false,
         error:
-          'Pro verification is not configured yet. Ask the site owner to add ROBLOX_OPEN_CLOUD_API_KEY in Supabase (Edge Function secrets) and deploy verify-roblox-pro.',
+          'Roblox linking is not configured. Ask the site owner to add ROBLOX_OPEN_CLOUD_API_KEY in Supabase Edge Function secrets.',
       },
       500,
+    )
+  }
+  if (!listingId) {
+    return json(
+      {
+        ok: false,
+        error:
+          'Roblox account linking is not enabled yet. The site owner must publish a free Roblox item for verification, then set ROBLOX_ACCOUNT_LINK_VERIFY_ID in Supabase secrets to that item’s id and deploy verify-roblox-account-link.',
+      },
+      503,
     )
   }
 
@@ -108,7 +118,7 @@ Deno.serve(async (req) => {
   }
 
   if (own.kind === 'roblox_error') {
-    console.error('[verify-roblox-pro] Roblox API', own.status, own.snippet)
+    console.error('[verify-roblox-account-link] Roblox API', own.status, own.snippet)
     return json(
       {
         ok: false,
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
       {
         ok: false,
         error:
-          'That Roblox account does not own ERLC Directory Pro yet, or the purchase is still processing. Wait a few minutes after buying, then try again with the account that bought the pass.',
+          'That Roblox account does not have the free “link” item in its inventory yet. Claim it on Roblox (see the link on this page), wait a minute, set inventory privacy to Everyone, then verify again.',
       },
       400,
     )
@@ -145,17 +155,15 @@ Deno.serve(async (req) => {
   const { error: upErr } = await admin
     .from('profiles')
     .update({
-      is_pro: true,
       roblox_user_id: String(robloxUserId),
-      pro_verified_at: now,
       roblox_verified_at: now,
     })
     .eq('id', profile.id)
 
   if (upErr) {
-    console.error('[verify-roblox-pro] profile update', upErr)
-    return json({ ok: false, error: 'Could not save Pro status. Try again or contact support.' }, 500)
+    console.error('[verify-roblox-account-link] profile update', upErr)
+    return json({ ok: false, error: 'Could not save your Roblox link. Try again or contact support.' }, 500)
   }
 
-  return json({ ok: true, roblox_user_id: robloxUserId, pro_verified_at: now })
+  return json({ ok: true, roblox_user_id: robloxUserId, roblox_verified_at: now })
 })

@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.verify-roblox-pro]
 verify_jwt = false
+
+[functions.verify-roblox-account-link]
+verify_jwt = false

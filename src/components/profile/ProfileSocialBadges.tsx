@@ -8,6 +8,7 @@ import {
   parseProfileSocialLinks,
   socialLinkTooltip,
 } from '@/lib/profileSocialLinks';
+import { robloxWebProfileUrl } from '@/lib/robloxProfileUrl';
 
 const DISCORD_BRAND = '#5865F2';
 const YOUTUBE_BRAND = '#FF0000';
@@ -118,17 +119,21 @@ const BRAND_BG: Record<ProfileSocialKey, string> = {
 type Props = {
   socialLinks: unknown;
   discordHref: string | null;
+  /** Verified Roblox user id — canonical profile link (manual roblox URL in social_links is ignored when set). */
+  robloxUserId?: string | null;
   className?: string;
 };
 
-export function ProfileSocialBadges({ socialLinks, discordHref, className }: Props) {
+export function ProfileSocialBadges({ socialLinks, discordHref, robloxUserId, className }: Props) {
   const links = parseProfileSocialLinks(socialLinks);
-  const entries = PROFILE_SOCIAL_KEYS.map((key) => ({ key, url: links[key] })).filter((e) => !!e.url) as {
-    key: ProfileSocialKey;
-    url: string;
-  }[];
+  const robloxHref = robloxWebProfileUrl(robloxUserId);
+  const entries = PROFILE_SOCIAL_KEYS.map((key) => ({ key, url: links[key] })).filter((e) => {
+    if (!e.url) return false;
+    if (e.key === 'roblox' && robloxHref) return false;
+    return true;
+  }) as { key: ProfileSocialKey; url: string }[];
 
-  if (!discordHref && entries.length === 0) return null;
+  if (!discordHref && !robloxHref && entries.length === 0) return null;
 
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
@@ -147,6 +152,24 @@ export function ProfileSocialBadges({ socialLinks, discordHref, className }: Pro
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[280px] text-xs">
             Discord profile
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+      {robloxHref ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a
+              href={robloxHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              aria-label={PROFILE_SOCIAL_LABELS.roblox}
+            >
+              {badgeShell(<IconRoblox />, 'text-white', { backgroundColor: BRAND_BG.roblox })}
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[min(90vw,280px)] break-all text-xs">
+            Roblox profile (verified)
           </TooltipContent>
         </Tooltip>
       ) : null}

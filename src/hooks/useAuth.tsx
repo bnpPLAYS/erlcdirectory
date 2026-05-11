@@ -34,6 +34,7 @@ function normalizeProfileRow(row: Profile): Profile {
     is_pro: !!row.is_pro,
     pro_badge_label: row.pro_badge_label ?? null,
     roblox_user_id: row.roblox_user_id ?? null,
+    roblox_verified_at: row.roblox_verified_at ?? null,
   };
 }
 
@@ -52,6 +53,7 @@ interface Profile {
   is_pro: boolean;
   pro_badge_label: string | null;
   roblox_user_id: string | null;
+  roblox_verified_at: string | null;
   rating: number;
   review_count: number;
   skills: string[];

@@ -430,6 +430,7 @@ const Profile = () => {
             }}
             onDiscordMediaSynced={() => void fetchProfile()}
             onProVerified={() => void fetchProfile()}
+            onRobloxLinked={() => void fetchProfile()}
           />
         ) : (
           <>
@@ -552,6 +553,7 @@ const Profile = () => {
                     <ProfileSocialBadges
                       socialLinks={profile.social_links}
                       discordHref={discordProfileHref}
+                      robloxUserId={profile.roblox_user_id}
                       className="mt-3"
                     />
                   </div>
