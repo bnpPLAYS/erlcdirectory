@@ -233,7 +233,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'discord',
       options: {
         redirectTo: getDiscordRedirectUri(),
-        scopes: 'identify guilds',
+        // Discord shows “access email”; Supabase Auth (GoTrue) still needs `email` to create/link accounts.
+        scopes: 'identify email guilds',
       },
     });
     if (error) {

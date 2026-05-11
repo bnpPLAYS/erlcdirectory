@@ -17,6 +17,18 @@ export function parseOAuthErrorDescription(raw: string | null): string {
   }
 }
 
+/** Turn cryptic GoTrue messages into something actionable when possible. */
+export function friendlyDiscordOAuthError(detail: string): string {
+  const d = detail.toLowerCase();
+  if (d.includes('error getting user email from external provider')) {
+    return [
+      detail.trim(),
+      'Discord did not provide an email (you may need the email OAuth scope, or your Discord account must have an email on file).',
+    ].join(' ');
+  }
+  return detail;
+}
+
 /** Messages Supabase returns when Discord client secret / redirect URIs are misconfigured. */
 export function isDiscordTokenExchangeFailure(detail: string): boolean {
   const d = detail.toLowerCase();
