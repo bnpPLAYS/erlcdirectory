@@ -20,6 +20,7 @@ export const RESERVED_PROFILE_SLUGS = new Set([
   'contact',
   'docs',
   'pro',
+  'roblox',
   'profile',
   'me',
   'settings',

@@ -303,6 +303,14 @@ const Profile = () => {
     }
   }, [isOwner, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get('roblox_linked') !== '1') return;
+    void fetchProfile();
+    const next = new URLSearchParams(searchParams);
+    next.delete('roblox_linked');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, fetchProfile, setSearchParams]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -430,7 +438,6 @@ const Profile = () => {
             }}
             onDiscordMediaSynced={() => void fetchProfile()}
             onProVerified={() => void fetchProfile()}
-            onRobloxLinked={() => void fetchProfile()}
           />
         ) : (
           <>

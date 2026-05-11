@@ -22,7 +22,6 @@ import {
   Globe,
   Gem,
   Gamepad2,
-  ExternalLink,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -76,12 +75,13 @@ import {
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
-import { invokeVerifyRobloxAccountLink } from '@/lib/callVerifyRobloxAccountLink';
+import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
-import { ROBLOX_ACCOUNT_LINK_ITEM_URL } from '@/lib/robloxAccountLink';
 import { robloxWebProfileUrl } from '@/lib/robloxProfileUrl';
+import { profileEditorPath } from '@/lib/profilePath';
+import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
 
-/** Social URL fields in the editor — Roblox uses inventory verification instead of a pasted link. */
+/** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
 const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
 
 function buildSocialDraft(social: unknown): Record<ProfileSocialKey, string> {
@@ -156,8 +156,6 @@ interface Props {
   onDiscordMediaSynced?: () => void;
   /** After Roblox Pro verification succeeds. */
   onProVerified?: () => void;
-  /** After Roblox account link verification succeeds (non-Pro inventory flow). */
-  onRobloxLinked?: () => void;
 }
 
 const profileSchema = z.object({
@@ -277,7 +275,6 @@ const ProfileEditor = ({
   onConsumedAddDeepLink,
   onDiscordMediaSynced,
   onProVerified,
-  onRobloxLinked,
 }: Props) => {
   const [form, setForm] = useState({
     display_name: profile.display_name || '',
@@ -313,8 +310,7 @@ const ProfileEditor = ({
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
   const [robloxVerifyInput, setRobloxVerifyInput] = useState('');
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
-  const [robloxLinkUsername, setRobloxLinkUsername] = useState('');
-  const [robloxLinkBusy, setRobloxLinkBusy] = useState(false);
+  const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
 
   useEffect(() => {
     setSocialDraft(buildSocialDraft(profile.social_links));
@@ -408,23 +404,18 @@ const ProfileEditor = ({
     }
   };
 
-  const handleVerifyRobloxAccountLink = async () => {
-    if (robloxLinkUsername.trim().length < 3) {
-      toast.error('Enter your Roblox username (3+ characters).');
-      return;
-    }
-    setRobloxLinkBusy(true);
+  const handleStartRobloxOAuth = async () => {
+    setRobloxOAuthBusy(true);
     try {
-      const r = await invokeVerifyRobloxAccountLink({ roblox_username: robloxLinkUsername.trim() });
+      const r = await invokeRobloxOAuthStart();
       if (!r.ok) {
         toast.error(r.error);
         return;
       }
-      toast.success('Roblox profile linked.');
-      setRobloxLinkUsername('');
-      onRobloxLinked?.();
+      sessionStorage.setItem(ROBLOX_OAUTH_RETURN_PATH_KEY, profileEditorPath(profile));
+      window.location.assign(r.url);
     } finally {
-      setRobloxLinkBusy(false);
+      setRobloxOAuthBusy(false);
     }
   };
 
@@ -750,7 +741,7 @@ const ProfileEditor = ({
 
             <EditorSection
               title="Platform links"
-              description="Optional profile buttons with hover tooltips — paste a profile or channel URL. Roblox is linked separately below (inventory check), not as a URL here."
+              description="Optional profile buttons with hover tooltips — paste a profile or channel URL. Roblox is linked separately below via official Roblox sign-in, not as a URL here."
               icon={Globe}
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -775,7 +766,7 @@ const ProfileEditor = ({
 
             <EditorSection
               title="Roblox profile"
-              description="Same kind of check as Directory Pro: we ask Roblox whether your account owns a small free catalog item the site publishes for linking. Your inventory must be visible to Everyone in Roblox privacy settings."
+              description="You are sent to Roblox to approve access (official OAuth). We only read your Roblox user id to show the profile link — no inventory checks and no purchases required for linking."
               icon={Gamepad2}
             >
               {profile.roblox_user_id ? (
@@ -801,59 +792,34 @@ const ProfileEditor = ({
                     </p>
                   ) : null}
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    To change the linked account, verify again with the other Roblox username (you must own the link
-                    item on that account). Buying Pro also links Roblox from the Pro section.
+                    Use the button below to sign in with a different Roblox account and replace this link. Buying
+                    Directory Pro still uses the separate Roblox purchase check in the Pro section.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
-                    <Input
-                      value={robloxLinkUsername}
-                      onChange={(e) => setRobloxLinkUsername(e.target.value)}
-                      placeholder="New Roblox username"
-                      maxLength={64}
-                      className={editorInput}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-11 rounded-xl shrink-0 border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
-                      disabled={robloxLinkBusy || robloxLinkUsername.trim().length < 3}
-                      onClick={() => void handleVerifyRobloxAccountLink()}
-                    >
-                      {robloxLinkBusy ? 'Checking…' : 'Re-verify / switch'}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
+                    disabled={robloxOAuthBusy}
+                    onClick={() => void handleStartRobloxOAuth()}
+                  >
+                    {robloxOAuthBusy ? 'Opening Roblox…' : 'Connect a different Roblox account'}
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Claim the free Roblox item for this directory (if the site owner published one), set inventory
-                    privacy to Everyone, then enter the Roblox username that owns the item.
+                    Click below to open Roblox and approve the link. When you return here, your Roblox profile button
+                    will use the account you signed in with.
                   </p>
-                  {ROBLOX_ACCOUNT_LINK_ITEM_URL ? (
-                    <Button asChild type="button" size="sm" variant="outline" className="rounded-xl">
-                      <a href={ROBLOX_ACCOUNT_LINK_ITEM_URL} target="_blank" rel="noopener noreferrer">
-                        Open Roblox item <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                      </a>
-                    </Button>
-                  ) : null}
-                  <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
-                    <Input
-                      value={robloxLinkUsername}
-                      onChange={(e) => setRobloxLinkUsername(e.target.value)}
-                      placeholder="Roblox username"
-                      maxLength={64}
-                      className={editorInput}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-11 rounded-xl shrink-0 border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
-                      disabled={robloxLinkBusy || robloxLinkUsername.trim().length < 3}
-                      onClick={() => void handleVerifyRobloxAccountLink()}
-                    >
-                      {robloxLinkBusy ? 'Checking…' : 'Verify with Roblox'}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 rounded-xl border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
+                    disabled={robloxOAuthBusy}
+                    onClick={() => void handleStartRobloxOAuth()}
+                  >
+                    {robloxOAuthBusy ? 'Opening Roblox…' : 'Continue with Roblox'}
+                  </Button>
                 </div>
               )}
             </EditorSection>

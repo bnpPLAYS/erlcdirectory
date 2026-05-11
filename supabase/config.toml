@@ -24,5 +24,8 @@ verify_jwt = true
 [functions.verify-roblox-pro]
 verify_jwt = false
 
-[functions.verify-roblox-account-link]
+[functions.roblox-oauth-start]
+verify_jwt = false
+
+[functions.roblox-oauth-complete]
 verify_jwt = false

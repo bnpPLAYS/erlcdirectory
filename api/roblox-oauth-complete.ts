@@ -1,6 +1,5 @@
 export const config = { runtime: 'edge' };
 
-/** Proxies to Supabase Edge Function verify-roblox-account-link. */
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
@@ -35,7 +34,7 @@ export default async function handler(request: Request): Promise<Response> {
   const forwardAuth =
     incomingAuth?.startsWith('Bearer ') && incomingAuth.length > 24 ? incomingAuth : `Bearer ${anonKey}`;
 
-  const target = `${supabaseUrl}/functions/v1/verify-roblox-account-link`;
+  const target = `${supabaseUrl}/functions/v1/roblox-oauth-complete`;
   const res = await fetch(target, {
     method: 'POST',
     headers: {

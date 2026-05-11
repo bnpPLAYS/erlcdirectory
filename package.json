@@ -16,7 +16,8 @@
     "deploy:function:servers-enrich-metadata": "supabase functions deploy servers-enrich-metadata",
     "deploy:function:discord-profile-media": "supabase functions deploy discord-profile-media",
     "deploy:function:verify-roblox-pro": "supabase functions deploy verify-roblox-pro",
-    "deploy:function:verify-roblox-account-link": "supabase functions deploy verify-roblox-account-link"
+    "deploy:function:roblox-oauth-start": "supabase functions deploy roblox-oauth-start",
+    "deploy:function:roblox-oauth-complete": "supabase functions deploy roblox-oauth-complete"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
