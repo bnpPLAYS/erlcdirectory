@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.discord-profile-media]
 verify_jwt = true
+
+[functions.verify-roblox-pro]
+verify_jwt = false
