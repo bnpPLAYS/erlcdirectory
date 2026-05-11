@@ -115,10 +115,23 @@ const Servers = () => {
     if (enrichOnceRef.current) return;
     enrichOnceRef.current = true;
     void (async () => {
-      const { error } = await supabase.functions.invoke('servers-enrich-metadata', {
+      const { data, error } = await supabase.functions.invoke('servers-enrich-metadata', {
         body: { mode: 'missing' },
       });
-      if (!error) await fetchServers({ silent: true });
+      if (error) {
+        console.warn('[servers] servers-enrich-metadata failed:', error.message, data);
+        enrichOnceRef.current = false;
+        return;
+      }
+      if (
+        data &&
+        typeof data === 'object' &&
+        Array.isArray((data as { errors?: unknown }).errors) &&
+        ((data as { errors: string[] }).errors?.length ?? 0) > 0
+      ) {
+        console.warn('[servers] servers-enrich-metadata partial errors:', (data as { errors: string[] }).errors);
+      }
+      await fetchServers({ silent: true });
     })();
   }, [fetchServers]);
 

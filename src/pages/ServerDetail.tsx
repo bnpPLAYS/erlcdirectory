@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useEffect, useState, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -94,14 +94,12 @@ const ServerDetail = () => {
   const [loading, setLoading] = useState(true);
   const [inviteEnrichBusy, setInviteEnrichBusy] = useState(false);
   const [inviteRetryTick, setInviteRetryTick] = useState(0);
-  const detailBannerRefreshRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     setServer(null);
     setCoworkers([]);
     setLoading(true);
     setInviteRetryTick(0);
-    detailBannerRefreshRef.current = null;
   }, [id]);
 
   useEffect(() => {
@@ -109,21 +107,35 @@ const ServerDetail = () => {
       setInviteEnrichBusy(false);
       return;
     }
-    const refreshKey = `${server.id}:${user?.id ?? 'anon'}:${inviteRetryTick}`;
-    if (detailBannerRefreshRef.current === refreshKey) {
-      setInviteEnrichBusy(false);
-      return;
-    }
-    detailBannerRefreshRef.current = refreshKey;
     let cancelled = false;
     setInviteEnrichBusy(true);
     void (async () => {
       try {
         // Uses caller JWT when logged in so Discord OAuth (guilds scope) can resolve vanity invites for members.
-        await supabase.functions.invoke('servers-enrich-metadata', {
+        const { data: enrichData, error: enrichErr } = await supabase.functions.invoke('servers-enrich-metadata', {
           body: { guild_ids: [server.guild_id], refresh_visuals: true },
         });
         if (cancelled) return;
+        if (enrichErr) {
+          const fromBody =
+            enrichData &&
+            typeof enrichData === 'object' &&
+            'error' in enrichData &&
+            typeof (enrichData as { error?: unknown }).error === 'string'
+              ? String((enrichData as { error: string }).error).trim()
+              : '';
+          toast.error(fromBody || enrichErr.message || 'Could not refresh Discord invite.');
+          return;
+        }
+        if (
+          enrichData &&
+          typeof enrichData === 'object' &&
+          Array.isArray((enrichData as { errors?: unknown }).errors) &&
+          ((enrichData as { errors: string[] }).errors?.length ?? 0) > 0
+        ) {
+          const first = (enrichData as { errors: string[] }).errors[0];
+          if (first) toast.warning(first);
+        }
         const { data: s } = await supabase.from('servers').select('*').eq('id', server.id).maybeSingle();
         if (s && !cancelled) setServer(s as ServerRow);
       } finally {
@@ -305,10 +317,7 @@ const ServerDetail = () => {
                         type="button"
                         variant="secondary"
                         className="gap-2 w-full sm:w-auto"
-                        onClick={() => {
-                          detailBannerRefreshRef.current = null;
-                          setInviteRetryTick((t) => t + 1);
-                        }}
+                        onClick={() => setInviteRetryTick((t) => t + 1)}
                       >
                         <RefreshCw className="h-4 w-4" /> Find join link
                       </Button>
