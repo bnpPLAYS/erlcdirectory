@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import {
+  friendlyDiscordOAuthError,
   getSupabaseDiscordCallbackUrl,
   isDiscordTokenExchangeFailure,
   parseOAuthErrorDescription,
@@ -88,7 +89,8 @@ const DiscordCallback = () => {
       const { code, state, oauthError, oauthErrorDesc } = readOAuthParams();
 
       if (oauthError) {
-        const detail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : oauthError;
+        const rawDetail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : oauthError;
+        const detail = friendlyDiscordOAuthError(rawDetail);
         if (!cancelled) {
           setStatus('error');
           setShowExchangeHelp(isDiscordTokenExchangeFailure(detail));
@@ -145,7 +147,7 @@ const DiscordCallback = () => {
           }
           if (!cancelled) {
             setStatus('error');
-            const em = exchangeError.message || '';
+            const em = friendlyDiscordOAuthError(exchangeError.message || '');
             setShowExchangeHelp(isDiscordTokenExchangeFailure(em));
             setMessage(
               em.includes('code verifier')
