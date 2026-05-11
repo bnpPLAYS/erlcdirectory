@@ -113,7 +113,7 @@ const Auth = () => {
 
               <div className="mt-8 pt-6 border-t border-white/10 w-full">
                 <p className="text-xs text-muted-foreground">
-                  We only access your Discord username, avatar, email, and server list. We never post on your behalf.
+                  We only access your Discord username, avatar, and server list. We never post on your behalf.
                 </p>
               </div>
             </div>
