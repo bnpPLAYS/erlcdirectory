@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  friendlyDiscordOAuthError,
+  getPublicDiscordSignInMessage,
   getSupabaseDiscordCallbackUrl,
   isDiscordTokenExchangeFailure,
   parseOAuthErrorDescription,
@@ -89,15 +89,17 @@ const DiscordCallback = () => {
       const { code, state, oauthError, oauthErrorDesc } = readOAuthParams();
 
       if (oauthError) {
-        const rawDetail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : oauthError;
-        const detail = friendlyDiscordOAuthError(rawDetail);
+        const rawDetail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : '';
+        console.warn('[Discord OAuth]', { code: oauthError, description: rawDetail });
         if (!cancelled) {
           setStatus('error');
-          setShowExchangeHelp(isDiscordTokenExchangeFailure(detail));
+          setShowExchangeHelp(isDiscordTokenExchangeFailure(rawDetail));
           setMessage(
-            detail
-              ? `Could not complete sign-in (${oauthError}). ${detail}`
-              : `Could not complete sign-in (${oauthError}).`,
+            getPublicDiscordSignInMessage({
+              oauthErrorCode: oauthError,
+              rawDescription: rawDetail || oauthError,
+              source: 'redirect',
+            }),
           );
         }
         stripOAuthParamsFromUrl();
@@ -147,12 +149,15 @@ const DiscordCallback = () => {
           }
           if (!cancelled) {
             setStatus('error');
-            const em = friendlyDiscordOAuthError(exchangeError.message || '');
-            setShowExchangeHelp(isDiscordTokenExchangeFailure(em));
+            const raw = exchangeError.message || '';
+            console.warn('[Discord OAuth exchange]', raw);
+            setShowExchangeHelp(isDiscordTokenExchangeFailure(raw));
             setMessage(
-              em.includes('code verifier')
-                ? 'Sign-in session expired or started on a different device. Try signing in again from the Auth page.'
-                : em || 'Could not complete Discord sign-in.',
+              getPublicDiscordSignInMessage({
+                oauthErrorCode: null,
+                rawDescription: raw,
+                source: 'exchange',
+              }),
             );
           }
           subscription.unsubscribe();
@@ -172,9 +177,7 @@ const DiscordCallback = () => {
 
       if (!finished && !cancelled) {
         setStatus('error');
-        setMessage(
-          'No authorization returned from Discord. Confirm redirect URL matches Supabase and Discord settings, then try again.',
-        );
+        setMessage("Sign-in didn't complete. Go back and use Sign in again.");
       }
 
       subscription.unsubscribe();

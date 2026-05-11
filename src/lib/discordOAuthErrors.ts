@@ -17,16 +17,44 @@ export function parseOAuthErrorDescription(raw: string | null): string {
   }
 }
 
-/** Turn cryptic GoTrue messages into something actionable when possible. */
-export function friendlyDiscordOAuthError(detail: string): string {
-  const d = detail.toLowerCase();
-  if (d.includes('error getting user email from external provider')) {
-    return [
-      detail.trim(),
-      'Discord did not provide an email (you may need the email OAuth scope, or your Discord account must have an email on file).',
-    ].join(' ');
+export type DiscordOAuthFailureSource = 'redirect' | 'exchange';
+
+/**
+ * Short, user-facing copy only — raw provider errors are logged in DiscordCallback.
+ */
+export function getPublicDiscordSignInMessage(params: {
+  oauthErrorCode: string | null;
+  rawDescription: string;
+  source: DiscordOAuthFailureSource;
+}): string {
+  const raw = params.rawDescription.trim();
+  const d = raw.toLowerCase();
+
+  if (params.source === 'exchange' && d.includes('code verifier')) {
+    return 'This sign-in step expired. Close this tab and sign in again from the site.';
   }
-  return detail;
+
+  if (
+    d.includes('error getting user email') ||
+    d.includes('email from external provider') ||
+    d.includes('unable to get email')
+  ) {
+    return 'Use a Discord account that has an email saved and verified in Discord settings, then try again.';
+  }
+
+  if (params.oauthErrorCode === 'access_denied' || d === 'access_denied' || d.includes('access denied')) {
+    return 'Sign-in was cancelled.';
+  }
+
+  if (isDiscordTokenExchangeFailure(raw)) {
+    return "We couldn't finish connecting to Discord. Try again in a moment.";
+  }
+
+  if (params.oauthErrorCode === 'server_error' || d.includes('server_error')) {
+    return "Sign-in didn't finish. Please try again.";
+  }
+
+  return "Sign-in didn't complete. Please try again.";
 }
 
 /** Messages Supabase returns when Discord client secret / redirect URIs are misconfigured. */
