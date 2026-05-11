@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'discord',
       options: {
         redirectTo: getDiscordRedirectUri(),
-        scopes: 'identify email guilds',
+        scopes: 'identify guilds',
       },
     });
     if (error) {

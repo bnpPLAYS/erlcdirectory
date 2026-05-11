@@ -25,7 +25,7 @@ const Privacy = () => (
           <h2 className="text-lg font-semibold text-foreground mb-2">2. Information we collect</h2>
           <ul className="list-disc pl-5 space-y-1 mt-2">
             <li>
-              <strong className="text-foreground">Discord OAuth:</strong> username, numeric Discord ID, avatar URL, email (when provided by Discord), and server list scope used for features such as listing verified servers.
+              <strong className="text-foreground">Discord OAuth:</strong> username, numeric Discord ID, avatar URL, and server list scope used for features such as listing verified servers.
             </li>
             <li>
               <strong className="text-foreground">Profile content:</strong> fields you fill out such as bio, roles, skills, banners, and links you submit.
