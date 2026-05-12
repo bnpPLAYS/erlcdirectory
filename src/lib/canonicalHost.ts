@@ -12,6 +12,37 @@ export function getCanonicalSiteBaseUrl(): string {
   return 'https://www.erlc.directory';
 }
 
+/**
+ * If Supabase OAuth returns PKCE `code`+`state` on the wrong path (e.g. `/` when redirect URL
+ * is misconfigured), rewrite to `/discord/callback` so `DiscordCallback` can run `exchangeCodeForSession`.
+ * Call synchronously in main.tsx before React boot.
+ */
+export function normalizeOAuthCallbackPath(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  let search = url.search;
+  let hash = url.hash;
+
+  if ((!url.searchParams.get('code') || !url.searchParams.get('state')) && url.hash.length > 1) {
+    const hp = new URLSearchParams(url.hash.slice(1));
+    const codeH = hp.get('code');
+    const stateH = hp.get('state');
+    if (codeH && stateH) {
+      search = `?${hp.toString()}`;
+      hash = '';
+    }
+  }
+
+  const sp = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  if (!sp.get('code') || !sp.get('state')) return;
+  if (url.pathname === '/discord/callback' || url.pathname.endsWith('/discord/callback')) return;
+
+  url.pathname = '/discord/callback';
+  url.search = search.startsWith('?') ? search : `?${search}`;
+  url.hash = hash;
+  window.location.replace(url.toString());
+}
+
 /** Full URL to send the browser to, or null if the current host is already correct. */
 export function getCanonicalRedirectUrl(): string | null {
   if (typeof window === 'undefined') return null;
