@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import {
   getCanonicalRedirectUrl,
+  normalizeOAuthCallbackPath,
   shouldDeferCanonicalRedirectForOAuthCallback,
 } from '@/lib/canonicalHost';
 
@@ -9,6 +10,9 @@ const rootEl = document.getElementById('root');
 if (!rootEl) {
   throw new Error('Missing #root element');
 }
+
+/** PKCE must hit /discord/callback so we exchange the code (not the home route). */
+normalizeOAuthCallbackPath();
 
 const redirectTo = shouldDeferCanonicalRedirectForOAuthCallback()
   ? null

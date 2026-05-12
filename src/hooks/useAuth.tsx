@@ -162,7 +162,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(({ data: { session: initial } }) => {
+    async function consumeAuthUrlFragment(): Promise<void> {
+      if (typeof window === 'undefined') return;
+      const raw = window.location.hash?.slice(1) ?? '';
+      if (!raw.includes('access_token=') || !raw.includes('refresh_token=')) return;
+      const p = new URLSearchParams(raw);
+      const access_token = p.get('access_token');
+      const refresh_token = p.get('refresh_token');
+      if (!access_token || !refresh_token) return;
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) {
+        console.warn('[auth] Supabase fragment session:', error.message);
+        return;
+      }
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+
+    void (async () => {
+      await consumeAuthUrlFragment();
+      if (cancelled) {
+        subscription.unsubscribe();
+        return;
+      }
+      const {
+        data: { session: initial },
+      } = await supabase.auth.getSession();
       if (cancelled) return;
       setSession(initial);
       setUser(initial?.user ?? null);
@@ -174,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchProfile(initial.user.id);
         })();
       }
-    });
+    })();
 
     return () => {
       cancelled = true;
