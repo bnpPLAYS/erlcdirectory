@@ -11,6 +11,7 @@ import {
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
+import { isCanarySiteHost } from '@/lib/canaryHost';
 import { buildDiscordNativeSignInUrl } from '@/lib/discordOAuth';
 import { toast } from 'sonner';
 import {
@@ -247,7 +248,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       const here = window.location.origin.replace(/\/+$/, '');
       const canonical = getCanonicalSiteBaseUrl();
-      if (here !== canonical) {
+      /** Preview hosts still OAuth via www; canary is its own deployment and must stay on canary. */
+      if (here !== canonical && !isCanarySiteHost()) {
         const next = encodeURIComponent(
           `${window.location.pathname}${window.location.search}${window.location.hash}`,
         );
