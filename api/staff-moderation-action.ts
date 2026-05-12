@@ -2,11 +2,23 @@ export const config = { runtime: 'edge' };
 
 import { createClient } from '@supabase/supabase-js';
 
-/** Must match `is_site_owner()` / `isSiteOwnerDiscordUsername` in the app. */
 function isSiteOwnerDiscordUsername(username: string | null | undefined): boolean {
   if (username == null || typeof username !== 'string') return false;
   const normalized = username.trim().toLowerCase().replace(/\.+$/u, '');
   return normalized === 'pixelnovaa';
+}
+
+function auditReasonAtLeast10(
+  primary: string | null | undefined,
+  fallback: string | null | undefined,
+  tail: string,
+): string {
+  const a = (primary ?? '').trim();
+  const b = (fallback ?? '').trim();
+  const base =
+    a.length >= 10 ? a : a.length > 0 ? `${a} — ${tail}` : b.length >= 10 ? b : b.length > 0 ? `${b} — ${tail}` : tail;
+  const out = base.trim().slice(0, 2000);
+  return out.length >= 10 ? out : `${out} (record)`.slice(0, 2000);
 }
 
 function json(status: number, body: Record<string, unknown>) {
@@ -21,17 +33,24 @@ const UUID_RE =
 
 type Action = 'delete_message' | 'delete_review' | 'remove_server' | 'warn' | 'ban';
 
-async function assertStaff(
+type StaffActor =
+  | { ok: true; staffProfileId: string; isSiteOwner: boolean }
+  | { ok: false; error: string };
+
+async function getStaffActor(
   admin: ReturnType<typeof createClient>,
   userId: string,
-): Promise<{ ok: true; staffProfileId: string } | { ok: false; error: string }> {
+): Promise<StaffActor> {
   const { data: actor, error } = await admin
     .from('profiles')
     .select('id, discord_username')
     .eq('user_id', userId)
     .maybeSingle();
   if (error || !actor?.id) return { ok: false, error: 'Staff profile not found.' };
-  if (isSiteOwnerDiscordUsername(actor.discord_username)) return { ok: true, staffProfileId: actor.id };
+  const du = (actor.discord_username as string | null) ?? null;
+  if (isSiteOwnerDiscordUsername(du)) {
+    return { ok: true, staffProfileId: actor.id as string, isSiteOwner: true };
+  }
   const { data: role } = await admin
     .from('user_roles')
     .select('id')
@@ -39,7 +58,58 @@ async function assertStaff(
     .eq('role', 'admin')
     .maybeSingle();
   if (!role) return { ok: false, error: 'Not authorized.' };
-  return { ok: true, staffProfileId: actor.id };
+  return { ok: true, staffProfileId: actor.id as string, isSiteOwner: false };
+}
+
+async function insertAudit(
+  admin: ReturnType<typeof createClient>,
+  row: {
+    actor_profile_id: string | null;
+    actor_user_id: string;
+    action: string;
+    reason: string;
+    target_profile_id?: string | null;
+    target_server_id?: string | null;
+    report_id?: string | null;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await admin.from('staff_audit_logs').insert({
+    actor_profile_id: row.actor_profile_id,
+    actor_user_id: row.actor_user_id,
+    action: row.action,
+    reason: row.reason.trim().slice(0, 2000),
+    target_profile_id: row.target_profile_id ?? null,
+    target_server_id: row.target_server_id ?? null,
+    report_id: row.report_id ?? null,
+    metadata: row.metadata ?? {},
+  } as never);
+  if (error) return { ok: false, error: error.message || 'Audit log failed.' };
+  return { ok: true };
+}
+
+async function assertBanRateOk(
+  admin: ReturnType<typeof createClient>,
+  actorUserId: string,
+  isSiteOwner: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isSiteOwner) return { ok: true };
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count, error } = await admin
+    .from('staff_audit_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('actor_user_id', actorUserId)
+    .in('action', ['ban_member', 'remove_profile'])
+    .gte('created_at', since);
+  if (error) return { ok: false, error: error.message || 'Rate check failed.' };
+  if ((count ?? 0) >= 2) {
+    return {
+      ok: false,
+      error:
+        'You can perform at most two member bans or profile removals combined per hour. Try again later or ask the site owner.',
+    };
+  }
+  return { ok: true };
 }
 
 async function subjectProfileIdForReport(
@@ -94,6 +164,7 @@ export default async function handler(request: Request): Promise<Response> {
     action?: string;
     warn_body?: string;
     staff_notes?: string;
+    reason?: string;
   };
   try {
     body = await request.json();
@@ -105,6 +176,7 @@ export default async function handler(request: Request): Promise<Response> {
   const action = (body.action ?? '').toString().trim() as Action;
   const warnBody = (body.warn_body ?? '').toString().trim();
   const staffNotes = (body.staff_notes ?? '').toString().trim().slice(0, 2000) || null;
+  const extraReason = (body.reason ?? '').toString().trim();
 
   const allowed: Action[] = ['delete_message', 'delete_review', 'remove_server', 'warn', 'ban'];
   if (!UUID_RE.test(reportId) || !allowed.includes(action)) {
@@ -125,12 +197,12 @@ export default async function handler(request: Request): Promise<Response> {
   if (userErr || !user) return json(401, { ok: false, error: 'Invalid session' });
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const staff = await assertStaff(admin, user.id);
+  const staff = await getStaffActor(admin, user.id);
   if (!staff.ok) return json(403, { ok: false, error: staff.error });
 
   const { data: report, error: repErr } = await admin
     .from('moderation_reports')
-    .select('id, kind, status, message_id, review_id, server_id')
+    .select('id, kind, status, message_id, review_id, server_id, reason')
     .eq('id', reportId)
     .maybeSingle();
 
@@ -141,28 +213,58 @@ export default async function handler(request: Request): Promise<Response> {
     return json(400, { ok: false, error: 'Report is already closed.' });
   }
 
+  const reportReason = (report.reason as string | null) ?? null;
+
+  if (!staff.isSiteOwner && action === 'ban' && extraReason.length < 10) {
+    return json(400, {
+      ok: false,
+      error: 'Provide reason (at least 10 characters) when banning from a report.',
+    });
+  }
+  if (!staff.isSiteOwner && action === 'remove_server' && extraReason.length < 10) {
+    return json(400, {
+      ok: false,
+      error: 'Provide reason (at least 10 characters) when removing a server from a report.',
+    });
+  }
+
   const subjectId = await subjectProfileIdForReport(admin, report);
+
+  let auditAction = '';
+  let auditReason = '';
+  const targetProfile: string | null = subjectId;
+  const targetServer: string | null = (report.server_id as string | null) ?? null;
 
   try {
     if (action === 'delete_message') {
+      auditAction = 'mod_delete_message';
+      auditReason = auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Message report');
       if (report.kind !== 'message' || !report.message_id) {
         return json(400, { ok: false, error: 'This report is not a message report.' });
       }
       const { error: delErr } = await admin.from('messages').delete().eq('id', report.message_id);
       if (delErr) return json(400, { ok: false, error: delErr.message });
     } else if (action === 'delete_review') {
+      auditAction = 'mod_delete_review';
+      auditReason = auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Review report');
       if (report.kind !== 'review' || !report.review_id) {
         return json(400, { ok: false, error: 'This report is not a review report.' });
       }
       const { error: delErr } = await admin.from('reviews').delete().eq('id', report.review_id);
       if (delErr) return json(400, { ok: false, error: delErr.message });
     } else if (action === 'remove_server') {
+      auditAction = 'mod_remove_server';
+      auditReason = staff.isSiteOwner
+        ? auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Server report')
+        : extraReason.slice(0, 2000);
       if (report.kind !== 'server' || !report.server_id) {
         return json(400, { ok: false, error: 'This report is not a server report.' });
       }
       const { error: delErr } = await admin.from('servers').delete().eq('id', report.server_id);
       if (delErr) return json(400, { ok: false, error: delErr.message });
     } else if (action === 'warn') {
+      auditAction = 'mod_warn';
+      auditReason = auditReasonAtLeast10(warnBody, staffNotes, reportReason ?? 'Warning issued');
       if (!subjectId) {
         return json(400, { ok: false, error: 'No member linked to this report (nothing to warn).' });
       }
@@ -173,20 +275,29 @@ export default async function handler(request: Request): Promise<Response> {
       } as never);
       if (wErr) return json(400, { ok: false, error: wErr.message });
     } else if (action === 'ban') {
+      auditAction = 'ban_member';
+      auditReason = staff.isSiteOwner
+        ? auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Ban from report')
+        : extraReason.slice(0, 2000);
       if (!subjectId) {
         return json(400, { ok: false, error: 'No member linked to this report (nothing to ban).' });
       }
       const { data: sub, error: subErr } = await admin
         .from('profiles')
-        .select('user_id')
+        .select('user_id, discord_username')
         .eq('id', subjectId)
         .maybeSingle();
       if (subErr || !sub?.user_id) {
         return json(400, { ok: false, error: 'Subject has no login account to ban.' });
       }
+      if (isSiteOwnerDiscordUsername(sub.discord_username as string | null)) {
+        return json(403, { ok: false, error: 'Cannot ban the site owner account.' });
+      }
       if (sub.user_id === user.id) {
         return json(400, { ok: false, error: 'You cannot ban your own account.' });
       }
+      const rate = await assertBanRateOk(admin, user.id, staff.isSiteOwner);
+      if (!rate.ok) return json(429, { ok: false, error: rate.error });
       const bannedAt = new Date().toISOString();
       const { error: banErr } = await admin.auth.admin.updateUserById(sub.user_id, {
         ban_duration: '876000h',
@@ -206,6 +317,18 @@ export default async function handler(request: Request): Promise<Response> {
     const msg = e instanceof Error ? e.message : 'Action failed';
     return json(500, { ok: false, error: msg });
   }
+
+  const log = await insertAudit(admin, {
+    actor_profile_id: staff.staffProfileId,
+    actor_user_id: user.id,
+    action: auditAction,
+    reason: auditReason,
+    target_profile_id: targetProfile,
+    target_server_id: action === 'remove_server' ? targetServer : null,
+    report_id: reportId,
+    metadata: { moderation_action: action },
+  });
+  if (!log.ok) return json(400, { ok: false, error: log.error });
 
   const { error: upErr } = await admin
     .from('moderation_reports')
