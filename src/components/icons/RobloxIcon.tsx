@@ -1,28 +1,38 @@
+import { useId } from 'react';
 import { cn } from '@/lib/utils';
 
 type Props = {
   className?: string;
-  /** When true, the inner square is filled solid (looks correct on dark/light backgrounds). */
+  /** Optional accessible name (also sets `aria-hidden` off when set). */
   title?: string;
 };
 
 /**
- * Official Roblox brand mark (tilted square with offset square cut-out).
- * Uses the canonical SimpleIcons SVG path so it matches Roblox's marketing usage.
+ * Roblox “tilt” mark: outer square rotated counter‑clockwise with a square cutout,
+ * drawn with `currentColor` so it reads as white on dark UI and matches site branding.
  */
 export function RobloxIcon({ className, title }: Props) {
+  const maskId = `roblox-tilt-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
   return (
     <svg
       role="img"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn('h-4 w-4', className)}
-      fill="currentColor"
+      className={cn('h-4 w-4 shrink-0', className)}
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
       {title ? <title>{title}</title> : null}
-      <path d="M5.164 15.096 2.188 3.657a1.38 1.38 0 0 1 1.013-1.67L20.31.043a1.38 1.38 0 0 1 1.648 1.036l2.978 11.44a1.38 1.38 0 0 1-1.014 1.67l-17.11 2.945a1.38 1.38 0 0 1-1.648-1.036zm6.06-2.266 3.303-.567-1.04-3.993-3.303.567 1.04 3.993z" />
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse">
+          <g transform="rotate(-12 12 12)">
+            <rect x="3" y="3" width="18" height="18" fill="white" />
+            <rect x="8.35" y="8.35" width="7.3" height="7.3" fill="black" />
+          </g>
+        </mask>
+      </defs>
+      <rect width="24" height="24" fill="currentColor" mask={`url(#${maskId})`} />
     </svg>
   );
 }
