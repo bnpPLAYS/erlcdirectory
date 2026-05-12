@@ -39,7 +39,7 @@ export function getPublicDiscordSignInMessage(params: {
     d.includes('email from external provider') ||
     d.includes('unable to get email')
   ) {
-    return 'Use a Discord account that has an email saved and verified in Discord settings, then try again.';
+    return "Sign-in didn't finish. Close this tab and use Sign in again from the site.";
   }
 
   if (params.oauthErrorCode === 'access_denied' || d === 'access_denied' || d.includes('access denied')) {
