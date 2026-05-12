@@ -365,6 +365,7 @@ export type Database = {
           is_open: boolean | null
           requirements: string[] | null
           require_guild_membership: boolean
+          require_roblox_verified: boolean
           server_id: string | null
           status: string
           title: string
@@ -382,6 +383,7 @@ export type Database = {
           is_open?: boolean | null
           requirements?: string[] | null
           require_guild_membership?: boolean
+          require_roblox_verified?: boolean
           server_id?: string | null
           status?: string
           title: string
@@ -399,6 +401,7 @@ export type Database = {
           is_open?: boolean | null
           requirements?: string[] | null
           require_guild_membership?: boolean
+          require_roblox_verified?: boolean
           server_id?: string | null
           status?: string
           title?: string

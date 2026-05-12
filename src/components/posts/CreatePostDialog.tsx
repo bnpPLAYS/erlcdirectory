@@ -47,6 +47,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
   const [content, setContent] = useState('');
   const [applicationUrl, setApplicationUrl] = useState('');
   const [requireGuildMember, setRequireGuildMember] = useState(false);
+  const [requireRobloxVerified, setRequireRobloxVerified] = useState(false);
   const [extraRequirements, setExtraRequirements] = useState('');
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [guildSearch, setGuildSearch] = useState('');
@@ -63,6 +64,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     setType('hiring');
     setApplicationUrl('');
     setRequireGuildMember(false);
+    setRequireRobloxVerified(false);
     setExtraRequirements('');
     setSelectedGuild(null);
     setGuildSearch('');
@@ -177,6 +179,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       server_id: serverId,
       application_url: hiring ? applicationUrlClean : null,
       require_guild_membership: hiring && requireGuildMember,
+      require_roblox_verified: hiring && requireRobloxVerified,
       requirements: reqLines.length ? reqLines : null,
     });
     setSubmitting(false);
@@ -231,6 +234,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                       setType(t.value);
                       if (t.value !== 'hiring') {
                         setRequireGuildMember(false);
+                        setRequireRobloxVerified(false);
                         setApplicationUrl('');
                       }
                     }}
@@ -272,6 +276,22 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
                     </label>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       Uses your Discord login to verify membership before opening the application link.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="req-roblox"
+                    checked={requireRobloxVerified}
+                    onCheckedChange={(v) => setRequireRobloxVerified(!!v)}
+                  />
+                  <div>
+                    <label htmlFor="req-roblox" className="text-sm font-medium cursor-pointer">
+                      Require applicants to be Roblox verified
+                    </label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Applicants must complete &quot;Continue with Roblox&quot; in Edit profile (official OAuth) before
+                      the application link opens.
                     </p>
                   </div>
                 </div>
