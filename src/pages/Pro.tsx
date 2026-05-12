@@ -9,7 +9,6 @@ import {
   TrendingUp,
   BadgeCheck,
   Users,
-  LayoutPanelTop,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
@@ -26,8 +25,8 @@ import { pageHeroEnter } from '@/lib/pageHero';
 const perks = [
   {
     icon: Palette,
-    title: 'Extra customization',
-    body: 'Unlock additional accent palettes, a dedicated Pro panel in Customize, and quick navigation between preview, theme, and banner.',
+    title: 'Extra accent themes',
+    body: 'Unlock four Pro-only palettes (Aurora, Crimson, Midnight, Neon lime). Everyone can use the rest of Customize — preview, theme tuning, banner upload, URL paste, and Discord sync.',
   },
   {
     icon: TrendingUp,
@@ -43,11 +42,6 @@ const perks = [
     icon: Users,
     title: 'Stronger presence in browse',
     body: 'Your card stands out with Pro styling and better default ordering so more visitors see you first.',
-  },
-  {
-    icon: LayoutPanelTop,
-    title: 'Editor built for polish',
-    body: 'Sticky save, wide banner tools, and Discord sync live in one Customize workspace so you spend less time hunting controls.',
   },
   {
     icon: Shield,

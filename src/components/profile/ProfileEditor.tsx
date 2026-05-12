@@ -985,7 +985,7 @@ const ProfileEditor = ({
             <EditorSection
               sectionId="editor-customize-pro"
               title="Pro membership"
-              description="Your purchase is active. Manage your Pro badge and review everything included."
+              description="Your purchase is active. Pro adds palettes, directory ordering, and your badge — banner upload, Discord sync, sticky save, and Customize shortcuts are available to every member."
               icon={Gem}
             >
               <ul className="grid gap-2 sm:grid-cols-2 text-sm text-muted-foreground">
@@ -993,8 +993,6 @@ const ProfileEditor = ({
                   'Four exclusive accent palettes (Aurora, Crimson, Midnight, Neon lime)',
                   'Higher placement in the Member Directory after staff-featured profiles',
                   'Pro badge with optional short custom tagline',
-                  'Sticky save bar and quick Customize navigation',
-                  'Wide banner crop, URL paste, and Discord media sync',
                   'Supports moderation tooling and hosting for the directory',
                 ].map((t) => (
                   <li
