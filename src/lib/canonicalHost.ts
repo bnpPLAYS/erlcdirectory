@@ -20,6 +20,9 @@ export function getCanonicalRedirectUrl(): string | null {
   const host = window.location.hostname.toLowerCase();
   if (host === 'localhost' || host === '127.0.0.1') return null;
 
+  /** Canary is a separate deployment/host; do not bounce it to www. */
+  if (host === 'canary.erlc.directory') return null;
+
   const base = getCanonicalSiteBaseUrl();
   let canonicalHost: string;
   try {

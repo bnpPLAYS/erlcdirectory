@@ -33,6 +33,10 @@ export function getDiscordRedirectUri(): string {
       return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
     }
 
+    if (host === 'canary.erlc.directory') {
+      return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
+    }
+
     if (host.endsWith('.vercel.app')) {
       const origin = getPublicSiteOrigin();
       if (origin) return `${origin}/discord/callback`;

@@ -29,6 +29,7 @@ import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { RouteTransition } from "@/components/layout/RouteTransition";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
+import { CanaryGate } from "@/components/canary/CanaryGate";
 
 const FirstLoginTutorial = lazy(() =>
   import("@/components/onboarding/FirstLoginTutorial").then((m) => ({ default: m.FirstLoginTutorial })),
@@ -51,6 +52,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <CanaryGate>
           <ScrollToTop />
           <BetaBugReportLink />
           <Suspense fallback={null}>
@@ -82,6 +84,7 @@ const App = () => (
               </Routes>
             </RouteTransition>
           </AcceptTermsGate>
+          </CanaryGate>
         </BrowserRouter>
         <Analytics />
       </TooltipProvider>
