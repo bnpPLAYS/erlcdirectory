@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
 import { reportCategoryLabel } from '@/lib/reportCategories';
+import { callModerationFn } from '@/lib/callModerationFn';
 import {
   canaryStaffStart,
   canaryStaffStatus,
@@ -357,35 +358,13 @@ const Admin = () => {
     if (action === 'delete_review' && !confirm('Delete this review permanently?')) return;
     if (action === 'remove_server' && !confirm('Remove this server listing from the directory?')) return;
 
-    let res: Response;
-    try {
-      res = await fetch('/api/staff-moderation-action', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          report_id: row.id,
-          action,
-          warn_body: opts?.warn_body,
-        }),
-      });
-    } catch {
-      toast({ title: 'Network error', variant: 'destructive' });
-      return;
-    }
-    let data: { ok?: boolean; error?: string } = {};
-    try {
-      data = (await res.json()) as { ok?: boolean; error?: string };
-    } catch {
-      /* ignore */
-    }
-    if (!res.ok || !data.ok) {
-      toast({
-        title: data.error || `Request failed (${res.status})`,
-        variant: 'destructive',
-      });
+    const r = await callModerationFn('staff-moderation-action', {
+      report_id: row.id,
+      action,
+      warn_body: opts?.warn_body,
+    });
+    if (!r.ok) {
+      toast({ title: r.error, variant: 'destructive' });
       return;
     }
     toast({ title: 'Action completed' });

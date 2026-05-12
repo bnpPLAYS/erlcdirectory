@@ -11,7 +11,8 @@ import {
   isDiscordTokenExchangeFailure,
   parseOAuthErrorDescription,
 } from '@/lib/discordOAuthErrors';
-import { syncDiscordProfileFromSession } from '@/lib/syncDiscordProfile';
+import { getDiscordRedirectUri, isFreshDiscordSignInState } from '@/lib/discordOAuth';
+import { invokeDiscordOauthSignIn } from '@/lib/callDiscordOauthSignIn';
 
 function readOAuthParams() {
   const search = new URLSearchParams(window.location.search);
@@ -108,14 +109,43 @@ const DiscordCallback = () => {
 
       if (code && state) {
         try {
-          const decoded = JSON.parse(atob(state)) as { kind?: string; token?: string };
+          const decoded = JSON.parse(atob(state)) as { kind?: string; token?: string; ts?: number };
           if (decoded?.kind === 'verify' && decoded?.token) {
             const fwd = new URLSearchParams({ code, state });
             navigate(`/verify/${decoded.token}?${fwd.toString()}`, { replace: true });
             return;
           }
+          if (decoded?.kind === 'signin') {
+            if (!isFreshDiscordSignInState(decoded)) {
+              if (!cancelled) {
+                setStatus('error');
+                setShowExchangeHelp(false);
+                setMessage('This sign-in step expired. Close this tab and use Sign in again from the site.');
+              }
+              stripOAuthParamsFromUrl();
+              return;
+            }
+            const appRedirectTo = `${window.location.origin.replace(/\/+$/, '')}/`;
+            const signIn = await invokeDiscordOauthSignIn({
+              code,
+              redirectUri: getDiscordRedirectUri(),
+              appRedirectTo,
+            });
+            if (!signIn.ok) {
+              if (!cancelled) {
+                setStatus('error');
+                setShowExchangeHelp(false);
+                setMessage(signIn.error);
+              }
+              stripOAuthParamsFromUrl();
+              return;
+            }
+            stripOAuthParamsFromUrl();
+            window.location.assign(signIn.actionLink);
+            return;
+          }
         } catch {
-          /* Supabase PKCE sign-in */
+          /* Opaque OAuth state (not our JSON) */
         }
       }
 

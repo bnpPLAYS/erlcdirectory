@@ -11,7 +11,7 @@ import {
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
-import { getDiscordRedirectUri } from '@/lib/discordOAuth';
+import { buildDiscordNativeSignInUrl } from '@/lib/discordOAuth';
 import { toast } from 'sonner';
 import {
   pullDiscordProfileAfterOAuth,
@@ -231,17 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
     }
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'discord',
-      options: {
-        redirectTo: getDiscordRedirectUri(),
-        // Discord shows “access email”; Supabase Auth (GoTrue) still needs `email` to create/link accounts.
-        scopes: 'identify email guilds',
-      },
-    });
-    if (error) {
-      console.error(error);
-    }
+    window.location.assign(buildDiscordNativeSignInUrl());
   }, []);
 
   const signOut = useCallback(async () => {

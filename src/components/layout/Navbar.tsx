@@ -33,6 +33,7 @@ import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { NotificationsBell } from '@/components/layout/NotificationsBell';
 
 const NAV_FLOAT_TOP_PX = 12;
 const NAV_BAR_H_PX = 56;
@@ -135,17 +136,20 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {user && profile?.id && (
-              <button
-                id="tutorial-nav-add-experience"
-                type="button"
-                className="hidden md:inline-flex h-9 w-9 rounded-lg items-center justify-center border border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.13] transition-colors shadow-lg shadow-white/12"
-                aria-label="Add experience"
-                onClick={() =>
-                  navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }))
-                }
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+              <>
+                <button
+                  id="tutorial-nav-add-experience"
+                  type="button"
+                  className="hidden md:inline-flex h-9 w-9 rounded-lg items-center justify-center border border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.13] transition-colors shadow-lg shadow-white/12"
+                  aria-label="Add experience"
+                  onClick={() =>
+                    navigate(profileEditorPath(profile, { tab: 'experience', addExperience: true }))
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                <NotificationsBell />
+              </>
             )}
 
             <button

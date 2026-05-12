@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Users, MessageSquare, UserPlus, Search, Inbox, Send, Check, X, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,9 +38,24 @@ interface Connection extends Person {
   connected_at: string;
 }
 
+const VALID_TABS = ['connections', 'incoming', 'sent'] as const;
+type ConnectionsTab = (typeof VALID_TABS)[number];
+
+function readTabParam(value: string | null): ConnectionsTab {
+  return (VALID_TABS as readonly string[]).includes(value || '') ? (value as ConnectionsTab) : 'connections';
+}
+
 const Connections = () => {
   const { user, profile, loading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = readTabParam(searchParams.get('tab'));
+  const [activeTab, setActiveTab] = useState<ConnectionsTab>(initialTab);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const next = readTabParam(searchParams.get('tab'));
+    setActiveTab((cur) => (cur === next ? cur : next));
+  }, [searchParams]);
   const [fetching, setFetching] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [incoming, setIncoming] = useState<Request[]>([]);
@@ -208,7 +223,18 @@ const Connections = () => {
             </p>
           </div>
 
-          <Tabs defaultValue="connections" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => {
+              const next = readTabParam(v);
+              setActiveTab(next);
+              const sp = new URLSearchParams(searchParams);
+              if (next === 'connections') sp.delete('tab');
+              else sp.set('tab', next);
+              setSearchParams(sp, { replace: true });
+            }}
+            className="w-full"
+          >
             <TabsList className="glass mx-auto flex w-fit mb-6">
               <TabsTrigger value="connections" className="gap-2">
                 <Users className="h-4 w-4" />

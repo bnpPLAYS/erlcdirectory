@@ -14,6 +14,16 @@ const json = (body: unknown, status = 200) =>
 const safeName = (value: unknown) =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 
+/**
+ * Internal auth email (no inbox). Used when Discord does not return email (identify+guilds only),
+ * which matches directory sign-in and experience verification OAuth.
+ */
+function discordSyntheticEmail(discordId: string): string {
+  const id = String(discordId).replace(/[^\d]/g, '')
+  if (!id) return 'discord-unknown@users.noreply.erlc.directory'
+  return `discord.${id}@users.noreply.erlc.directory`
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -56,7 +66,16 @@ Deno.serve(async (req) => {
     })
     const discordUser = await userRes.json()
     if (!userRes.ok || !discordUser?.id) return json({ error: 'Could not read your Discord account.' }, 400)
-    if (!discordUser.email) return json({ error: 'Discord did not provide an email address for this account.' }, 400)
+
+    const avatarUrl = discordUser.avatar
+      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256`
+      : null
+    const bannerUrl = discordUser.banner
+      ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.${discordUser.banner.startsWith('a_') ? 'gif' : 'png'}?size=600`
+      : null
+    const expiresAt = new Date(Date.now() + Number(tokenData.expires_in ?? 0) * 1000).toISOString()
+    const displayName = safeName(discordUser.global_name) ?? safeName(discordUser.username) ?? 'Discord User'
+    const username = typeof discordUser.username === 'string' && discordUser.username.trim() ? discordUser.username.trim() : 'user'
 
     const admin = createClient(supabaseUrl, serviceKey)
     const authHeader = req.headers.get('Authorization')
@@ -70,51 +89,68 @@ Deno.serve(async (req) => {
     }
 
     if (!userId) {
-      const { data: existingProfile } = await admin
+      const { data: profileByDiscord } = await admin
         .from('profiles')
         .select('user_id')
         .eq('discord_id', discordUser.id)
         .maybeSingle()
 
-      userId = existingProfile?.user_id ?? null
+      userId = profileByDiscord?.user_id ?? null
     }
+
+    const syntheticEmail = discordSyntheticEmail(discordUser.id)
 
     if (!userId) {
       const { data: created, error: createError } = await admin.auth.admin.createUser({
-        email: discordUser.email,
+        email: syntheticEmail,
         email_confirm: true,
         user_metadata: {
           provider: 'discord',
+          sub: discordUser.id,
+          provider_id: discordUser.id,
           discord_id: discordUser.id,
-          discord_username: discordUser.username,
-          full_name: safeName(discordUser.global_name) ?? discordUser.username,
-          avatar_url: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256` : null,
+          discord_username: username,
+          preferred_username: username,
+          user_name: username,
+          full_name: displayName,
+          name: username,
+          avatar_url: avatarUrl,
+          custom_claims: {
+            sub: discordUser.id,
+            global_name: safeName(discordUser.global_name),
+          },
         },
       })
 
-      if (createError && !createError.message.toLowerCase().includes('already registered')) {
-        return json({ error: 'Could not create your account.' }, 500)
+      if (!createError) {
+        userId = created.user?.id ?? null
+      } else {
+        const msg = createError.message.toLowerCase()
+        if (msg.includes('already') || msg.includes('registered') || msg.includes('duplicate')) {
+          const { data: pRetry } = await admin
+            .from('profiles')
+            .select('user_id')
+            .eq('discord_id', discordUser.id)
+            .maybeSingle()
+          userId = pRetry?.user_id ?? null
+        } else {
+          return json({ error: 'Could not create your account.', details: createError.message }, 500)
+        }
       }
-
-      userId = created.user?.id ?? null
     }
 
     if (!userId) {
-      const { data: users, error: listError } = await admin.auth.admin.listUsers()
-      if (listError) return json({ error: 'Could not find your account.' }, 500)
-      userId = users.users.find((user) => user.email?.toLowerCase() === discordUser.email.toLowerCase())?.id ?? null
+      const { data: pLast } = await admin.from('profiles').select('user_id').eq('discord_id', discordUser.id).maybeSingle()
+      userId = pLast?.user_id ?? null
     }
 
     if (!userId) return json({ error: 'Could not connect this Discord account.' }, 500)
 
-    const avatarUrl = discordUser.avatar
-      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256`
-      : null
-    const bannerUrl = discordUser.banner
-      ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.${discordUser.banner.startsWith('a_') ? 'gif' : 'png'}?size=600`
-      : null
-    const expiresAt = new Date(Date.now() + Number(tokenData.expires_in ?? 0) * 1000).toISOString()
-    const displayName = safeName(discordUser.global_name) ?? safeName(discordUser.username) ?? 'Discord User'
+    const { data: authUser, error: authUserErr } = await admin.auth.admin.getUserById(userId)
+    if (authUserErr || !authUser?.user?.email) {
+      return json({ error: 'Could not load your account for sign-in.' }, 500)
+    }
+    const signInEmail = authUser.user.email
 
     const { data: existingProfile } = await admin.from('profiles').select('id, banner_url').eq('user_id', userId).maybeSingle()
     const isNewProfile = !existingProfile?.id
@@ -122,7 +158,7 @@ Deno.serve(async (req) => {
     const profilePatch: Record<string, unknown> = {
       user_id: userId,
       discord_id: discordUser.id,
-      discord_username: discordUser.username,
+      discord_username: username,
       discord_avatar: avatarUrl,
       display_name: displayName,
       discord_access_token: tokenData.access_token,
@@ -130,7 +166,6 @@ Deno.serve(async (req) => {
       discord_token_expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     }
-    // Only set banner if Discord provides one and user hasn't customized theirs
     if (bannerUrl && (isNewProfile || !existingProfile?.banner_url)) {
       profilePatch.banner_url = bannerUrl
     }
@@ -143,7 +178,7 @@ Deno.serve(async (req) => {
 
     const { data: magicLink, error: linkError } = await admin.auth.admin.generateLink({
       type: 'magiclink',
-      email: discordUser.email,
+      email: signInEmail,
       options: { redirectTo: appRedirectTo },
     })
 

@@ -57,3 +57,29 @@ export function getDiscordRedirectUri(): string {
 export function getDiscordClientId(): string {
   return import.meta.env.VITE_DISCORD_CLIENT_ID?.trim() || '1495931923237703792';
 }
+
+const DISCORD_SIGNIN_MAX_AGE_MS = 15 * 60 * 1000;
+
+export function isFreshDiscordSignInState(decoded: unknown): decoded is { kind: 'signin'; ts: number } {
+  if (!decoded || typeof decoded !== 'object') return false;
+  const o = decoded as { kind?: unknown; ts?: unknown };
+  if (o.kind !== 'signin') return false;
+  const ts = typeof o.ts === 'number' ? o.ts : NaN;
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= DISCORD_SIGNIN_MAX_AGE_MS;
+}
+
+/** Directory sign-in: Discord identify + guilds only (no email scope; matches experience verification). */
+export function buildDiscordNativeSignInUrl(): string {
+  const redirectUri = getDiscordRedirectUri();
+  const clientId = getDiscordClientId();
+  const state = btoa(JSON.stringify({ kind: 'signin' as const, ts: Date.now() }));
+  const q = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'identify guilds',
+    state,
+  });
+  return `https://discord.com/oauth2/authorize?${q.toString()}`;
+}
