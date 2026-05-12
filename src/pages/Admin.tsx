@@ -410,14 +410,24 @@ const Admin = () => {
     : [];
 
   const tabParam = searchParams.get('tab');
-  const defaultTab =
-    tabParam === 'reports'
-      ? 'reports'
-      : tabParam === 'canary' && access.canModerate
-        ? 'canary'
-        : access.isSiteOwner
-          ? 'members'
-          : 'openings';
+  const staffPanelTabs = [
+    'members',
+    'servers',
+    'openings',
+    'reports',
+    'canary',
+    'staff',
+    'discord',
+  ] as const;
+  const tabFromUrl =
+    access.canModerate &&
+    tabParam &&
+    (staffPanelTabs as readonly string[]).includes(tabParam)
+      ? tabParam
+      : null;
+  const defaultTab = tabFromUrl ?? (access.isSiteOwner ? 'members' : 'openings');
+
+  const ownerOnlyTitle = 'Only the site owner account can use this.';
 
   return (
     <div className="min-h-screen bg-background">
@@ -431,9 +441,9 @@ const Admin = () => {
           </div>
         </div>
 
-        <Tabs key={`${access.isSiteOwner ? 'full' : 'mod'}-${defaultTab}`} defaultValue={defaultTab}>
+        <Tabs key={`${access.isSiteOwner ? 'owner' : 'staff'}-${defaultTab}`} defaultValue={defaultTab}>
           <TabsList className="mb-4 flex flex-wrap">
-            {access.isSiteOwner && (
+            {access.canModerate && (
               <>
                 <TabsTrigger value="members">Members</TabsTrigger>
                 <TabsTrigger value="servers">Servers</TabsTrigger>
@@ -442,12 +452,10 @@ const Admin = () => {
             <TabsTrigger value="openings">Posts</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             {access.canModerate && (
-              <TabsTrigger value="canary" className="gap-1.5">
-                <Bird className="h-3.5 w-3.5" /> Canary
-              </TabsTrigger>
-            )}
-            {access.isSiteOwner && (
               <>
+                <TabsTrigger value="canary" className="gap-1.5">
+                  <Bird className="h-3.5 w-3.5" /> Canary
+                </TabsTrigger>
                 <TabsTrigger value="staff">Staff</TabsTrigger>
                 <TabsTrigger value="discord" className="gap-1.5">
                   <MessageSquare className="h-3.5 w-3.5" /> Discord
@@ -461,8 +469,14 @@ const Admin = () => {
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9" />
           </div>
 
-          {access.isSiteOwner && (
+          {access.canModerate && (
           <TabsContent value="members" className="space-y-2">
+            {!access.isSiteOwner && (
+              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Verified / featured badges and account deletion are limited to the site owner (database policy). You
+                can still moderate posts and reports.
+              </p>
+            )}
             {filter(profiles, ['display_name', 'discord_username']).map((p) => (
               <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
                 <Avatar className="h-9 w-9"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0] || '?'}</AvatarFallback></Avatar>
@@ -473,20 +487,48 @@ const Admin = () => {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">@{p.discord_username || '—'}</p>
                 </div>
-                <Button size="sm" variant={p.is_verified ? 'default' : 'outline'} onClick={() => toggleVerified(p)} className="gap-1">
+                <Button
+                  size="sm"
+                  variant={p.is_verified ? 'default' : 'outline'}
+                  onClick={() => toggleVerified(p)}
+                  className="gap-1"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
                   <CheckCircle2 className="h-3.5 w-3.5" />{p.is_verified ? 'Verified' : 'Verify'}
                 </Button>
-                <Button size="sm" variant={p.is_featured ? 'default' : 'outline'} onClick={() => toggleFeatured(p)} className="gap-1">
+                <Button
+                  size="sm"
+                  variant={p.is_featured ? 'default' : 'outline'}
+                  onClick={() => toggleFeatured(p)}
+                  className="gap-1"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
                   <Crown className="h-3.5 w-3.5" />{p.is_featured ? 'Pinned' : 'Pin'}
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => removeProfile(p)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => removeProfile(p)}
+                  className="text-destructive"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </CardContent></Card>
             ))}
           </TabsContent>
           )}
 
-          {access.isSiteOwner && (
+          {access.canModerate && (
           <TabsContent value="servers" className="space-y-2">
+            {!access.isSiteOwner && (
+              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Server verification and deleting listings are limited to the site owner.
+              </p>
+            )}
             {filter(servers, ['name']).map((s) => (
               <Card key={s.id}><CardContent className="p-3 flex items-center gap-3">
                 <Avatar className="h-9 w-9 rounded-md"><AvatarImage src={s.icon || undefined} /><AvatarFallback className="rounded-md">{s.name?.[0]}</AvatarFallback></Avatar>
@@ -497,10 +539,26 @@ const Admin = () => {
                   </p>
                   <p className="text-xs text-muted-foreground">{s.member_count || 0} members</p>
                 </div>
-                <Button size="sm" variant={s.is_verified ? 'default' : 'outline'} onClick={() => toggleServerVerified(s)} className="gap-1 shrink-0">
+                <Button
+                  size="sm"
+                  variant={s.is_verified ? 'default' : 'outline'}
+                  onClick={() => toggleServerVerified(s)}
+                  className="gap-1 shrink-0"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
                   <CheckCircle2 className="h-3.5 w-3.5" />{s.is_verified ? 'Verified' : 'Verify'}
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => removeServer(s)} className="text-destructive shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => removeServer(s)}
+                  className="text-destructive shrink-0"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </CardContent></Card>
             ))}
           </TabsContent>
@@ -761,7 +819,7 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          {access.isSiteOwner && (
+          {access.canModerate && (
           <TabsContent value="discord" className="space-y-3">
             <Card>
               <CardContent className="p-6 space-y-4">
@@ -775,6 +833,11 @@ const Admin = () => {
                     bot to share a server with each recipient.
                   </p>
                 </div>
+                {!access.isSiteOwner && (
+                  <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                    Broadcast is limited to the site owner account.
+                  </p>
+                )}
                 <Textarea
                   value={broadcastText}
                   onChange={(e) => setBroadcastText(e.target.value)}
@@ -782,9 +845,16 @@ const Admin = () => {
                   rows={5}
                   maxLength={1800}
                   className="rounded-xl border-white/12 bg-white/[0.04] resize-none"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
                 />
                 <p className="text-xs text-muted-foreground text-right tabular-nums">{broadcastText.length}/1800</p>
-                <Button type="button" disabled={broadcasting || !broadcastText.trim()} onClick={() => void sendDiscordBroadcast()}>
+                <Button
+                  type="button"
+                  disabled={broadcasting || !broadcastText.trim() || !access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                  onClick={() => void sendDiscordBroadcast()}
+                >
                   {broadcasting ? 'Sending…' : 'Send to opted-in users'}
                 </Button>
               </CardContent>
@@ -792,15 +862,33 @@ const Admin = () => {
           </TabsContent>
           )}
 
-          {access.isSiteOwner && (
+          {access.canModerate && (
           <TabsContent value="staff" className="space-y-3">
+            {!access.isSiteOwner && (
+              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Granting or revoking admin roles is limited to the site owner.
+              </p>
+            )}
             <Card><CardContent className="p-4 space-y-3">
               <p className="text-sm font-medium flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add a staff member</p>
-              <Input value={newStaffQuery} onChange={(e) => setNewStaffQuery(e.target.value)} placeholder="Search by name or Discord username…" />
+              <Input
+                value={newStaffQuery}
+                onChange={(e) => setNewStaffQuery(e.target.value)}
+                placeholder="Search by name or Discord username…"
+                disabled={!access.isSiteOwner}
+                title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+              />
               {newStaffMatches.length > 0 && (
                 <div className="space-y-1">
                   {newStaffMatches.map((p) => (
-                    <button key={p.id} onClick={() => addStaff(p)} className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 text-left">
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={!access.isSiteOwner}
+                      title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                      onClick={() => addStaff(p)}
+                      className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 text-left disabled:opacity-50 disabled:pointer-events-none"
+                    >
                       <Avatar className="h-8 w-8"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0]}</AvatarFallback></Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate">{p.display_name}</p>
@@ -826,7 +914,16 @@ const Admin = () => {
                   </p>
                 </div>
                 <Badge>admin</Badge>
-                <Button size="icon" variant="ghost" onClick={() => removeStaff(row)} className="text-destructive"><X className="h-4 w-4" /></Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => removeStaff(row)}
+                  className="text-destructive"
+                  disabled={!access.isSiteOwner}
+                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </CardContent></Card>
             ))}
           </TabsContent>
