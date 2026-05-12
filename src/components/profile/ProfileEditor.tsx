@@ -63,6 +63,7 @@ import {
 } from '@/lib/callDiscordProfileMedia';
 import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
+import { RobloxLinkedPreview } from '@/components/profile/RobloxLinkedPreview';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import {
   PROFILE_SOCIAL_KEYS,
@@ -77,7 +78,6 @@ import type { Json } from '@/integrations/supabase/types';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
 import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
-import { robloxWebProfileUrl } from '@/lib/robloxProfileUrl';
 import { profileEditorPath } from '@/lib/profilePath';
 import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
 
@@ -771,21 +771,7 @@ const ProfileEditor = ({
             >
               {profile.roblox_user_id ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-zinc-200">
-                    Linked:{' '}
-                    {robloxWebProfileUrl(profile.roblox_user_id) ? (
-                      <a
-                        href={robloxWebProfileUrl(profile.roblox_user_id)!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-zinc-100 underline-offset-2 hover:underline"
-                      >
-                        {profile.roblox_user_id}
-                      </a>
-                    ) : (
-                      <span className="font-mono">{profile.roblox_user_id}</span>
-                    )}
-                  </p>
+                  <RobloxLinkedPreview robloxUserId={String(profile.roblox_user_id)} />
                   {profile.roblox_verified_at ? (
                     <p className="text-xs text-muted-foreground">
                       Last verified {new Date(profile.roblox_verified_at).toLocaleString()}
@@ -919,9 +905,7 @@ const ProfileEditor = ({
               <div className="space-y-4">
                 <p className="text-sm font-medium text-zinc-200">Pro is active on this account.</p>
                 {profile.roblox_user_id ? (
-                  <p className="text-xs text-muted-foreground">
-                    Linked Roblox user id: <span className="font-mono">{profile.roblox_user_id}</span>
-                  </p>
+                  <RobloxLinkedPreview robloxUserId={String(profile.roblox_user_id)} variant="compact" />
                 ) : null}
                 <Field label="Custom tag next to Pro" hint="Optional · max 28 characters · Save profile to publish">
                   <Input
