@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy } from 'lucide-react';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy, Sparkles, ScrollText } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,19 @@ const Admin = () => {
   const [canaryStartedAt, setCanaryStartedAt] = useState<string | null>(null);
   const [canaryBusy, setCanaryBusy] = useState(false);
   const [canaryPlainCode, setCanaryPlainCode] = useState<string | null>(null);
+  const [staffDlg, setStaffDlg] = useState<{
+    title: string;
+    submit: (reason: string) => Promise<void>;
+  } | null>(null);
+  const [staffDlgReason, setStaffDlgReason] = useState('');
+  const [staffDlgBusy, setStaffDlgBusy] = useState(false);
+  const [reportMod, setReportMod] = useState<{
+    row: Record<string, unknown>;
+    action: 'ban' | 'remove_server';
+  } | null>(null);
+  const [reportModReason, setReportModReason] = useState('');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -66,9 +80,30 @@ const Admin = () => {
     };
   }, [user]);
 
+  const loadAuditLogs = useCallback(async () => {
+    if (!access?.isSiteOwner) return;
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from('staff_audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(400);
+    setAuditLoading(false);
+    if (error) {
+      setAuditLogs([]);
+      toast({ title: error.message, variant: 'destructive' });
+      return;
+    }
+    setAuditLogs(data || []);
+  }, [access?.isSiteOwner]);
+
+  useEffect(() => {
+    void loadAuditLogs();
+  }, [loadAuditLogs]);
+
   const refresh = async () => {
     const [p, s, po, st, rep] = await Promise.all([
-      supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured').order('created_at', { ascending: false }).limit(200),
+      supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured, is_pro').order('created_at', { ascending: false }).limit(200),
       supabase.from('servers').select('id, name, icon, member_count, guild_id, is_verified').order('created_at', { ascending: false }).limit(200),
       supabase.from('posts').select('id, title, type, author_id, created_at, status').order('created_at', { ascending: false }).limit(200),
       supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
@@ -149,6 +184,7 @@ const Admin = () => {
         }),
       );
     }
+    void loadAuditLogs();
   };
 
   useEffect(() => {
@@ -202,6 +238,20 @@ const Admin = () => {
     if (error) return toast({ title: error.message, variant: 'destructive' });
     setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_verified: !p.is_verified } : x)));
   };
+  const toggleProOwner = async (p: any) => {
+    const next = !p.is_pro;
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_pro: next,
+        pro_verified_at: next ? new Date().toISOString() : null,
+      })
+      .eq('id', p.id);
+    if (error) return toast({ title: error.message, variant: 'destructive' });
+    setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_pro: next } : x)));
+    toast({ title: next ? 'Pro granted' : 'Pro removed' });
+  };
+
   const toggleFeatured = async (p: any) => {
     let { error } = await supabase.rpc('site_owner_set_profile_flags', {
       p_profile_id: p.id,
@@ -340,9 +390,21 @@ const Admin = () => {
     refresh();
   };
 
-  const staffReportAction = async (row: any, action: string, opts?: { warn_body?: string }) => {
+  const staffReportAction = async (
+    row: any,
+    action: string,
+    opts?: { warn_body?: string; reason?: string },
+  ) => {
     if (!session?.access_token) {
       toast({ title: 'Session expired. Sign in again.', variant: 'destructive' });
+      return;
+    }
+    if (action === 'ban' && !opts?.reason?.trim() && !access?.isSiteOwner) {
+      toast({ title: 'Enter a staff reason (10+ characters) before banning.', variant: 'destructive' });
+      return;
+    }
+    if (action === 'remove_server' && !opts?.reason?.trim() && !access?.isSiteOwner) {
+      toast({ title: 'Enter a staff reason (10+ characters) before removing the server.', variant: 'destructive' });
       return;
     }
     if (action === 'ban' && !confirm('Ban this member from logging in? Their Discord sign-in will be blocked.')) return;
@@ -354,6 +416,7 @@ const Admin = () => {
       report_id: row.id,
       action,
       warn_body: opts?.warn_body,
+      reason: opts?.reason?.trim() || undefined,
     });
     if (!r.ok) {
       toast({ title: r.error, variant: 'destructive' });
@@ -362,6 +425,8 @@ const Admin = () => {
     toast({ title: 'Action completed' });
     setWarnForReportId(null);
     setWarnBody('');
+    setReportMod(null);
+    setReportModReason('');
     refresh();
   };
 
@@ -415,6 +480,7 @@ const Admin = () => {
     'servers',
     'openings',
     'reports',
+    ...(access.isSiteOwner ? (['audit'] as const) : []),
     'canary',
     'staff',
     'discord',
@@ -422,12 +488,35 @@ const Admin = () => {
   const tabFromUrl =
     access.canModerate &&
     tabParam &&
-    (staffPanelTabs as readonly string[]).includes(tabParam)
+    (staffPanelTabs as readonly string[]).includes(tabParam) &&
+    (tabParam !== 'audit' || access.isSiteOwner)
       ? tabParam
       : null;
   const defaultTab = tabFromUrl ?? (access.isSiteOwner ? 'members' : 'openings');
 
   const ownerOnlyTitle = 'Only the site owner account can use this.';
+
+  const confirmStaffDlg = async () => {
+    if (!staffDlg) return;
+    const reason = staffDlgReason.trim();
+    if (reason.length < 10) {
+      toast({ title: 'Reason must be at least 10 characters.', variant: 'destructive' });
+      return;
+    }
+    setStaffDlgBusy(true);
+    try {
+      await staffDlg.submit(reason);
+      toast({ title: 'Done' });
+      setStaffDlg(null);
+      setStaffDlgReason('');
+      await refresh();
+      await loadAuditLogs();
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Action failed', variant: 'destructive' });
+    } finally {
+      setStaffDlgBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -451,6 +540,11 @@ const Admin = () => {
             )}
             <TabsTrigger value="openings">Posts</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            {access.isSiteOwner && (
+              <TabsTrigger value="audit" className="gap-1.5">
+                <ScrollText className="h-3.5 w-3.5" /> Audit
+              </TabsTrigger>
+            )}
             {access.canModerate && (
               <>
                 <TabsTrigger value="canary" className="gap-1.5">
@@ -471,94 +565,295 @@ const Admin = () => {
 
           {access.canModerate && (
           <TabsContent value="members" className="space-y-2">
-            {!access.isSiteOwner && (
+            {!access.isSiteOwner ? (
               <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                Verified / featured badges and account deletion are limited to the site owner (database policy). You
-                can still moderate posts and reports.
+                Use <strong className="text-foreground">Reason</strong> prompts for verify, pin, Pro, delete, or ban.
+                Combined bans and profile removals are limited to <strong className="text-foreground">two per hour</strong>{' '}
+                (site owner exempt). Audit entries are visible only to the site owner.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Site owner shortcuts use database RPCs. Other staff use audited actions with required reasons.
               </p>
             )}
-            {filter(profiles, ['display_name', 'discord_username']).map((p) => (
-              <Card key={p.id}><CardContent className="p-3 flex items-center gap-3">
-                <Avatar className="h-9 w-9"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0] || '?'}</AvatarFallback></Avatar>
-                <div className="flex-1 min-w-0">
+            {filter(profiles, ['display_name', 'discord_username']).map((p) => {
+              const targetIsOwner = isSiteOwnerDiscordUsername(p.discord_username ?? null);
+              const isSelf = p.user_id === user?.id;
+              return (
+              <Card key={p.id}><CardContent className="p-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={p.discord_avatar || undefined} /><AvatarFallback>{p.display_name?.[0] || '?'}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0 basis-[140px]">
                   <p className="text-sm font-medium truncate flex items-center gap-1.5">{p.display_name || 'Member'}
-                    {p.is_verified && <CheckCircle2 className="h-3.5 w-3.5 text-verified" />}
-                    {p.is_featured && <Crown className="h-3.5 w-3.5 text-featured" />}
+                    {p.is_verified && <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />}
+                    {p.is_featured && <Crown className="h-3.5 w-3.5 text-featured shrink-0" />}
+                    {p.is_pro && <Sparkles className="h-3.5 w-3.5 text-amber-200/90 shrink-0" aria-hidden />}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">@{p.discord_username || '—'}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={p.is_verified ? 'default' : 'outline'}
-                  onClick={() => toggleVerified(p)}
-                  className="gap-1"
-                  disabled={!access.isSiteOwner}
-                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />{p.is_verified ? 'Verified' : 'Verify'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={p.is_featured ? 'default' : 'outline'}
-                  onClick={() => toggleFeatured(p)}
-                  className="gap-1"
-                  disabled={!access.isSiteOwner}
-                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
-                >
-                  <Crown className="h-3.5 w-3.5" />{p.is_featured ? 'Pinned' : 'Pin'}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removeProfile(p)}
-                  className="text-destructive"
-                  disabled={!access.isSiteOwner}
-                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-wrap items-center gap-1.5 justify-end ml-auto">
+                {access.isSiteOwner ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={p.is_verified ? 'default' : 'outline'}
+                      onClick={() => toggleVerified(p)}
+                      className="gap-1"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />{p.is_verified ? 'Verified' : 'Verify'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.is_featured ? 'default' : 'outline'}
+                      onClick={() => toggleFeatured(p)}
+                      className="gap-1"
+                    >
+                      <Crown className="h-3.5 w-3.5" />{p.is_featured ? 'Pinned' : 'Pin'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.is_pro ? 'default' : 'outline'}
+                      onClick={() => toggleProOwner(p)}
+                      className="gap-1"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />{p.is_pro ? 'Pro' : 'Grant Pro'}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeProfile(p)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={p.is_verified ? 'default' : 'outline'}
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `${p.is_verified ? 'Remove' : 'Grant'} verified — ${p.display_name || p.discord_username || 'member'}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'set_profile_flags',
+                              profile_id: p.id,
+                              profile_patch: { is_verified: !p.is_verified },
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setProfiles((prev) =>
+                              prev.map((x) => (x.id === p.id ? { ...x, is_verified: !p.is_verified } : x)),
+                            );
+                          },
+                        });
+                      }}
+                      className="gap-1"
+                      disabled={targetIsOwner}
+                      title={targetIsOwner ? 'Cannot change site owner flags' : undefined}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />{p.is_verified ? 'Verified' : 'Verify'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.is_featured ? 'default' : 'outline'}
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `${p.is_featured ? 'Unpin' : 'Pin'} — ${p.display_name || p.discord_username || 'member'}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'set_profile_flags',
+                              profile_id: p.id,
+                              profile_patch: { is_featured: !p.is_featured },
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setProfiles((prev) =>
+                              prev.map((x) => (x.id === p.id ? { ...x, is_featured: !p.is_featured } : x)),
+                            );
+                          },
+                        });
+                      }}
+                      className="gap-1"
+                      disabled={targetIsOwner}
+                      title={targetIsOwner ? 'Cannot change site owner flags' : undefined}
+                    >
+                      <Crown className="h-3.5 w-3.5" />{p.is_featured ? 'Pinned' : 'Pin'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.is_pro ? 'default' : 'outline'}
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `${p.is_pro ? 'Revoke' : 'Grant'} Pro — ${p.display_name || p.discord_username || 'member'}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'set_profile_flags',
+                              profile_id: p.id,
+                              profile_patch: { is_pro: !p.is_pro },
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setProfiles((prev) =>
+                              prev.map((x) => (x.id === p.id ? { ...x, is_pro: !p.is_pro } : x)),
+                            );
+                          },
+                        });
+                      }}
+                      className="gap-1"
+                      disabled={targetIsOwner}
+                      title={targetIsOwner ? 'Cannot change site owner flags' : undefined}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />{p.is_pro ? 'Pro' : 'Pro'}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `Delete profile — ${p.display_name || p.discord_username || 'member'}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'remove_profile',
+                              profile_id: p.id,
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setProfiles((prev) => prev.filter((x) => x.id !== p.id));
+                          },
+                        });
+                      }}
+                      className="text-destructive"
+                      disabled={targetIsOwner || isSelf}
+                      title={targetIsOwner ? 'Cannot delete site owner' : isSelf ? 'Cannot delete yourself' : undefined}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 text-destructive border-destructive/40"
+                      disabled={targetIsOwner || isSelf || !p.user_id}
+                      title={targetIsOwner ? 'Cannot ban site owner' : isSelf ? 'Cannot ban yourself' : !p.user_id ? 'No login' : undefined}
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `Ban member — ${p.display_name || p.discord_username || 'member'}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'ban_profile',
+                              profile_id: p.id,
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setProfiles((prev) => prev.filter((x) => x.id !== p.id));
+                          },
+                        });
+                      }}
+                    >
+                      <Ban className="h-3.5 w-3.5" /> Ban
+                    </Button>
+                  </>
+                )}
+                </div>
               </CardContent></Card>
-            ))}
+            );})}
           </TabsContent>
           )}
 
           {access.canModerate && (
           <TabsContent value="servers" className="space-y-2">
-            {!access.isSiteOwner && (
+            {!access.isSiteOwner ? (
               <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                Server verification and deleting listings are limited to the site owner.
+                Force-verify or delete servers with a logged reason (audit visible to site owner only).
               </p>
-            )}
+            ) : null}
             {filter(servers, ['name']).map((s) => (
-              <Card key={s.id}><CardContent className="p-3 flex items-center gap-3">
-                <Avatar className="h-9 w-9 rounded-md"><AvatarImage src={s.icon || undefined} /><AvatarFallback className="rounded-md">{s.name?.[0]}</AvatarFallback></Avatar>
-                <div className="flex-1 min-w-0">
+              <Card key={s.id}><CardContent className="p-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                <Avatar className="h-9 w-9 rounded-md shrink-0"><AvatarImage src={s.icon || undefined} /><AvatarFallback className="rounded-md">{s.name?.[0]}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0 basis-[120px]">
                   <p className="text-sm font-medium truncate flex items-center gap-1.5">
                     {s.name}
                     {s.is_verified && <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />}
                   </p>
                   <p className="text-xs text-muted-foreground">{s.member_count || 0} members</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={s.is_verified ? 'default' : 'outline'}
-                  onClick={() => toggleServerVerified(s)}
-                  className="gap-1 shrink-0"
-                  disabled={!access.isSiteOwner}
-                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />{s.is_verified ? 'Verified' : 'Verify'}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removeServer(s)}
-                  className="text-destructive shrink-0"
-                  disabled={!access.isSiteOwner}
-                  title={!access.isSiteOwner ? ownerOnlyTitle : undefined}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-wrap gap-1.5 justify-end ml-auto">
+                {access.isSiteOwner ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={s.is_verified ? 'default' : 'outline'}
+                      onClick={() => toggleServerVerified(s)}
+                      className="gap-1 shrink-0"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />{s.is_verified ? 'Verified' : 'Verify'}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeServer(s)}
+                      className="text-destructive shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={s.is_verified ? 'default' : 'outline'}
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `${s.is_verified ? 'Remove' : 'Force'} server verification — ${s.name}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'set_server_verified',
+                              server_id: s.id,
+                              is_verified: !s.is_verified,
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setServers((prev) =>
+                              prev.map((x) => (x.id === s.id ? { ...x, is_verified: !s.is_verified } : x)),
+                            );
+                          },
+                        });
+                      }}
+                      className="gap-1 shrink-0"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />{s.is_verified ? 'Verified' : 'Verify'}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setStaffDlgReason('');
+                        setStaffDlg({
+                          title: `Delete server listing — ${s.name}`,
+                          submit: async (reason) => {
+                            const r = await callModerationFn('staff-directory-action', {
+                              action: 'delete_server',
+                              server_id: s.id,
+                              reason,
+                            });
+                            if (!r.ok) throw new Error(r.error);
+                            setServers((prev) => prev.filter((x) => x.id !== s.id));
+                          },
+                        });
+                      }}
+                      className="text-destructive shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                </div>
               </CardContent></Card>
             ))}
           </TabsContent>
@@ -685,7 +980,14 @@ const Admin = () => {
                                 size="sm"
                                 variant="destructive"
                                 className="gap-1"
-                                onClick={() => void staffReportAction(r, 'remove_server')}
+                                onClick={() => {
+                                  if (access.isSiteOwner) {
+                                    void staffReportAction(r, 'remove_server');
+                                    return;
+                                  }
+                                  setReportModReason('');
+                                  setReportMod({ row: r, action: 'remove_server' });
+                                }}
                               >
                                 <Trash2 className="h-3.5 w-3.5" /> Remove server
                               </Button>
@@ -705,7 +1007,14 @@ const Admin = () => {
                               size="sm"
                               variant="secondary"
                               className="gap-1 text-destructive"
-                              onClick={() => void staffReportAction(r, 'ban')}
+                              onClick={() => {
+                                if (access.isSiteOwner) {
+                                  void staffReportAction(r, 'ban');
+                                  return;
+                                }
+                                setReportModReason('');
+                                setReportMod({ row: r, action: 'ban' });
+                              }}
                             >
                               <Ban className="h-3.5 w-3.5" /> Ban member
                             </Button>
@@ -721,6 +1030,45 @@ const Admin = () => {
                               Dismiss
                             </Button>
                           </div>
+                          {reportMod && reportMod.row.id === r.id && (
+                            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 space-y-2">
+                              <p className="text-xs text-muted-foreground">
+                                Staff audit reason ({access.isSiteOwner ? 'optional for you; ' : ''}10+ characters for
+                                other staff)
+                              </p>
+                              <Textarea
+                                value={reportModReason}
+                                onChange={(e) => setReportModReason(e.target.value)}
+                                rows={3}
+                                maxLength={2000}
+                                className="rounded-lg border-white/12 bg-background resize-none text-sm"
+                                placeholder="Why you are taking this action…"
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    void staffReportAction(r, reportMod.action, {
+                                      reason: reportModReason.trim() || undefined,
+                                    })
+                                  }
+                                  disabled={!access.isSiteOwner && reportModReason.trim().length < 10}
+                                >
+                                  Confirm & resolve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setReportMod(null);
+                                    setReportModReason('');
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                           {warnForReportId === r.id && (
                             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 space-y-2">
                               <p className="text-xs text-muted-foreground">Warning text (visible on their profile)</p>
@@ -754,6 +1102,48 @@ const Admin = () => {
               )
             )}
           </TabsContent>
+
+          {access.isSiteOwner && (
+            <TabsContent value="audit" className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Immutable log of moderation and staff directory actions. Only your site owner account can read this
+                table.
+              </p>
+              {auditLoading ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Loading audit…</p>
+              ) : auditLogs.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                    No audit entries yet. Apply the staff_audit_logs migration and perform a staff action.
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                  {auditLogs.map((row) => (
+                    <Card key={row.id}>
+                      <CardContent className="p-3 space-y-1.5 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{new Date(row.created_at).toLocaleString()}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono">
+                            {row.action}
+                          </Badge>
+                          {row.report_id && (
+                            <span className="font-mono text-[10px]">report {String(row.report_id).slice(0, 8)}…</span>
+                          )}
+                        </div>
+                        <p className="text-foreground/95 whitespace-pre-wrap leading-relaxed">{row.reason}</p>
+                        <div className="text-[10px] text-muted-foreground font-mono flex flex-wrap gap-x-3 gap-y-0.5">
+                          {row.actor_profile_id && <span>actor profile: {row.actor_profile_id}</span>}
+                          {row.target_profile_id && <span>target profile: {row.target_profile_id}</span>}
+                          {row.target_server_id && <span>target server: {row.target_server_id}</span>}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           {access.canModerate && (
             <TabsContent value="canary" className="space-y-4">
@@ -929,6 +1319,49 @@ const Admin = () => {
           </TabsContent>
           )}
         </Tabs>
+
+        <Dialog
+          open={!!staffDlg}
+          onOpenChange={(o) => {
+            if (!o) {
+              setStaffDlg(null);
+              setStaffDlgReason('');
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg border-white/12 bg-background">
+            <DialogHeader>
+              <DialogTitle>{staffDlg?.title ?? 'Staff action'}</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground">
+              Stored in the audit log. Minimum 10 characters. Site owner sees all entries under the Audit tab.
+            </p>
+            <Textarea
+              value={staffDlgReason}
+              onChange={(e) => setStaffDlgReason(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              className="border-white/12 bg-white/[0.04] resize-none text-sm"
+              placeholder="Explain why you are taking this action…"
+            />
+            <p className="text-[10px] text-muted-foreground text-right tabular-nums">{staffDlgReason.length}/2000</p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setStaffDlg(null);
+                  setStaffDlgReason('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="button" disabled={staffDlgBusy || staffDlgReason.trim().length < 10} onClick={() => void confirmStaffDlg()}>
+                {staffDlgBusy ? 'Working…' : 'Confirm'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

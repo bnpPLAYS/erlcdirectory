@@ -300,6 +300,45 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_audit_logs: {
+        Row: {
+          id: string
+          created_at: string
+          actor_profile_id: string | null
+          actor_user_id: string
+          action: string
+          reason: string
+          target_profile_id: string | null
+          target_server_id: string | null
+          report_id: string | null
+          metadata: Record<string, unknown>
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          actor_profile_id?: string | null
+          actor_user_id: string
+          action: string
+          reason: string
+          target_profile_id?: string | null
+          target_server_id?: string | null
+          report_id?: string | null
+          metadata?: Record<string, unknown>
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          actor_profile_id?: string | null
+          actor_user_id?: string
+          action?: string
+          reason?: string
+          target_profile_id?: string | null
+          target_server_id?: string | null
+          report_id?: string | null
+          metadata?: Record<string, unknown>
+        }
+        Relationships: []
+      }
       moderation_reports: {
         Row: {
           conversation_id: string | null

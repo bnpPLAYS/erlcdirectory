@@ -3,6 +3,7 @@
  * Mirrors api/staff-moderation-action.ts so it runs on Supabase where SUPABASE_SERVICE_ROLE_KEY is auto-injected.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { getStaffActor, isSiteOwnerDiscordUsername, auditReasonAtLeast10 } from '../_shared/staffActor.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,33 +20,55 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 type Action = 'delete_message' | 'delete_review' | 'remove_server' | 'warn' | 'ban'
 
-function isSiteOwnerDiscordUsername(username: string | null | undefined): boolean {
-  if (typeof username !== 'string') return false
-  const normalized = username.trim().toLowerCase().replace(/\.+$/u, '')
-  return normalized === 'pixelnovaa'
+async function insertAudit(
+  admin: ReturnType<typeof createClient>,
+  row: {
+    actor_profile_id: string | null
+    actor_user_id: string
+    action: string
+    reason: string
+    target_profile_id?: string | null
+    target_server_id?: string | null
+    report_id?: string | null
+    metadata?: Record<string, unknown>
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await admin.from('staff_audit_logs').insert({
+    actor_profile_id: row.actor_profile_id,
+    actor_user_id: row.actor_user_id,
+    action: row.action,
+    reason: row.reason.trim().slice(0, 2000),
+    target_profile_id: row.target_profile_id ?? null,
+    target_server_id: row.target_server_id ?? null,
+    report_id: row.report_id ?? null,
+    metadata: row.metadata ?? {},
+  } as never)
+  if (error) return { ok: false, error: error.message || 'Audit log failed.' }
+  return { ok: true }
 }
 
-async function assertStaff(
+async function assertBanRateOk(
   admin: ReturnType<typeof createClient>,
-  userId: string,
-): Promise<{ ok: true; staffProfileId: string } | { ok: false; error: string }> {
-  const { data: actor, error } = await admin
-    .from('profiles')
-    .select('id, discord_username')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (error || !actor?.id) return { ok: false, error: 'Staff profile not found.' }
-  if (isSiteOwnerDiscordUsername(actor.discord_username as string | null)) {
-    return { ok: true, staffProfileId: actor.id as string }
+  actorUserId: string,
+  isSiteOwner: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isSiteOwner) return { ok: true }
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count, error } = await admin
+    .from('staff_audit_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('actor_user_id', actorUserId)
+    .in('action', ['ban_member', 'remove_profile'])
+    .gte('created_at', since)
+  if (error) return { ok: false, error: error.message || 'Rate check failed.' }
+  if ((count ?? 0) >= 2) {
+    return {
+      ok: false,
+      error:
+        'You can perform at most two member bans or profile removals combined per hour. Try again later or ask the site owner.',
+    }
   }
-  const { data: role } = await admin
-    .from('user_roles')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('role', 'admin')
-    .maybeSingle()
-  if (!role) return { ok: false, error: 'Not authorized.' }
-  return { ok: true, staffProfileId: actor.id as string }
+  return { ok: true }
 }
 
 async function subjectProfileIdForReport(
@@ -106,6 +129,7 @@ Deno.serve(async (req) => {
     action?: string
     warn_body?: string
     staff_notes?: string
+    reason?: string
   }
   try {
     body = await req.json()
@@ -117,6 +141,7 @@ Deno.serve(async (req) => {
   const action = (body.action ?? '').toString().trim() as Action
   const warnBody = (body.warn_body ?? '').toString().trim()
   const staffNotes = (body.staff_notes ?? '').toString().trim().slice(0, 2000) || null
+  const extraReason = (body.reason ?? '').toString().trim()
 
   const allowed: Action[] = ['delete_message', 'delete_review', 'remove_server', 'warn', 'ban']
   if (!UUID_RE.test(reportId) || !allowed.includes(action)) {
@@ -137,12 +162,12 @@ Deno.serve(async (req) => {
   if (userErr || !user) return json({ ok: false, error: 'Invalid session' }, 401)
 
   const admin = createClient(supabaseUrl, serviceKey)
-  const staff = await assertStaff(admin, user.id)
+  const staff = await getStaffActor(admin, user.id)
   if (!staff.ok) return json({ ok: false, error: staff.error }, 403)
 
   const { data: report, error: repErr } = await admin
     .from('moderation_reports')
-    .select('id, kind, status, message_id, review_id, server_id')
+    .select('id, kind, status, message_id, review_id, server_id, reason')
     .eq('id', reportId)
     .maybeSingle()
 
@@ -153,6 +178,21 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Report is already closed.' }, 400)
   }
 
+  const reportReason = (report.reason as string | null) ?? null
+
+  if (!staff.isSiteOwner && action === 'ban' && extraReason.length < 10) {
+    return json(
+      { ok: false, error: 'Provide reason (at least 10 characters) when banning from a report.' },
+      400,
+    )
+  }
+  if (!staff.isSiteOwner && action === 'remove_server' && extraReason.length < 10) {
+    return json(
+      { ok: false, error: 'Provide reason (at least 10 characters) when removing a server from a report.' },
+      400,
+    )
+  }
+
   const subjectId = await subjectProfileIdForReport(admin, {
     kind: report.kind as string,
     message_id: (report.message_id as string | null) ?? null,
@@ -160,8 +200,15 @@ Deno.serve(async (req) => {
     server_id: (report.server_id as string | null) ?? null,
   })
 
+  let auditAction = ''
+  let auditReason = ''
+  const targetProfile: string | null = subjectId
+  const targetServer: string | null = (report.server_id as string | null) ?? null
+
   try {
     if (action === 'delete_message') {
+      auditAction = 'mod_delete_message'
+      auditReason = auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Message report')
       if (report.kind !== 'message' || !report.message_id) {
         return json({ ok: false, error: 'This report is not a message report.' }, 400)
       }
@@ -171,6 +218,8 @@ Deno.serve(async (req) => {
         .eq('id', report.message_id as string)
       if (delErr) return json({ ok: false, error: delErr.message }, 400)
     } else if (action === 'delete_review') {
+      auditAction = 'mod_delete_review'
+      auditReason = auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Review report')
       if (report.kind !== 'review' || !report.review_id) {
         return json({ ok: false, error: 'This report is not a review report.' }, 400)
       }
@@ -180,6 +229,10 @@ Deno.serve(async (req) => {
         .eq('id', report.review_id as string)
       if (delErr) return json({ ok: false, error: delErr.message }, 400)
     } else if (action === 'remove_server') {
+      auditAction = 'mod_remove_server'
+      auditReason = staff.isSiteOwner
+        ? auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Server report')
+        : extraReason.slice(0, 2000)
       if (report.kind !== 'server' || !report.server_id) {
         return json({ ok: false, error: 'This report is not a server report.' }, 400)
       }
@@ -189,6 +242,8 @@ Deno.serve(async (req) => {
         .eq('id', report.server_id as string)
       if (delErr) return json({ ok: false, error: delErr.message }, 400)
     } else if (action === 'warn') {
+      auditAction = 'mod_warn'
+      auditReason = auditReasonAtLeast10(warnBody, staffNotes, reportReason ?? 'Warning issued')
       if (!subjectId) {
         return json({ ok: false, error: 'No member linked to this report (nothing to warn).' }, 400)
       }
@@ -199,20 +254,29 @@ Deno.serve(async (req) => {
       } as never)
       if (wErr) return json({ ok: false, error: wErr.message }, 400)
     } else if (action === 'ban') {
+      auditAction = 'ban_member'
+      auditReason = staff.isSiteOwner
+        ? auditReasonAtLeast10(extraReason, staffNotes, reportReason ?? 'Ban from report')
+        : extraReason.slice(0, 2000)
       if (!subjectId) {
         return json({ ok: false, error: 'No member linked to this report (nothing to ban).' }, 400)
       }
       const { data: sub, error: subErr } = await admin
         .from('profiles')
-        .select('user_id')
+        .select('user_id, discord_username')
         .eq('id', subjectId)
         .maybeSingle()
       if (subErr || !sub?.user_id) {
         return json({ ok: false, error: 'Subject has no login account to ban.' }, 400)
       }
+      if (isSiteOwnerDiscordUsername(sub.discord_username as string | null)) {
+        return json({ ok: false, error: 'Cannot ban the site owner account.' }, 403)
+      }
       if (sub.user_id === user.id) {
         return json({ ok: false, error: 'You cannot ban your own account.' }, 400)
       }
+      const rate = await assertBanRateOk(admin, user.id, staff.isSiteOwner)
+      if (!rate.ok) return json({ ok: false, error: rate.error }, 429)
       const bannedAt = new Date().toISOString()
       const { error: banErr } = await admin.auth.admin.updateUserById(sub.user_id as string, {
         ban_duration: '876000h',
@@ -232,6 +296,18 @@ Deno.serve(async (req) => {
     const msg = e instanceof Error ? e.message : 'Action failed'
     return json({ ok: false, error: msg }, 500)
   }
+
+  const log = await insertAudit(admin, {
+    actor_profile_id: staff.staffProfileId,
+    actor_user_id: user.id,
+    action: auditAction,
+    reason: auditReason,
+    target_profile_id: targetProfile,
+    target_server_id: action === 'remove_server' ? targetServer : null,
+    report_id: reportId,
+    metadata: { moderation_action: action },
+  })
+  if (!log.ok) return json({ ok: false, error: log.error }, 400)
 
   const { error: upErr } = await admin
     .from('moderation_reports')

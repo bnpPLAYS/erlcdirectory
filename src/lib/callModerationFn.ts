@@ -39,7 +39,7 @@ async function readJsonError(res: Response): Promise<string> {
  * the Edge Function yet.
  */
 export async function callModerationFn(
-  name: 'submit-report' | 'staff-moderation-action',
+  name: 'submit-report' | 'staff-moderation-action' | 'staff-directory-action',
   payload: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const {
@@ -124,6 +124,6 @@ export async function callModerationFn(
     ok: false,
     error:
       lastErr ||
-      'Could not reach the moderation server. The site owner may need to deploy submit-report and staff-moderation-action on Supabase.',
+      'Could not reach the moderation server. The site owner may need to deploy submit-report, staff-moderation-action, and staff-directory-action on Supabase.',
   };
 }
