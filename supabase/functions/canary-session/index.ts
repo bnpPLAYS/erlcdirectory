@@ -24,6 +24,28 @@ async function sha256Hex(message: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+type SignSecretResult = { ok: true; secret: string } | { ok: false; error: string }
+
+/**
+ * Prefer `CANARY_SIGNING_SECRET` (≥16 chars) when set. If unset or empty, derive a stable HMAC key from
+ * `SUPABASE_SERVICE_ROLE_KEY` so canary works without an extra Edge secret (existing passes become invalid if the service key rotates).
+ */
+async function resolveCanarySigningSecret(serviceKey: string): Promise<SignSecretResult> {
+  const raw = Deno.env.get('CANARY_SIGNING_SECRET')
+  if (raw != null && raw.trim().length > 0) {
+    const explicit = raw.trim()
+    if (explicit.length >= 16) return { ok: true, secret: explicit }
+    return {
+      ok: false,
+      error:
+        'CANARY_SIGNING_SECRET is set but shorter than 16 characters. Remove it to use automatic signing, or use at least 16 characters.',
+    }
+  }
+  if (!serviceKey) return { ok: false, error: 'Backend is not configured.' }
+  const secret = await sha256Hex(`erlc.directory|canary-session|v1|${serviceKey}`)
+  return { ok: true, secret }
+}
+
 async function hmacSha256Hex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -101,7 +123,6 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const signingSecret = (Deno.env.get('CANARY_SIGNING_SECRET') ?? '').trim()
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return json({ ok: false, error: 'Backend is not configured.' }, 500)
@@ -154,16 +175,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'staff_start') {
-      if (!signingSecret || signingSecret.length < 16) {
-        return json(
-          {
-            ok: false,
-            error:
-              'CANARY_SIGNING_SECRET is missing or too short (min 16 characters). Set it in Supabase Edge secrets so testers can receive access tokens.',
-          },
-          500,
-        )
-      }
+      const sr = await resolveCanarySigningSecret(serviceKey)
+      if (!sr.ok) return json({ ok: false, error: sr.error }, 500)
       const row = await loadConfig(admin)
       if (row?.is_active) {
         return json(
@@ -217,41 +230,34 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (!signingSecret || signingSecret.length < 16) {
-    return json(
-      {
-        ok: false,
-        error:
-          'CANARY_SIGNING_SECRET is missing or too short. Set it in Supabase Edge Function secrets (and Vercel for the API proxy), min 16 characters.',
-      },
-      500,
-    )
-  }
+  if (action === 'verify_token' || action === 'validate_code') {
+    const sr = await resolveCanarySigningSecret(serviceKey)
+    if (!sr.ok) return json({ ok: false, error: sr.error }, 500)
+    const signingSecret = sr.secret
 
-  if (action === 'verify_token') {
-    const token = typeof body.token === 'string' ? body.token.trim() : ''
-    if (!token || !token.includes('.')) return json({ ok: true, valid: false })
-    const [payloadPart, sigHex] = token.split('.', 2)
-    if (!payloadPart || !sigHex) return json({ ok: true, valid: false })
-    let payload: { exp?: number; n?: string }
-    try {
-      payload = JSON.parse(base64UrlDecode(payloadPart)) as { exp?: number; n?: string }
-    } catch {
-      return json({ ok: true, valid: false })
+    if (action === 'verify_token') {
+      const token = typeof body.token === 'string' ? body.token.trim() : ''
+      if (!token || !token.includes('.')) return json({ ok: true, valid: false })
+      const [payloadPart, sigHex] = token.split('.', 2)
+      if (!payloadPart || !sigHex) return json({ ok: true, valid: false })
+      let payload: { exp?: number; n?: string }
+      try {
+        payload = JSON.parse(base64UrlDecode(payloadPart)) as { exp?: number; n?: string }
+      } catch {
+        return json({ ok: true, valid: false })
+      }
+      const exp = typeof payload.exp === 'number' ? payload.exp : 0
+      const n = typeof payload.n === 'string' ? payload.n : ''
+      if (!n || exp < Date.now()) return json({ ok: true, valid: false })
+      const row = await loadConfig(admin)
+      if (!row?.is_active || !row.session_nonce || row.session_nonce !== n) {
+        return json({ ok: true, valid: false })
+      }
+      const expect = await hmacSha256Hex(signingSecret, `${exp}:${n}`)
+      if (expect !== sigHex) return json({ ok: true, valid: false })
+      return json({ ok: true, valid: true })
     }
-    const exp = typeof payload.exp === 'number' ? payload.exp : 0
-    const n = typeof payload.n === 'string' ? payload.n : ''
-    if (!n || exp < Date.now()) return json({ ok: true, valid: false })
-    const row = await loadConfig(admin)
-    if (!row?.is_active || !row.session_nonce || row.session_nonce !== n) {
-      return json({ ok: true, valid: false })
-    }
-    const expect = await hmacSha256Hex(signingSecret, `${exp}:${n}`)
-    if (expect !== sigHex) return json({ ok: true, valid: false })
-    return json({ ok: true, valid: true })
-  }
 
-  if (action === 'validate_code') {
     const code = typeof body.code === 'string' ? body.code.trim().toLowerCase() : ''
     if (!code || code.length > 64) return json({ ok: false, error: 'Invalid code.' }, 400)
     const row = await loadConfig(admin)

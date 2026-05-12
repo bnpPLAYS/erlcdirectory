@@ -759,10 +759,10 @@ const Admin = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Requires Edge Function <code className="rounded bg-white/10 px-1">canary-session</code> and secret{' '}
-                    <code className="rounded bg-white/10 px-1">CANARY_SIGNING_SECRET</code> (16+ chars) in Supabase and
-                    Vercel. Optional: <code className="rounded bg-white/10 px-1">SITE_OWNER_DISCORD_USERNAME</code> for
-                    staff checks.
+                    Requires Edge Function <code className="rounded bg-white/10 px-1">canary-session</code> deployed on
+                    Supabase. Signing uses optional secret <code className="rounded bg-white/10 px-1">CANARY_SIGNING_SECRET</code>{' '}
+                    (16+ chars); if unset, the function derives a key from the service role automatically. Optional:{' '}
+                    <code className="rounded bg-white/10 px-1">SITE_OWNER_DISCORD_USERNAME</code> for staff checks.
                   </p>
                 </CardContent>
               </Card>
