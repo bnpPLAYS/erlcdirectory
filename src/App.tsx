@@ -27,6 +27,7 @@ import Docs from "./pages/Docs";
 import Pro from "./pages/Pro";
 import { AcceptTermsGate } from "@/components/auth/AcceptTermsGate";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { RouteTransition } from "@/components/layout/RouteTransition";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
 
 const FirstLoginTutorial = lazy(() =>
@@ -56,28 +57,30 @@ const App = () => (
             <FirstLoginTutorial />
           </Suspense>
           <AcceptTermsGate>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/browse" element={<Browse />} />
-              <Route path="/profile/:profileSlug" element={<Profile />} />
-              <Route path="/servers" element={<Servers />} />
-              <Route path="/server/:id" element={<ServerDetail />} />
-              <Route path="/posts" element={<Posts />} />
-              <Route path="/connections" element={<Connections />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/discord/callback" element={<DiscordCallback />} />
-              <Route path="/roblox/callback" element={<RobloxOAuthCallback />} />
-              <Route path="/verify/:token" element={<VerifyExperience />} />
-              <Route path="/staff" element={<Admin />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/docs" element={<Docs />} />
-              <Route path="/pro" element={<Pro />} />
-              <Route path="/:profileSlug" element={<Profile />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <RouteTransition>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/browse" element={<Browse />} />
+                <Route path="/profile/:profileSlug" element={<Profile />} />
+                <Route path="/servers" element={<Servers />} />
+                <Route path="/server/:id" element={<ServerDetail />} />
+                <Route path="/posts" element={<Posts />} />
+                <Route path="/connections" element={<Connections />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/discord/callback" element={<DiscordCallback />} />
+                <Route path="/roblox/callback" element={<RobloxOAuthCallback />} />
+                <Route path="/verify/:token" element={<VerifyExperience />} />
+                <Route path="/staff" element={<Admin />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/docs" element={<Docs />} />
+                <Route path="/pro" element={<Pro />} />
+                <Route path="/:profileSlug" element={<Profile />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </RouteTransition>
           </AcceptTermsGate>
         </BrowserRouter>
         <Analytics />

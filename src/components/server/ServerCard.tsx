@@ -29,7 +29,7 @@ const ServerCard = ({ server }: ServerCardProps) => {
   const joinHref = normalizeDiscordInvite(server.discord_invite ?? null);
 
   return (
-    <Card className="group card-interactive h-full overflow-hidden rounded-2xl">
+    <Card className="group card-interactive hover-lift h-full overflow-hidden rounded-2xl">
       <div className="relative h-28 w-full overflow-hidden border-b border-white/[0.06]">
         {server.banner ? (
           <img src={server.banner} alt="" className="h-full w-full object-cover" loading="lazy" />
