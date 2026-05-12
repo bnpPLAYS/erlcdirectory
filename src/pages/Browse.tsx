@@ -84,12 +84,35 @@ function featuredFirstCmp(a: Profile, b: Profile): number {
   return af ? -1 : 1;
 }
 
-/** Pro members rank after featured, before everyone else (directory boost). */
-function proBoostCmp(a: Profile, b: Profile): number {
-  const ap = !!a.is_pro;
-  const bp = !!b.is_pro;
-  if (ap === bp) return 0;
-  return ap ? -1 : 1;
+/** How many Pro profiles get a random “spotlight” row directly under featured members. */
+const DIRECTORY_PRO_SPOTLIGHT_COUNT = 2;
+
+/** Uniform random sample without replacement (small n). */
+function pickRandomProfiles(profiles: Profile[], n: number): Profile[] {
+  if (n <= 0 || profiles.length === 0) return [];
+  const bag = [...profiles];
+  const out: Profile[] = [];
+  const take = Math.min(n, bag.length);
+  for (let k = 0; k < take; k++) {
+    const idx = Math.floor(Math.random() * bag.length);
+    out.push(bag[idx]!);
+    bag.splice(idx, 1);
+  }
+  return out;
+}
+
+/**
+ * After sort: featured first (unchanged), then up to two random Pro members (not featured),
+ * then everyone else in sort order. Re-runs when filters/sort/data change so the pair is not fixed.
+ */
+function applyProDirectorySpotlights(sorted: Profile[]): Profile[] {
+  const featured = sorted.filter((p) => p.is_featured);
+  const nonFeatured = sorted.filter((p) => !p.is_featured);
+  const proPool = nonFeatured.filter((p) => p.is_pro);
+  const spotlights = pickRandomProfiles(proPool, DIRECTORY_PRO_SPOTLIGHT_COUNT);
+  const spotlightIds = new Set(spotlights.map((p) => p.id));
+  const tail = nonFeatured.filter((p) => !spotlightIds.has(p.id));
+  return [...featured, ...spotlights, ...tail];
 }
 
 function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
@@ -99,8 +122,6 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const p = proBoostCmp(a, b);
-        if (p !== 0) return p;
         const d = createdTime(b.created_at) - createdTime(a.created_at);
         if (d !== 0) return d;
         return idCmp(a, b);
@@ -109,8 +130,6 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const p = proBoostCmp(a, b);
-        if (p !== 0) return p;
         const rd = finiteNum(b.rating) - finiteNum(a.rating);
         if (rd !== 0) return rd;
         const rc = finiteNum(b.review_count) - finiteNum(a.review_count);
@@ -121,8 +140,6 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const p = proBoostCmp(a, b);
-        if (p !== 0) return p;
         const m = finiteNum(b.total_members) - finiteNum(a.total_members);
         if (m !== 0) return m;
         return idCmp(a, b);
@@ -131,8 +148,6 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const p = proBoostCmp(a, b);
-        if (p !== 0) return p;
         const e =
           finiteNum(b.verified_experience_count) - finiteNum(a.verified_experience_count);
         if (e !== 0) return e;
@@ -142,8 +157,6 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
-        const p = proBoostCmp(a, b);
-        if (p !== 0) return p;
         const c = displaySortKey(a).localeCompare(displaySortKey(b), undefined, {
           sensitivity: 'base',
         });
@@ -269,7 +282,7 @@ const Browse = () => {
       });
     }
 
-    return sortProfiles(list, sortMode);
+    return applyProDirectorySpotlights(sortProfiles(list, sortMode));
   }, [profiles, searchQuery, verifiedOnly, sortMode]);
 
   return (
