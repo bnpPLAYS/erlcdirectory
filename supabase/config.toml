@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.roblox-oauth-complete]
 verify_jwt = false
+
+[functions.submit-report]
+verify_jwt = false
+
+[functions.staff-moderation-action]
+verify_jwt = false

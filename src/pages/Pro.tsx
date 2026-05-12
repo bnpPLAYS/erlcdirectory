@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   Users,
 } from 'lucide-react';
+import { RobloxIcon } from '@/components/icons/RobloxIcon';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Button } from '@/components/ui/button';
@@ -92,7 +93,7 @@ const Pro = () => {
                 className="gap-2 rounded-xl border border-white/18 bg-white/[0.12] text-white hover:bg-white/[0.18] shadow-lg shadow-white/10"
               >
                 <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer">
-                  Buy on Roblox <ExternalLink className="h-4 w-4" />
+                  <RobloxIcon className="h-4 w-4" /> Buy on Roblox <ExternalLink className="h-4 w-4" />
                 </a>
               </Button>
               {user ? (
