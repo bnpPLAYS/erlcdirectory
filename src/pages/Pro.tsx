@@ -8,6 +8,8 @@ import {
   Palette,
   TrendingUp,
   BadgeCheck,
+  Users,
+  LayoutPanelTop,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
@@ -25,7 +27,7 @@ const perks = [
   {
     icon: Palette,
     title: 'Extra customization',
-    body: 'Unlock additional accent palettes and fine-tuned profile styling in Edit profile.',
+    body: 'Unlock additional accent palettes, a dedicated Pro panel in Customize, and quick navigation between preview, theme, and banner.',
   },
   {
     icon: TrendingUp,
@@ -36,6 +38,16 @@ const perks = [
     icon: BadgeCheck,
     title: 'Pro badge + custom label',
     body: 'Show an ERLC Pro badge on your profile and set a short custom tagline next to it.',
+  },
+  {
+    icon: Users,
+    title: 'Stronger presence in browse',
+    body: 'Your card stands out with Pro styling and better default ordering so more visitors see you first.',
+  },
+  {
+    icon: LayoutPanelTop,
+    title: 'Editor built for polish',
+    body: 'Sticky save, wide banner tools, and Discord sync live in one Customize workspace so you spend less time hunting controls.',
   },
   {
     icon: Shield,
@@ -133,7 +145,8 @@ const Pro = () => {
                 </p>
                 {profile?.is_pro ? (
                   <p className="mt-4 text-sm font-medium text-zinc-200">
-                    You already have Pro on this account. Custom badge and extra themes are under Edit profile.
+                    You already have Pro. Manage your badge, themes, and perks in{' '}
+                    <strong className="text-foreground">Edit profile → Customize</strong>.
                   </p>
                 ) : (
                   <div className="mt-4 flex flex-col sm:flex-row gap-3 max-w-lg">

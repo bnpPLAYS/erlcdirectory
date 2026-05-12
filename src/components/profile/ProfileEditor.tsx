@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Upload,
   Sparkles,
+  Check,
   Bell,
   Eye,
   ChevronDown,
@@ -233,15 +234,19 @@ function EditorSection({
   icon: Icon,
   children,
   className,
+  sectionId,
 }: {
   title: string
   description?: string
   icon?: LucideIcon
   children: ReactNode
   className?: string
+  /** Anchor id for in-page navigation (e.g. Customize quick links). */
+  sectionId?: string
 }) {
   return (
     <section
+      id={sectionId}
       className={cn(
         'rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 sm:p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04]',
         className,
@@ -561,7 +566,7 @@ const ProfileEditor = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4 pb-28">
       {/* Header card: banner + avatar + inline name */}
       <Card id="tutorial-editor-hero" className="card-elevated liquid-edge overflow-hidden">
         <div className="relative">
@@ -614,9 +619,6 @@ const ProfileEditor = ({
             <div className="flex gap-2 sm:self-center">
               <Button variant="ghost" size="sm" onClick={onCancel} className="gap-2">
                 <X className="h-4 w-4" /> Cancel
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
-                <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
               </Button>
             </div>
           </div>
@@ -778,8 +780,10 @@ const ProfileEditor = ({
                     </p>
                   ) : null}
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Use the button below to sign in with a different Roblox account and replace this link. Buying
-                    Directory Pro still uses the separate Roblox purchase check in the Pro section.
+                    Use the button below to sign in with a different Roblox account and replace this link.{' '}
+                    {profile.is_pro
+                      ? 'This only updates the Roblox button on your profile — it does not change your Pro purchase.'
+                      : 'After you buy Directory Pro on Roblox, verify it in the ERLC Directory Pro section below on this tab.'}
                   </p>
                   <Button
                     type="button"
@@ -896,44 +900,12 @@ const ProfileEditor = ({
             </div>
           </EditorSection>
 
-          <EditorSection
-            title="ERLC Directory Pro"
-            description={`${ERLC_PRO_PRICE_ROBUX} Robux on Roblox — bonus themes, directory visibility boost, and a Pro badge on your profile.`}
-            icon={Gem}
-          >
-            {profile.is_pro ? (
-              <div className="space-y-4">
-                <p className="text-sm font-medium text-zinc-200">Pro is active on this account.</p>
-                {profile.roblox_user_id ? (
-                  <RobloxLinkedPreview robloxUserId={String(profile.roblox_user_id)} variant="compact" />
-                ) : null}
-                <Field label="Custom tag next to Pro" hint="Optional · max 28 characters · Save profile to publish">
-                  <Input
-                    value={proBadgeLabel}
-                    maxLength={28}
-                    onChange={(e) => setProBadgeLabel(e.target.value)}
-                    className={editorInput}
-                    placeholder="e.g. LEO Trainer"
-                  />
-                </Field>
-                <p className="text-xs text-muted-foreground">
-                  Pass listing:{' '}
-                  <a
-                    href={ERLC_PRO_ROBLOX_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-zinc-200 underline-offset-2 hover:text-white hover:underline"
-                  >
-                    Roblox catalog
-                  </a>
-                  . Full details:{' '}
-                  <Link to="/pro" className="text-zinc-200 underline-offset-2 hover:text-white hover:underline">
-                    /pro
-                  </Link>
-                  .
-                </p>
-              </div>
-            ) : (
+          {!profile.is_pro ? (
+            <EditorSection
+              title="ERLC Directory Pro"
+              description={`${ERLC_PRO_PRICE_ROBUX} Robux on Roblox — bonus themes, directory visibility boost, and a Pro badge on your profile.`}
+              icon={Gem}
+            >
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Purchase on Roblox, then verify with the username that owns the pass. Set Roblox privacy → inventory
@@ -968,13 +940,104 @@ const ProfileEditor = ({
                   </Button>
                 </div>
               </div>
-            )}
-          </EditorSection>
+            </EditorSection>
+          ) : null}
         </TabsContent>
 
         {/* CUSTOMIZE */}
         <TabsContent value="customize" className="mt-5 space-y-6">
-          <section className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 sm:p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04]">
+          <div
+            role="navigation"
+            aria-label="Customize sections"
+            className="sticky top-[4.5rem] z-30 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-zinc-950/90 px-2 py-2 shadow-lg shadow-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
+          >
+            {(profile.is_pro
+              ? (
+                  [
+                    ['editor-customize-pro', 'Pro'],
+                    ['editor-customize-preview', 'Preview'],
+                    ['editor-customize-theme', 'Theme'],
+                    ['editor-customize-banner', 'Banner'],
+                  ] as const
+                )
+              : (
+                  [
+                    ['editor-customize-preview', 'Preview'],
+                    ['editor-customize-theme', 'Theme'],
+                    ['editor-customize-banner', 'Banner'],
+                  ] as const
+                )
+            ).map(([sid, label]) => (
+              <Button
+                key={sid}
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9 rounded-xl border border-white/12 bg-white/[0.06] text-xs font-medium text-zinc-200 hover:bg-white/[0.11]"
+                onClick={() => document.getElementById(sid)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          {profile.is_pro ? (
+            <EditorSection
+              sectionId="editor-customize-pro"
+              title="Pro membership"
+              description="Your purchase is active. Manage your Pro badge and review everything included."
+              icon={Gem}
+            >
+              <ul className="grid gap-2 sm:grid-cols-2 text-sm text-muted-foreground">
+                {[
+                  'Four exclusive accent palettes (Aurora, Crimson, Midnight, Neon lime)',
+                  'Higher placement in the Member Directory after staff-featured profiles',
+                  'Pro badge with optional short custom tagline',
+                  'Sticky save bar and quick Customize navigation',
+                  'Wide banner crop, URL paste, and Discord media sync',
+                  'Supports moderation tooling and hosting for the directory',
+                ].map((t) => (
+                  <li
+                    key={t}
+                    className="flex gap-2.5 items-start rounded-xl border border-white/[0.06] bg-black/25 px-3 py-2.5"
+                  >
+                    <Check className="h-4 w-4 shrink-0 text-emerald-400/90 mt-0.5" aria-hidden />
+                    <span className="leading-snug">{t}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
+                <p className="text-sm font-medium text-zinc-200">Pro display</p>
+                {profile.roblox_user_id ? (
+                  <RobloxLinkedPreview robloxUserId={String(profile.roblox_user_id)} variant="compact" />
+                ) : null}
+                <Field label="Custom tag next to Pro" hint="Optional · max 28 characters · Save profile to publish">
+                  <Input
+                    value={proBadgeLabel}
+                    maxLength={28}
+                    onChange={(e) => setProBadgeLabel(e.target.value)}
+                    className={editorInput}
+                    placeholder="e.g. LEO Trainer"
+                  />
+                </Field>
+                <p className="text-xs text-muted-foreground">
+                  Game pass listing:{' '}
+                  <a
+                    href={ERLC_PRO_ROBLOX_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-zinc-200 underline-offset-2 hover:text-white hover:underline"
+                  >
+                    Roblox catalog
+                  </a>
+                  .
+                </p>
+              </div>
+            </EditorSection>
+          ) : null}
+
+          <section
+            id="editor-customize-preview" className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 sm:p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04]">
             <button
               type="button"
               onClick={() => setLivePreviewExpanded((v) => !v)}
@@ -1064,7 +1127,9 @@ const ProfileEditor = ({
             ) : null}
           </section>
 
-          <EditorSection title="Color & theme" description="Choose a preset or tune accent — affects highlights and badges on your profile." icon={Palette}>
+          <EditorSection
+            sectionId="editor-customize-theme"
+            title="Color & theme" description="Choose a preset or tune accent — affects highlights and badges on your profile." icon={Palette}>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
               {PRESETS.map((p) => (
                 <button
@@ -1169,6 +1234,7 @@ const ProfileEditor = ({
           </EditorSection>
 
           <EditorSection
+            sectionId="editor-customize-banner"
             title="Banner image"
             description="Drag a photo below — we crop it to a wide banner (21:9). Paste a URL, or pull media from Discord (Customize only — choose banner, profile picture, or both)."
             icon={ImageIcon}
@@ -1455,6 +1521,32 @@ const ProfileEditor = ({
           </div>
         </TabsContent>
       </Tabs>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[55] flex justify-center px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="pointer-events-auto flex w-full max-w-lg items-stretch gap-2 rounded-2xl border border-white/12 bg-zinc-950/95 p-2.5 shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/88 sm:max-w-2xl">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            disabled={saving}
+            className="h-11 shrink-0 gap-2 rounded-xl px-3 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="default"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="h-11 flex-1 gap-2 rounded-xl border border-white/18 bg-white/[0.12] text-white shadow-md shadow-white/10 hover:bg-white/[0.18] sm:flex-initial sm:min-w-[220px] sm:ml-auto"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
       </div>
 
       {verifyTarget && (
