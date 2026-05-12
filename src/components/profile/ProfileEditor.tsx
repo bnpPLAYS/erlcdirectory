@@ -22,7 +22,6 @@ import {
   ChevronDown,
   Globe,
   Gem,
-  Gamepad2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -65,6 +64,7 @@ import {
 import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
 import { RobloxLinkedPreview } from '@/components/profile/RobloxLinkedPreview';
+import { RobloxIcon } from '@/components/icons/RobloxIcon';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import {
   PROFILE_SOCIAL_KEYS,
@@ -228,6 +228,8 @@ const ACCENT_SWATCHES = [
   '#e879f9',
 ]
 
+type EditorSectionIcon = LucideIcon | React.FC<{ className?: string }>;
+
 function EditorSection({
   title,
   description,
@@ -238,7 +240,7 @@ function EditorSection({
 }: {
   title: string
   description?: string
-  icon?: LucideIcon
+  icon?: EditorSectionIcon
   children: ReactNode
   className?: string
   /** Anchor id for in-page navigation (e.g. Customize quick links). */
@@ -769,7 +771,7 @@ const ProfileEditor = ({
             <EditorSection
               title="Roblox profile"
               description="You are sent to Roblox to approve access (official OAuth). We only read your Roblox user id to show the profile link — no inventory checks and no purchases required for linking."
-              icon={Gamepad2}
+              icon={RobloxIcon}
             >
               {profile.roblox_user_id ? (
                 <div className="space-y-3">

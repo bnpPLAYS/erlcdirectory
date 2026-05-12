@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { isModerationReportsSchemaMissingError } from '@/lib/moderationReportsErrors';
 import { REPORT_CATEGORY_OPTIONS, type ReportCategoryId } from '@/lib/reportCategories';
+import { callModerationFn } from '@/lib/callModerationFn';
 
 type Props = {
   open: boolean;
@@ -97,29 +98,13 @@ export function SubmitReportDialog({
     }
     if (kind === 'server') payload.server_id = serverId;
 
-    let msg: string | null = null;
-    try {
-      const res = await fetch('/api/submit-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !data.ok) {
-        msg = data.error || `Request failed (${res.status})`;
-      }
-    } catch {
-      msg = 'Network error submitting report.';
-    }
+    const r = await callModerationFn('submit-report', payload);
     setSubmitting(false);
-    if (msg) {
+    if (!r.ok) {
       toast.error(
-        isModerationReportsSchemaMissingError(msg)
+        isModerationReportsSchemaMissingError(r.error)
           ? 'Reporting isn’t enabled on this database yet. Run the migrations for moderation reports (see Docs → Reporting).'
-          : msg,
+          : r.error,
       );
       return;
     }

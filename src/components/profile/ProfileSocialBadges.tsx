@@ -9,6 +9,7 @@ import {
   socialLinkTooltip,
 } from '@/lib/profileSocialLinks';
 import { robloxWebProfileUrl } from '@/lib/robloxProfileUrl';
+import { RobloxIcon } from '@/components/icons/RobloxIcon';
 
 const DISCORD_BRAND = '#5865F2';
 const YOUTUBE_BRAND = '#FF0000';
@@ -88,14 +89,6 @@ function IconInstagram() {
   );
 }
 
-function IconRoblox() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
-      <path d="M5.164 15.096 2.188 3.657a1.38 1.38 0 0 1 1.013-1.67L20.31.043a1.38 1.38 0 0 1 1.648 1.036l2.978 11.44a1.38 1.38 0 0 1-1.014 1.67l-17.11 2.945a1.38 1.38 0 0 1-1.648-1.036l-.002-.002zm6.06-2.266 3.303-.567-1.04-3.993-3.303.567 1.04 3.993z" />
-    </svg>
-  );
-}
-
 const ICONS: Record<ProfileSocialKey, React.FC> = {
   youtube: IconYouTube,
   x: IconX,
@@ -103,7 +96,7 @@ const ICONS: Record<ProfileSocialKey, React.FC> = {
   tiktok: IconTikTok,
   github: IconGitHub,
   instagram: IconInstagram,
-  roblox: IconRoblox,
+  roblox: RobloxIcon,
 };
 
 const BRAND_BG: Record<ProfileSocialKey, string> = {
@@ -165,7 +158,7 @@ export function ProfileSocialBadges({ socialLinks, discordHref, robloxUserId, cl
               className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               aria-label={PROFILE_SOCIAL_LABELS.roblox}
             >
-              {badgeShell(<IconRoblox />, 'text-white', { backgroundColor: BRAND_BG.roblox })}
+              {badgeShell(<RobloxIcon />, 'text-white', { backgroundColor: BRAND_BG.roblox })}
             </a>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[min(90vw,280px)] break-all text-xs">
