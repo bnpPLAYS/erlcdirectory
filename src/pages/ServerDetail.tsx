@@ -226,14 +226,6 @@ const ServerDetail = () => {
       p_server_id: server.id,
       p_is_verified: next,
     });
-    const msg = error?.message ?? '';
-    const rpcUnavailable =
-      !!error &&
-      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
-        /site_owner_set_server_verified/i.test(msg));
-    if (rpcUnavailable) {
-      ({ error } = await supabase.from('servers').update({ is_verified: next }).eq('id', server.id));
-    }
     if (error) {
       toast.error(error.message);
       return;

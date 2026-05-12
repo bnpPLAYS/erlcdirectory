@@ -225,14 +225,6 @@ const Admin = () => {
       p_server_id: s.id,
       p_is_verified: !s.is_verified,
     });
-    const msg = error?.message ?? '';
-    const rpcUnavailable =
-      !!error &&
-      (/Could not find the function|schema cache|PGRST202|42883/i.test(msg) ||
-        /site_owner_set_server_verified/i.test(msg));
-    if (rpcUnavailable) {
-      ({ error } = await supabase.from('servers').update({ is_verified: !s.is_verified }).eq('id', s.id));
-    }
     if (error) return toast({ title: error.message, variant: 'destructive' });
     setServers((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_verified: !s.is_verified } : x)));
   };
