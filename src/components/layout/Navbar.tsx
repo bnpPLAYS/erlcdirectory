@@ -31,10 +31,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
-import { StaffBanner, staffBannerHeightPx } from '@/components/staff/StaffBanner';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
-import { readStaffBannerCompact, writeStaffBannerCompact } from '@/lib/siteUiPreferences';
 
 const NAV_FLOAT_TOP_PX = 12;
 const NAV_BAR_H_PX = 56;
@@ -44,7 +42,6 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [staffBarCompact, setStaffBarCompact] = useState(false);
   const { user, profile, signOut } = useAuth();
   const { isStaff } = useStaffAccess();
   const discordUi = useMemo(() => getDiscordSessionDisplay(user), [user]);
@@ -67,31 +64,20 @@ const Navbar = () => {
   }, [profile?.is_pro]);
 
   useEffect(() => {
-    setStaffBarCompact(readStaffBannerCompact());
-  }, []);
-
-  useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const setStaffCompact = (compact: boolean) => {
-    writeStaffBannerCompact(compact);
-    setStaffBarCompact(compact);
-  };
-
   const isActive = (path: string) => location.pathname === path;
   const visibleLinks = navLinks.filter((l) => !l.auth || user);
-  const staffStripPx = user && isStaff ? staffBannerHeightPx(staffBarCompact) : 0;
-  const layoutTopSpacer = staffStripPx + NAV_FLOAT_TOP_PX + NAV_BAR_H_PX + NAV_FLOAT_BOTTOM_PX;
+  const layoutTopSpacer = NAV_FLOAT_TOP_PX + NAV_BAR_H_PX + NAV_FLOAT_BOTTOM_PX;
 
   return (
     <>
-      <StaffBanner visible={!!user && isStaff} compact={staffBarCompact} onCompactChange={setStaffCompact} />
       <div style={{ height: layoutTopSpacer }} aria-hidden />
 
       <header
         className="fixed left-0 right-0 z-50 flex justify-center px-3 sm:px-5 pointer-events-none"
-        style={{ top: staffStripPx + NAV_FLOAT_TOP_PX }}
+        style={{ top: NAV_FLOAT_TOP_PX }}
       >
         <div
           className={cn(
