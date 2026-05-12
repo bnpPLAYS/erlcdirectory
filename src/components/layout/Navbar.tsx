@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState, useMemo, useEffect } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -52,13 +53,18 @@ const Navbar = () => {
   const navAvatarUrl = safeAvatarUrl(profile?.discord_avatar ?? discordUi?.avatarUrl ?? null);
   const navInitial = (navDisplayName || 'U').charAt(0).toUpperCase();
 
-  const navLinks = [
-    { path: '/browse', label: 'Members', icon: Users },
-    { path: '/servers', label: 'Servers', icon: Building2 },
-    { path: '/posts', label: 'Posts', icon: FileText },
-    { path: '/pro', label: 'Pro', icon: Sparkles },
-    { path: '/messages', label: 'Messages', icon: MessageSquare, auth: true },
-  ];
+  const navLinks = useMemo(() => {
+    const out: Array<{ path: string; label: string; icon: LucideIcon; auth?: boolean }> = [
+      { path: '/browse', label: 'Members', icon: Users },
+      { path: '/servers', label: 'Servers', icon: Building2 },
+      { path: '/posts', label: 'Posts', icon: FileText },
+    ];
+    if (!profile?.is_pro) {
+      out.push({ path: '/pro', label: 'Pro', icon: Sparkles });
+    }
+    out.push({ path: '/messages', label: 'Messages', icon: MessageSquare, auth: true });
+    return out;
+  }, [profile?.is_pro]);
 
   useEffect(() => {
     setStaffBarCompact(readStaffBannerCompact());
