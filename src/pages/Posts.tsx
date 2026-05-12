@@ -1,27 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
   Clock,
   ExternalLink,
   Server as ServerIcon,
-  ChevronDown,
-  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import CreatePostDialog from '@/components/posts/CreatePostDialog';
+import { PostComments } from '@/components/posts/PostComments';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatTimeAgo } from '@/lib/mockData';
-import { cn } from '@/lib/utils';
-import { filterPlaintext } from '@/lib/chatFilter';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
@@ -29,6 +25,7 @@ import { profilePath } from '@/lib/profilePath';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
 import { isMissingPostsColumnError } from '@/lib/postsSchemaCompat';
+import { cn } from '@/lib/utils';
 
 const POSTS_SELECT_WITH_ROBLOX = `
         id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
@@ -94,122 +91,6 @@ const postTypeConfig: Record<string, { label: string; badgeClass: string }> = {
     badgeClass: 'border-sky-400/35 bg-sky-500/12 text-sky-200',
   },
 };
-
-type CommentRow = {
-  id: string;
-  content: string;
-  created_at: string;
-  author_id: string;
-  profiles: { display_name: string | null; discord_avatar: string | null } | null;
-};
-
-function DiscussionThread({ postId }: { postId: string }) {
-  const { user, profile } = useAuth();
-  const [comments, setComments] = useState<CommentRow[]>([]);
-  const [text, setText] = useState('');
-  const [open, setOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    const { data: rows, error } = await supabase
-      .from('post_comments')
-      .select('id, content, created_at, author_id')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    const base = rows || [];
-    const authorIds = [...new Set(base.map((r) => r.author_id))];
-    let profMap = new Map<string, { display_name: string | null; discord_avatar: string | null }>();
-    if (authorIds.length) {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, display_name, discord_avatar')
-        .in('id', authorIds);
-      (profs || []).forEach((p) => profMap.set(p.id, { display_name: p.display_name, discord_avatar: p.discord_avatar }));
-    }
-    setComments(
-      base.map((r) => ({
-        ...r,
-        profiles: profMap.get(r.author_id) ?? null,
-      })),
-    );
-  }, [postId]);
-
-  useEffect(() => {
-    if (open) load();
-  }, [open, load]);
-
-  const send = async () => {
-    if (!profile || !text.trim()) return;
-    const { text: t, blockedHits } = filterPlaintext(text.trim());
-    if (!t) return;
-    const { error } = await supabase.from('post_comments').insert({
-      post_id: postId,
-      author_id: profile.id,
-      content: t,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (blockedHits) toast.info('Wording was adjusted to meet community guidelines.');
-    setText('');
-    load();
-  };
-
-  return (
-    <Collapsible
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (v) load();
-      }}
-    >
-      <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mt-3 w-full text-left">
-        <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
-        <span>
-          {comments.length} {comments.length === 1 ? 'reply' : 'replies'}
-        </span>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pt-3 border-t border-white/10 mt-3">
-        {comments.map((c) => (
-          <div key={c.id} className="rounded-lg bg-white/[0.03] border border-white/8 px-3 py-2">
-            <div className="flex items-center gap-2 mb-1">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={c.profiles?.discord_avatar || undefined} />
-                <AvatarFallback className="text-[10px]">
-                  {c.profiles?.display_name?.[0] || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs font-medium">{c.profiles?.display_name || 'Member'}</span>
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {formatTimeAgo(c.created_at)}
-              </span>
-            </div>
-            <p className="text-sm text-foreground/90 whitespace-pre-wrap">{c.content}</p>
-          </div>
-        ))}
-        {user ? (
-          <div className="flex gap-2 pt-1">
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Write a reply…"
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), void send())}
-            />
-            <Button type="button" size="icon" variant="secondary" onClick={send} disabled={!text.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sign in to join the thread.</p>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
 
 const Posts = () => {
   const { user, profile } = useAuth();
@@ -314,7 +195,7 @@ const Posts = () => {
             />
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Posts</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Hiring threads, résumés, announcements, and discussions from the ER:LC community.
+              Hiring, résumés, announcements, and discussions — with comments on every approved post.
             </p>
           </div>
 
@@ -481,7 +362,7 @@ const Posts = () => {
                             )}
                           </div>
 
-                          {post.type === 'discussion' && <DiscussionThread postId={post.id} />}
+                          <PostComments postId={post.id} postStatus={post.status ?? 'approved'} />
                         </div>
                       </div>
                     </CardContent>
@@ -502,7 +383,8 @@ const Posts = () => {
                 />
                 <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Start the board with a hiring thread, looking-for-work post, announcement, or discussion.
+                  Start the board with a hiring thread, looking-for-work post, announcement, or discussion — readers can
+                  comment once a post is approved.
                 </p>
                 {user ? (
                   <CreatePostDialog onCreated={fetchPosts} />

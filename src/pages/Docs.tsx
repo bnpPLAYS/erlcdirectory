@@ -270,7 +270,7 @@ const Docs = () => {
               </p>
               <ul className="mt-3 list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
                 <li>
-                  <strong className="text-foreground">Discussion</strong> — Threaded replies for conversation.
+                  <strong className="text-foreground">Discussion</strong> — Open-ended topics; other types focus hiring, résumés, or news.
                 </li>
                 <li>
                   <strong className="text-foreground">Hiring</strong> — Often includes an application link; Discord membership may be checked when configured.
@@ -283,6 +283,7 @@ const Docs = () => {
                 </li>
               </ul>
               <p className="mt-3 text-muted-foreground leading-relaxed">
+                After a post is approved, signed-in members can add comments on any post type for follow-up and Q&amp;A.
                 Filters help narrow by type; author names link to member profiles where available.
               </p>
             </>
