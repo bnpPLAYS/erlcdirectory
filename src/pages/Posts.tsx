@@ -337,12 +337,12 @@ const Posts = () => {
               ))}
             </div>
           ) : filteredPosts.length > 0 ? (
-            <div className="space-y-4 max-w-2xl mx-auto">
+            <div className="stagger-enter space-y-4 max-w-2xl mx-auto">
               {filteredPosts.map((post) => {
                 const typeConfig = postTypeConfig[post.type];
                 const serverInviteHref = normalizeDiscordInvite(post.servers?.discord_invite ?? null);
                 return (
-                  <Card key={post.id} className="hover:border-primary/50 transition-colors border-white/10">
+                  <Card key={post.id} className="hover-lift hover:border-primary/50 transition-colors border-white/10">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
                         <Avatar className="h-10 w-10">

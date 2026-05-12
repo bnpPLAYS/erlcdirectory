@@ -109,9 +109,9 @@ const Pro = () => {
             </div>
           </header>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-12">
+          <div className="stagger-enter grid sm:grid-cols-2 gap-4 mb-12">
             {perks.map(({ icon: Icon, title, body }) => (
-              <Card key={title} className="border-white/10 bg-white/[0.02]">
+              <Card key={title} className="hover-lift border-white/10 bg-white/[0.02] transition-colors duration-300 hover:border-white/16">
                 <CardContent className="p-5 flex gap-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/12 bg-white/[0.06] text-zinc-100">
                     <Icon className="h-5 w-5" />

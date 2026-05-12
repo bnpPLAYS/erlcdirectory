@@ -350,7 +350,7 @@ const Browse = () => {
                 ))}
               </div>
             ) : filteredAndSorted.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+              <div className="stagger-enter grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
                 {filteredAndSorted.map((profile) => (
                   <ProfileCard key={profile.id} profile={profile} />
                 ))}

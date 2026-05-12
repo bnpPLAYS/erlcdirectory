@@ -221,7 +221,7 @@ const Servers = () => {
               ))}
             </div>
           ) : filteredServers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="stagger-enter grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredServers.map((server) => (
                 <ServerCard key={server.id} server={server} />
               ))}
