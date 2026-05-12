@@ -42,6 +42,7 @@ interface Post {
   server_id: string | null;
   application_url: string | null;
   require_guild_membership: boolean;
+  require_roblox_verified: boolean;
   requirements: string[] | null;
   profiles: {
     id: string;
@@ -213,7 +214,7 @@ const Posts = () => {
       .select(
         `
         id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
-        application_url, require_guild_membership, requirements,
+        application_url, require_guild_membership, require_roblox_verified, requirements,
         profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
         servers(id, name, icon, discord_invite, guild_id)
       `,
@@ -254,6 +255,12 @@ const Posts = () => {
       const ok = guilds.some((g) => g.id === post.servers!.guild_id);
       if (!ok) {
         toast.error('Join the server on Discord first—this post requires membership.');
+        return;
+      }
+    }
+    if (post.require_roblox_verified) {
+      if (!profile?.roblox_verified_at) {
+        toast.error('This post requires a verified Roblox account. Use Edit profile → Continue with Roblox, then try again.');
         return;
       }
     }
@@ -403,8 +410,13 @@ const Posts = () => {
                               </Button>
                               {post.application_url && (
                                 <span className="text-[11px] text-muted-foreground self-center">
-                                  {post.require_guild_membership
-                                    ? 'Discord membership may be verified before the form opens.'
+                                  {post.require_guild_membership || post.require_roblox_verified
+                                    ? [
+                                        post.require_guild_membership && 'Discord membership',
+                                        post.require_roblox_verified && 'Roblox verification',
+                                      ]
+                                        .filter(Boolean)
+                                        .join(' and ') + ' may be checked before the form opens.'
                                     : 'Opens the application in a new tab.'}
                                 </span>
                               )}
