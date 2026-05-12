@@ -113,8 +113,8 @@ const Auth = () => {
 
               <div className="mt-8 pt-6 border-t border-white/10 w-full">
                 <p className="text-xs text-muted-foreground">
-                  We access your Discord username, avatar, server list, and email — Supabase sign-in requires email to open your account.
-                  We never post on your behalf.
+                  We access your Discord username, avatar, and server list for sign-in and features such as verified
+                  servers. We never post on your behalf.
                 </p>
               </div>
             </div>
