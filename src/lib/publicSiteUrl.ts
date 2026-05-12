@@ -16,6 +16,10 @@ export function getPublicSiteOrigin(): string {
     return 'https://www.erlc.directory';
   }
 
+  if (host === 'canary.erlc.directory') {
+    return 'https://canary.erlc.directory';
+  }
+
   if (host.endsWith('.vercel.app')) {
     return 'https://www.erlc.directory';
   }

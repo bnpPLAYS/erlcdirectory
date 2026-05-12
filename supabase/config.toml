@@ -30,6 +30,9 @@ verify_jwt = false
 [functions.roblox-oauth-complete]
 verify_jwt = false
 
+[functions.canary-session]
+verify_jwt = false
+
 [functions.submit-report]
 verify_jwt = false
 

@@ -18,6 +18,7 @@
     "deploy:function:verify-roblox-pro": "supabase functions deploy verify-roblox-pro",
     "deploy:function:roblox-oauth-start": "supabase functions deploy roblox-oauth-start",
     "deploy:function:roblox-oauth-complete": "supabase functions deploy roblox-oauth-complete",
+    "deploy:function:canary-session": "supabase functions deploy canary-session",
     "deploy:function:submit-report": "supabase functions deploy submit-report",
     "deploy:function:staff-moderation-action": "supabase functions deploy staff-moderation-action"
   },

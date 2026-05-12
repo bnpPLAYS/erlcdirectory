@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle } from 'lucide-react';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,11 @@ import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
 import { reportCategoryLabel } from '@/lib/reportCategories';
 import { callModerationFn } from '@/lib/callModerationFn';
+import {
+  canaryStaffStart,
+  canaryStaffStatus,
+  canaryStaffStop,
+} from '@/lib/callCanarySession';
 
 type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 
@@ -35,6 +40,10 @@ const Admin = () => {
   const [broadcasting, setBroadcasting] = useState(false);
   const [warnForReportId, setWarnForReportId] = useState<string | null>(null);
   const [warnBody, setWarnBody] = useState('');
+  const [canaryActive, setCanaryActive] = useState(false);
+  const [canaryStartedAt, setCanaryStartedAt] = useState<string | null>(null);
+  const [canaryBusy, setCanaryBusy] = useState(false);
+  const [canaryPlainCode, setCanaryPlainCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -145,6 +154,19 @@ const Admin = () => {
   useEffect(() => {
     if (access?.canModerate) refresh();
   }, [access?.canModerate]);
+
+  const loadCanary = useCallback(async () => {
+    if (!access?.canModerate || !session?.access_token) return;
+    const r = await canaryStaffStatus(session.access_token);
+    if (r.ok) {
+      setCanaryActive(r.active);
+      setCanaryStartedAt(r.started_at);
+    }
+  }, [access?.canModerate, session?.access_token]);
+
+  useEffect(() => {
+    void loadCanary();
+  }, [loadCanary]);
 
   if (authLoading || access === null) {
     return <div className="min-h-screen bg-background"><Navbar /><div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div></div>;
@@ -351,6 +373,42 @@ const Admin = () => {
     refresh();
   };
 
+  const startCanarySession = async () => {
+    if (!session?.access_token) {
+      toast({ title: 'Session expired. Sign in again.', variant: 'destructive' });
+      return;
+    }
+    setCanaryBusy(true);
+    const r = await canaryStaffStart(session.access_token);
+    setCanaryBusy(false);
+    if (!r.ok) return toast({ title: r.error, variant: 'destructive' });
+    setCanaryPlainCode(r.test_code);
+    toast({ title: 'Canary session started' });
+    void loadCanary();
+  };
+
+  const stopCanarySession = async () => {
+    if (!session?.access_token) return;
+    if (!confirm('End the canary session? Testers will lose access immediately.')) return;
+    setCanaryBusy(true);
+    const r = await canaryStaffStop(session.access_token);
+    setCanaryBusy(false);
+    if (!r.ok) return toast({ title: r.error, variant: 'destructive' });
+    setCanaryPlainCode(null);
+    toast({ title: 'Canary session ended' });
+    void loadCanary();
+  };
+
+  const copyCanaryCode = async () => {
+    if (!canaryPlainCode) return;
+    try {
+      await navigator.clipboard.writeText(canaryPlainCode);
+      toast({ title: 'Code copied' });
+    } catch {
+      toast({ title: 'Could not copy', variant: 'destructive' });
+    }
+  };
+
   const newStaffMatches = newStaffQuery.length >= 2
     ? profiles.filter((p) =>
         !staff.some((s) => s.user_id === p.user_id) &&
@@ -361,7 +419,13 @@ const Admin = () => {
 
   const tabParam = searchParams.get('tab');
   const defaultTab =
-    tabParam === 'reports' ? 'reports' : access.isSiteOwner ? 'members' : 'openings';
+    tabParam === 'reports'
+      ? 'reports'
+      : tabParam === 'canary' && access.canModerate
+        ? 'canary'
+        : access.isSiteOwner
+          ? 'members'
+          : 'openings';
 
   return (
     <div className="min-h-screen bg-background">
@@ -385,6 +449,11 @@ const Admin = () => {
             )}
             <TabsTrigger value="openings">Posts</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            {access.canModerate && (
+              <TabsTrigger value="canary" className="gap-1.5">
+                <Bird className="h-3.5 w-3.5" /> Canary
+              </TabsTrigger>
+            )}
             {access.isSiteOwner && (
               <>
                 <TabsTrigger value="staff">Staff</TabsTrigger>
@@ -635,6 +704,70 @@ const Admin = () => {
               )
             )}
           </TabsContent>
+
+          {access.canModerate && (
+            <TabsContent value="canary" className="space-y-4">
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <Bird className="h-5 w-5" /> Canary pre-release
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Point DNS and Vercel at <strong className="text-foreground">canary.erlc.directory</strong> (same
+                      build or a preview deployment). When you start a session, testers must enter the one-time test code
+                      on the canary site before it loads. Stop the session to revoke everyone immediately.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm space-y-2">
+                    <p>
+                      <span className="text-muted-foreground">Status:</span>{' '}
+                      {canaryActive ? (
+                        <span className="text-emerald-400 font-medium">Active</span>
+                      ) : (
+                        <span className="text-zinc-400">No session</span>
+                      )}
+                    </p>
+                    {canaryActive && canaryStartedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Started {new Date(canaryStartedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  {canaryPlainCode && (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+                      <p className="text-xs font-medium text-amber-200/90">Test code (copy now — not shown again)</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <code className="text-lg font-mono tracking-widest text-foreground">{canaryPlainCode}</code>
+                        <Button type="button" size="sm" variant="secondary" className="gap-1" onClick={() => void copyCanaryCode()}>
+                          <Copy className="h-3.5 w-3.5" /> Copy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" disabled={canaryBusy || canaryActive} onClick={() => void startCanarySession()}>
+                      Start testing session
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={canaryBusy || !canaryActive}
+                      onClick={() => void stopCanarySession()}
+                    >
+                      Stop session
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Requires Edge Function <code className="rounded bg-white/10 px-1">canary-session</code> and secret{' '}
+                    <code className="rounded bg-white/10 px-1">CANARY_SIGNING_SECRET</code> (16+ chars) in Supabase and
+                    Vercel. Optional: <code className="rounded bg-white/10 px-1">SITE_OWNER_DISCORD_USERNAME</code> for
+                    staff checks.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {access.isSiteOwner && (
           <TabsContent value="discord" className="space-y-3">

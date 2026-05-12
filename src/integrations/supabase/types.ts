@@ -267,6 +267,39 @@ export type Database = {
           },
         ]
       }
+      canary_test_config: {
+        Row: {
+          code_hash: string | null
+          code_salt: string | null
+          id: number
+          is_active: boolean
+          session_nonce: string
+          started_at: string | null
+          started_by_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code_hash?: string | null
+          code_salt?: string | null
+          id?: number
+          is_active?: boolean
+          session_nonce?: string
+          started_at?: string | null
+          started_by_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code_hash?: string | null
+          code_salt?: string | null
+          id?: number
+          is_active?: boolean
+          session_nonce?: string
+          started_at?: string | null
+          started_by_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       moderation_reports: {
         Row: {
           conversation_id: string | null
