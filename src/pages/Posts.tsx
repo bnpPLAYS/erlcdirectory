@@ -28,6 +28,21 @@ import { pageHeroEnter } from '@/lib/pageHero';
 import { profilePath } from '@/lib/profilePath';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
+import { isMissingPostsColumnError } from '@/lib/postsSchemaCompat';
+
+const POSTS_SELECT_WITH_ROBLOX = `
+        id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
+        application_url, require_guild_membership, require_roblox_verified, requirements,
+        profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
+        servers(id, name, icon, discord_invite, guild_id)
+      `;
+
+const POSTS_SELECT_SANS_ROBLOX = `
+        id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
+        application_url, require_guild_membership, requirements,
+        profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
+        servers(id, name, icon, discord_invite, guild_id)
+      `;
 
 interface Post {
   id: string;
@@ -42,7 +57,7 @@ interface Post {
   server_id: string | null;
   application_url: string | null;
   require_guild_membership: boolean;
-  require_roblox_verified: boolean;
+  require_roblox_verified?: boolean;
   requirements: string[] | null;
   profiles: {
     id: string;
@@ -209,21 +224,29 @@ const Posts = () => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('posts')
-      .select(
-        `
-        id, type, title, content, status, is_open, view_count, application_count, created_at, server_id,
-        application_url, require_guild_membership, require_roblox_verified, requirements,
-        profiles!author_id(id, discord_username, display_name, discord_avatar, discord_id, is_verified),
-        servers(id, name, icon, discord_invite, guild_id)
-      `,
-      )
+      .select(POSTS_SELECT_WITH_ROBLOX)
       .order('created_at', { ascending: false })
       .limit(50);
 
+    if (error && isMissingPostsColumnError(error.message, 'require_roblox_verified')) {
+      const second = await supabase
+        .from('posts')
+        .select(POSTS_SELECT_SANS_ROBLOX)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      data = second.data;
+      error = second.error;
+    }
+
     if (!error && data) {
-      setPosts(data as Post[]);
+      setPosts(
+        (data as Post[]).map((p) => ({
+          ...p,
+          require_roblox_verified: p.require_roblox_verified ?? false,
+        })),
+      );
     }
     setLoading(false);
   };

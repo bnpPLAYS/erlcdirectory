@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { filterPlaintext } from '@/lib/chatFilter';
+import { isMissingPostsColumnError } from '@/lib/postsSchemaCompat';
 
 const TYPES = [
   {
@@ -171,7 +172,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       }
     }
 
-    const { error } = await supabase.from('posts').insert({
+    const insertRow = {
       author_id: profile.id,
       type,
       title: titleF.text,
@@ -181,7 +182,26 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       require_guild_membership: hiring && requireGuildMember,
       require_roblox_verified: hiring && requireRobloxVerified,
       requirements: reqLines.length ? reqLines : null,
-    });
+    };
+
+    let { error } = await supabase.from('posts').insert(insertRow);
+    if (error && isMissingPostsColumnError(error.message, 'require_roblox_verified')) {
+      const { require_roblox_verified: _r, ...withoutRobloxCol } = insertRow;
+      const retry = await supabase.from('posts').insert(withoutRobloxCol);
+      error = retry.error;
+      if (!error && hiring && requireRobloxVerified) {
+        toast({
+          title: 'Posted',
+          description:
+            'This project’s database is missing posts.require_roblox_verified. Run Supabase migrations (see migration 20260609120000 or 20260623130000) so the Roblox gate can be enforced.',
+        });
+        setOpen(false);
+        reset();
+        onCreated?.();
+        setSubmitting(false);
+        return;
+      }
+    }
     setSubmitting(false);
     if (error) {
       toast({ title: 'Could not create post', description: error.message, variant: 'destructive' });
