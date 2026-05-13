@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users, Pencil } from 'lucide-react';
+import { ArrowRight, Users, Pencil, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,7 @@ import homeFeatureServerDetail from '@/assets/home-features/server-detail.png';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { cn } from '@/lib/utils';
 import { profileEditorPath } from '@/lib/profilePath';
+import { COMMUNITY_DISCORD_URL } from '@/lib/siteCommunityDiscord';
 
 const PRODUCT_SCREENSHOTS: {
   title: string;
@@ -188,7 +189,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="home-hero-item flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+              <div className="home-hero-item flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 flex-wrap">
                 {user ? (
                   <>
                     <Link to={profile?.id ? profileEditorPath(profile) : '/browse'}>
@@ -208,6 +209,16 @@ const Index = () => {
                         Browse members
                       </Button>
                     </Link>
+                    <a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="gap-2 h-11 rounded-md w-full sm:w-auto border-white/15 bg-transparent font-medium"
+                      >
+                        Join our Discord
+                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </Button>
+                    </a>
                   </>
                 ) : (
                   <>
@@ -232,6 +243,16 @@ const Index = () => {
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>
+                    <a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="gap-2 h-11 rounded-md w-full sm:w-auto border-white/15 bg-transparent font-medium"
+                      >
+                        Join our Discord
+                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </Button>
+                    </a>
                   </>
                 )}
               </div>

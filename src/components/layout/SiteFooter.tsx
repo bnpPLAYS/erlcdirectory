@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { profilePath } from '@/lib/profilePath';
+import { COMMUNITY_DISCORD_URL } from '@/lib/siteCommunityDiscord';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
@@ -108,6 +110,17 @@ const SiteFooter = ({ className }: { className?: string }) => {
           <div>
             <h3 className="text-sm font-semibold text-white mb-4 tracking-tight">Resources</h3>
             <ul className="space-y-3 text-sm">
+              <li>
+                <a
+                  href={COMMUNITY_DISCORD_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                >
+                  Community & support
+                  <ExternalLink className="h-3 w-3 opacity-60" aria-hidden />
+                </a>
+              </li>
               <li>
                 <Link to="/docs" className="hover:text-white transition-colors">
                   Docs
