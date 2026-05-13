@@ -169,13 +169,14 @@ Deno.serve(async (req) => {
       if (!UUID_RE.test(serverId)) return json({ ok: false, error: 'Invalid server.' }, 400)
       const { error: delErr } = await admin.from('servers').delete().eq('id', serverId)
       if (delErr) return json({ ok: false, error: delErr.message }, 400)
+      // Cannot reference servers(id) after delete — FK would reject insert. Keep id in metadata.
       const a = await insertAudit(admin, {
         actor_profile_id: actor.staffProfileId,
         actor_user_id: user.id,
         action: 'delete_server',
         reason: effectiveReason,
-        target_server_id: serverId,
-        metadata: {},
+        target_server_id: null,
+        metadata: { deleted_server_id: serverId },
       })
       if (!a.ok) return json({ ok: false, error: a.error }, 400)
       return json({ ok: true })
@@ -222,8 +223,8 @@ Deno.serve(async (req) => {
         actor_user_id: user.id,
         action: 'remove_profile',
         reason: effectiveReason,
-        target_profile_id: profileId,
-        metadata: {},
+        target_profile_id: null,
+        metadata: { deleted_profile_id: profileId },
       })
       if (!a.ok) return json({ ok: false, error: a.error }, 400)
       return json({ ok: true })

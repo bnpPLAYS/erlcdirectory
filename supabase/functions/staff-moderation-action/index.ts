@@ -303,9 +303,12 @@ Deno.serve(async (req) => {
     action: auditAction,
     reason: auditReason,
     target_profile_id: targetProfile,
-    target_server_id: action === 'remove_server' ? targetServer : null,
+    target_server_id: null,
     report_id: reportId,
-    metadata: { moderation_action: action },
+    metadata:
+      action === 'remove_server' && targetServer
+        ? { moderation_action: action, deleted_server_id: targetServer }
+        : { moderation_action: action },
   })
   if (!log.ok) return json({ ok: false, error: log.error }, 400)
 

@@ -213,8 +213,8 @@ export default async function handler(request: Request): Promise<Response> {
         actor_user_id: user.id,
         action: 'delete_server',
         reason: effectiveReason,
-        target_server_id: serverId,
-        metadata: {},
+        target_server_id: null,
+        metadata: { deleted_server_id: serverId },
       });
       if (!a.ok) return json(400, { ok: false, error: a.error });
       return json(200, { ok: true });
@@ -259,8 +259,8 @@ export default async function handler(request: Request): Promise<Response> {
         actor_user_id: user.id,
         action: 'remove_profile',
         reason: effectiveReason,
-        target_profile_id: profileId,
-        metadata: {},
+        target_profile_id: null,
+        metadata: { deleted_profile_id: profileId },
       });
       if (!a.ok) return json(400, { ok: false, error: a.error });
       return json(200, { ok: true });
