@@ -1135,7 +1135,21 @@ const Admin = () => {
                         <div className="text-[10px] text-muted-foreground font-mono flex flex-wrap gap-x-3 gap-y-0.5">
                           {row.actor_profile_id && <span>actor profile: {row.actor_profile_id}</span>}
                           {row.target_profile_id && <span>target profile: {row.target_profile_id}</span>}
+                          {!row.target_profile_id &&
+                            (row.metadata as { deleted_profile_id?: string } | null)?.deleted_profile_id && (
+                              <span>
+                                deleted profile:{' '}
+                                {(row.metadata as { deleted_profile_id: string }).deleted_profile_id}
+                              </span>
+                            )}
                           {row.target_server_id && <span>target server: {row.target_server_id}</span>}
+                          {!row.target_server_id &&
+                            (row.metadata as { deleted_server_id?: string } | null)?.deleted_server_id && (
+                              <span>
+                                deleted server:{' '}
+                                {(row.metadata as { deleted_server_id: string }).deleted_server_id}
+                              </span>
+                            )}
                         </div>
                       </CardContent>
                     </Card>
