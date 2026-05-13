@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
+/** Ring offsets tuned per surface so orbits read clearly at different avatar sizes. */
 const ORBIT: Record<
   'nav' | 'card' | 'hero' | 'editor' | 'preview',
   { inner: string; outer: string; spark: string }
@@ -13,14 +14,17 @@ const ORBIT: Record<
 };
 
 type ProAvatarFrameProps = {
+  /** When true, show orbit animation (e.g. Pro member who opted in). */
   active: boolean;
+  /** Where the avatar is shown — controls orbit radius. */
   orbit?: keyof typeof ORBIT;
   children: ReactNode;
   className?: string;
 };
 
 /**
- * Animated monochrome rings around an avatar when `active` (Pro + user opt-in).
+ * Animated monochrome rings around an avatar when `active` is true.
+ * Subtle dual counter-rotating accent rings plus a slow “spark” segment.
  * CSS respects `prefers-reduced-motion`.
  */
 export function ProAvatarFrame({ active, orbit = 'card', children, className }: ProAvatarFrameProps) {

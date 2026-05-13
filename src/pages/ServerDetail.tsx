@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
+import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 
 interface GuildExperienceRow {
   id: string;
