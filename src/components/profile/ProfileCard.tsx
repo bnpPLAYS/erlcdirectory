@@ -9,6 +9,8 @@ import { experienceRoleDisplay } from '@/lib/experienceConstants';
 import { cn } from '@/lib/utils';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 
 interface ExperiencePreview {
   id: string;
@@ -30,6 +32,7 @@ interface ProfileCardProps {
     is_featured: boolean;
     is_pro?: boolean;
     pro_badge_label?: string | null;
+    show_pro_avatar_decor?: boolean;
     rating: number;
     review_count: number;
     skills: string[];
@@ -57,6 +60,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
   const showNewBadge = isNewProfile(profile.created_at);
   const cardAvatarSrc = safeAvatarUrl(profile.discord_avatar);
+  const proDecorActive = showsProAvatarDecor(profile);
 
   return (
     <Link to={profilePath(profile)} className="block h-full">
@@ -135,10 +139,12 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
               </div>
             </div>
 
-            <Avatar className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 ring-2 ring-white/10 group-hover:ring-primary/40 transition-all rounded-full">
-              <AvatarImage src={cardAvatarSrc} referrerPolicy={avatarReferrerPolicy(cardAvatarSrc)} />
-              <AvatarFallback className="bg-secondary text-base font-semibold">{initial}</AvatarFallback>
-            </Avatar>
+            <ProAvatarFrame active={proDecorActive} orbit="card">
+              <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-white/10 group-hover:ring-primary/40 transition-all rounded-full">
+                <AvatarImage src={cardAvatarSrc} referrerPolicy={avatarReferrerPolicy(cardAvatarSrc)} />
+                <AvatarFallback className="bg-secondary text-base font-semibold">{initial}</AvatarFallback>
+              </Avatar>
+            </ProAvatarFrame>
           </div>
 
           {/* Skills */}

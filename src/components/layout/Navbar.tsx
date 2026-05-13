@@ -33,6 +33,8 @@ import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import { NotificationsBell } from '@/components/layout/NotificationsBell';
 
 const NAV_FLOAT_TOP_PX = 12;
@@ -227,16 +229,18 @@ const Navbar = () => {
                       'hover:bg-white/[0.07] hover:border-white/15 transition-colors',
                     )}
                   >
-                    <Avatar className="h-8 w-8 ring-1 ring-white/10">
-                      <AvatarImage
-                        key={navAvatarUrl || 'nav-avatar'}
-                        src={navAvatarUrl}
-                        loading="eager"
-                        fetchPriority="high"
-                        referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
-                      />
-                      <AvatarFallback className="text-xs bg-zinc-800">{navInitial}</AvatarFallback>
-                    </Avatar>
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
+                      <Avatar className="h-8 w-8 ring-1 ring-white/10">
+                        <AvatarImage
+                          key={navAvatarUrl || 'nav-avatar'}
+                          src={navAvatarUrl}
+                          loading="eager"
+                          fetchPriority="high"
+                          referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
+                        />
+                        <AvatarFallback className="text-xs bg-zinc-800">{navInitial}</AvatarFallback>
+                      </Avatar>
+                    </ProAvatarFrame>
                     <div className="hidden sm:flex flex-col items-start leading-none max-w-[7rem]">
                       <span className="text-xs font-semibold truncate text-zinc-100 w-full">{navDisplayName}</span>
                       <span className="text-[10px] text-zinc-500 truncate w-full">@{navDiscordUsername}</span>
@@ -246,16 +250,18 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 bg-zinc-950 border-white/10">
                   <div className="flex items-center gap-3 p-3">
-                    <Avatar className="h-10 w-10 ring-1 ring-white/10">
-                      <AvatarImage
-                        key={navAvatarUrl || 'nav-avatar-dd'}
-                        src={navAvatarUrl}
-                        loading="eager"
-                        fetchPriority="high"
-                        referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
-                      />
-                      <AvatarFallback>{navInitial}</AvatarFallback>
-                    </Avatar>
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
+                      <Avatar className="h-10 w-10 ring-1 ring-white/10">
+                        <AvatarImage
+                          key={navAvatarUrl || 'nav-avatar-dd'}
+                          src={navAvatarUrl}
+                          loading="eager"
+                          fetchPriority="high"
+                          referrerPolicy={avatarReferrerPolicy(navAvatarUrl)}
+                        />
+                        <AvatarFallback>{navInitial}</AvatarFallback>
+                      </Avatar>
+                    </ProAvatarFrame>
                     <div className="flex flex-col min-w-0">
                       <span className="text-sm font-semibold truncate">{navDisplayName}</span>
                       <span className="text-xs text-muted-foreground truncate">@{navDiscordUsername}</span>

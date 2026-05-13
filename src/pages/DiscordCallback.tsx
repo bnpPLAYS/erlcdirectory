@@ -12,6 +12,7 @@ import {
   parseOAuthErrorDescription,
 } from '@/lib/discordOAuthErrors';
 import { getDiscordRedirectUri, isFreshDiscordSignInState } from '@/lib/discordOAuth';
+import { isCanarySiteHost } from '@/lib/canaryHost';
 import { invokeDiscordOauthSignIn } from '@/lib/callDiscordOauthSignIn';
 import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
 
@@ -258,8 +259,27 @@ const DiscordCallback = () => {
                     <code className="break-all rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
                       https://www.erlc.directory/discord/callback
                     </code>
+                    {isCanarySiteHost() ? (
+                      <>
+                        {' '}
+                        and on canary this host:{' '}
+                        <code className="break-all rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
+                          {getDiscordRedirectUri()}
+                        </code>
+                      </>
+                    ) : null}
                     .
                   </li>
+                  {isCanarySiteHost() ? (
+                    <li>
+                      <span className="text-foreground">Discord Developer Portal</span> → OAuth2 → Redirects must also list{' '}
+                      <code className="break-all rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
+                        {getDiscordRedirectUri()}
+                      </code>{' '}
+                      (same string the app sends to Discord for this host). If canary still fails, remove{' '}
+                      <code className="text-[11px]">VITE_DISCORD_REDIRECT_URI</code> from the canary Vercel env if it points at www.
+                    </li>
+                  ) : null}
                 </ol>
               </div>
             )}
