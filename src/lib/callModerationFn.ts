@@ -46,14 +46,14 @@ export async function callModerationFn(
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) {
-    return { ok: false, error: 'Sign in required.' };
+    return { ok: false, error: 'You need to be signed in.' };
   }
 
   const headers = buildHeaders(session.access_token);
   if (!headers) {
     return {
       ok: false,
-      error: 'Server missing VITE_SUPABASE_PUBLISHABLE_KEY in the client build.',
+      error: 'This build is missing the Supabase public key.',
     };
   }
 
@@ -78,7 +78,7 @@ export async function callModerationFn(
             lastErr = `Request failed (${res.status}).`;
           }
         } catch {
-          lastErr = 'Unexpected response from server.';
+          lastErr = 'Bad response from server.';
         }
         if (lastErr && !/Server (configuration error|missing Supabase configuration)|not found|Function not found|requested function/i.test(lastErr)) {
           return { ok: false, error: lastErr };
@@ -110,9 +110,9 @@ export async function callModerationFn(
         const j = JSON.parse(text) as { ok?: boolean; error?: string };
         if (j.ok === true) return { ok: true };
         if (typeof j.error === 'string') return { ok: false, error: j.error };
-        return { ok: false, error: 'Unexpected response from server.' };
+        return { ok: false, error: 'Bad response from server.' };
       } catch {
-        return { ok: false, error: 'Unexpected response from server.' };
+        return { ok: false, error: 'Bad response from server.' };
       }
     }
     lastErr = await readJsonError(res);
@@ -124,6 +124,6 @@ export async function callModerationFn(
     ok: false,
     error:
       lastErr ||
-      'Could not reach the moderation server. The site owner may need to deploy submit-report, staff-moderation-action, and staff-directory-action on Supabase.',
+      'Reporting is unreachable. Deploy the moderation Edge functions (or fix the /api proxy).',
   };
 }

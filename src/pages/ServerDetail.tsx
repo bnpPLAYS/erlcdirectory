@@ -129,7 +129,7 @@ const ServerDetail = () => {
             typeof (enrichData as { error?: unknown }).error === 'string'
               ? String((enrichData as { error: string }).error).trim()
               : '';
-          toast.error(fromBody || enrichErr.message || 'Could not refresh Discord invite.');
+          toast.error(fromBody || enrichErr.message || 'Invite lookup failed.');
           return;
         }
         if (

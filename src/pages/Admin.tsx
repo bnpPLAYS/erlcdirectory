@@ -350,12 +350,12 @@ const Admin = () => {
   };
   const sendDiscordBroadcast = async () => {
     const msg = broadcastText.trim();
-    if (!msg) return toast({ title: 'Enter a message', variant: 'destructive' });
+    if (!msg) return toast({ title: 'Write something first', variant: 'destructive' });
     if (!confirm(`Send this update as a Discord DM to everyone who opted into website updates?`)) return;
     setBroadcasting(true);
     const { data, error } = await supabase.functions.invoke('website-dm-broadcast', { body: { message: msg } });
     setBroadcasting(false);
-    if (error) return toast({ title: error.message || 'Broadcast failed', variant: 'destructive' });
+    if (error) return toast({ title: error.message || 'DM blast failed', variant: 'destructive' });
     toast({
       title: `Delivered to ${(data as { sent?: number })?.sent ?? 0} of ${(data as { attempted?: number })?.attempted ?? 0} subscribers`,
     });
@@ -434,15 +434,15 @@ const Admin = () => {
     opts?: { warn_body?: string; reason?: string },
   ) => {
     if (!session?.access_token) {
-      toast({ title: 'Session expired. Sign in again.', variant: 'destructive' });
+      toast({ title: 'Session dead — sign in again', variant: 'destructive' });
       return;
     }
     if (action === 'ban' && !opts?.reason?.trim() && !access?.isSiteOwner) {
-      toast({ title: 'Enter a staff reason (10+ characters) before banning.', variant: 'destructive' });
+      toast({ title: 'Ban needs a reason (10+ characters).', variant: 'destructive' });
       return;
     }
     if (action === 'remove_server' && !opts?.reason?.trim() && !access?.isSiteOwner) {
-      toast({ title: 'Enter a staff reason (10+ characters) before removing the server.', variant: 'destructive' });
+      toast({ title: 'Server delete needs a reason (10+ characters).', variant: 'destructive' });
       return;
     }
     if (action === 'ban' && !confirm('Ban this member from logging in? Their Discord sign-in will be blocked.')) return;
@@ -470,7 +470,7 @@ const Admin = () => {
 
   const startCanarySession = async () => {
     if (!session?.access_token) {
-      toast({ title: 'Session expired. Sign in again.', variant: 'destructive' });
+      toast({ title: 'Session dead — sign in again', variant: 'destructive' });
       return;
     }
     setCanaryBusy(true);
@@ -500,7 +500,7 @@ const Admin = () => {
       await navigator.clipboard.writeText(canaryPlainCode);
       toast({ title: 'Code copied' });
     } catch {
-      toast({ title: 'Could not copy', variant: 'destructive' });
+      toast({ title: 'Copy failed', variant: 'destructive' });
     }
   };
 
@@ -538,7 +538,7 @@ const Admin = () => {
     if (!staffDlg) return;
     const reason = staffDlgReason.trim();
     if (reason.length < 10) {
-      toast({ title: 'Reason must be at least 10 characters.', variant: 'destructive' });
+      toast({ title: 'Reason too short (10+ characters).', variant: 'destructive' });
       return;
     }
     setStaffDlgBusy(true);

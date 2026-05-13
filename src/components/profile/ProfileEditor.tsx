@@ -357,11 +357,11 @@ const ProfileEditor = ({
   const applyBannerFromFile = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast.error('Please use an image file (PNG, JPG, or WebP).');
+      toast.error('Use PNG, JPG, or WebP.');
       return;
     }
     if (file.size > 18 * 1024 * 1024) {
-      toast.error('Image is too large (max 18 MB).');
+      toast.error('Max image size is 18 MB.');
       return;
     }
     try {
@@ -369,7 +369,7 @@ const ProfileEditor = ({
       update('banner_url', dataUrl);
       toast.success('Banner cropped to a wide fit — click Save to publish.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not process that image.');
+      toast.error(e instanceof Error ? e.message : 'Image processing failed');
     }
   };
 
@@ -402,7 +402,7 @@ const ProfileEditor = ({
 
   const handleVerifyPro = async () => {
     if (robloxVerifyInput.trim().length < 3) {
-      toast.error('Enter your Roblox username (3+ characters).');
+      toast.error('Roblox username should be at least 3 characters.');
       return;
     }
     setProVerifyBusy(true);
@@ -461,7 +461,7 @@ const ProfileEditor = ({
             : 'Verification link copied (valid 24 hours).',
         );
       } else {
-        toast.error('Could not copy automatically. Your browser may have blocked clipboard access.');
+        toast.error('Clipboard blocked — copy manually.');
       }
     } finally {
       setVerifyBusyId(null);
@@ -494,7 +494,7 @@ const ProfileEditor = ({
 
     const parsed = profileSchema.safeParse(filteredForm);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message || 'Invalid input');
+      toast.error(parsed.error.issues[0]?.message || 'Check the fields and try again');
       return;
     }
     setSaving(true);
@@ -573,7 +573,7 @@ const ProfileEditor = ({
       toast.success('Profile saved');
       onSaved();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save');
+      toast.error(err?.message || 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -1319,7 +1319,7 @@ const ProfileEditor = ({
                       const r = await invokeDiscordProfileMediaSync({ sync: discordSyncTarget });
                       setDiscordMediaBusy(false);
                       if (!r.ok) {
-                        toast.error(r.error || 'Could not sync from Discord');
+                        toast.error(r.error || 'Discord sync failed');
                         return;
                       }
                       if (discordSyncTarget === 'both' || discordSyncTarget === 'banner') {
