@@ -13,6 +13,7 @@ import {
 } from '@/lib/discordOAuthErrors';
 import { getDiscordRedirectUri, isFreshDiscordSignInState } from '@/lib/discordOAuth';
 import { invokeDiscordOauthSignIn } from '@/lib/callDiscordOauthSignIn';
+import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
 
 function readOAuthParams() {
   const search = new URLSearchParams(window.location.search);
@@ -68,7 +69,7 @@ const DiscordCallback = () => {
       await supabase.auth.refreshSession().catch(() => {});
 
       try {
-        const syncResult = await syncDiscordProfileFromSession(session);
+        const syncResult = await pullDiscordProfileAfterOAuth(session);
         if (syncResult.error) {
           console.warn('DiscordCallback profile sync:', syncResult.error.message);
         }
