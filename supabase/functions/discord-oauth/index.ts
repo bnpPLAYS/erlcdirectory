@@ -67,8 +67,10 @@ Deno.serve(async (req) => {
     const discordUser = await userRes.json()
     if (!userRes.ok || !discordUser?.id) return json({ error: 'Could not read your Discord account.' }, 400)
 
-    const avatarUrl = discordUser.avatar
-      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256`
+    const avatarHash = discordUser.avatar ? String(discordUser.avatar) : ''
+    const avatarExt = avatarHash.startsWith('a_') ? 'gif' : 'png'
+    const avatarUrl = avatarHash
+      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${avatarHash}.${avatarExt}?size=256`
       : null
     const bannerUrl = discordUser.banner
       ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.${discordUser.banner.startsWith('a_') ? 'gif' : 'png'}?size=600`

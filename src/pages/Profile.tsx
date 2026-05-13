@@ -37,7 +37,7 @@ import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
-import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { safeAvatarUrl, avatarReferrerPolicy, normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
 import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 
@@ -349,9 +349,10 @@ const Profile = () => {
       <div className="relative h-56 md:h-72 w-full overflow-hidden border-b border-white/10">
         {profile.banner_url && !bannerLoadFailed ? (
           <img
-            src={profile.banner_url}
+            src={normalizeDiscordCdnMediaUrl(profile.banner_url) ?? profile.banner_url}
             alt=""
-            className="w-full h-full object-cover"
+            draggable={false}
+            className="w-full h-full object-cover no-image-drag"
             onError={() => setBannerLoadFailed(true)}
           />
         ) : (

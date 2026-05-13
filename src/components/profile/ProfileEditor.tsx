@@ -74,7 +74,7 @@ import {
   serializeProfileSocialLinks,
   normalizeSocialInputUrl,
 } from '@/lib/profileSocialLinks';
-import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { safeAvatarUrl, avatarReferrerPolicy, normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import type { Json } from '@/integrations/supabase/types';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
 import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
@@ -574,7 +574,12 @@ const ProfileEditor = ({
         <div className="relative">
           <div className="h-36 sm:h-44 w-full bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent">
             {form.banner_url ? (
-              <img src={form.banner_url} alt="banner" className="w-full h-full object-cover" />
+              <img
+                src={normalizeDiscordCdnMediaUrl(form.banner_url) ?? form.banner_url}
+                alt="banner"
+                draggable={false}
+                className="w-full h-full object-cover no-image-drag"
+              />
             ) : (
               <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">
                 <span className="flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Add a banner in Customize</span>
@@ -590,7 +595,8 @@ const ProfileEditor = ({
                   <img
                     src={av}
                     alt=""
-                    className="h-full w-full object-cover"
+                    draggable={false}
+                    className="h-full w-full object-cover no-image-drag"
                     referrerPolicy={avatarReferrerPolicy(av)}
                   />
                 ) : (
@@ -1070,7 +1076,12 @@ const ProfileEditor = ({
                   }}
                 >
                   {form.banner_url ? (
-                    <img src={form.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <img
+                      src={normalizeDiscordCdnMediaUrl(form.banner_url) ?? form.banner_url}
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-0 h-full w-full object-cover no-image-drag"
+                    />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent" />
                   )}
@@ -1091,7 +1102,8 @@ const ProfileEditor = ({
                             <img
                               src={av}
                               alt=""
-                              className="h-full w-full rounded-full object-cover"
+                              draggable={false}
+                              className="h-full w-full rounded-full object-cover no-image-drag"
                               referrerPolicy={avatarReferrerPolicy(av)}
                             />
                           ) : (
@@ -1386,7 +1398,12 @@ const ProfileEditor = ({
 
             {form.banner_url ? (
               <div className="mt-3 overflow-hidden rounded-xl border border-white/12 aspect-[21/9] max-h-[220px]">
-                <img src={form.banner_url} alt="Banner preview" className="h-full w-full object-cover" />
+                <img
+                  src={normalizeDiscordCdnMediaUrl(form.banner_url) ?? form.banner_url}
+                  alt="Banner preview"
+                  draggable={false}
+                  className="h-full w-full object-cover no-image-drag"
+                />
               </div>
             ) : null}
           </EditorSection>
@@ -1414,7 +1431,12 @@ const ProfileEditor = ({
                 <CardContent className="p-4 grid md:grid-cols-2 gap-3">
                   <div className="md:col-span-2 flex items-center gap-3">
                     {e.server_icon ? (
-                      <img src={e.server_icon} alt="" className="h-10 w-10 rounded-full object-cover" />
+                      <img
+                        src={normalizeDiscordCdnMediaUrl(e.server_icon) ?? e.server_icon}
+                        alt=""
+                        draggable={false}
+                        className="h-10 w-10 rounded-full object-cover no-image-drag"
+                      />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold">
                         {(e.server_name || '?').charAt(0).toUpperCase()}
