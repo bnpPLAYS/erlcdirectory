@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect, useMemo } from 'react';
+import { useEffect, useState, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -225,10 +225,9 @@ const ServerDetail = () => {
   const joinHrefSafe = inviteLooksValid ? joinHref : null;
   const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
 
-  const meVerifiedHere = useMemo(
-    () =>
-      !!(meProfile?.id && coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)),
-    [meProfile?.id, coworkers],
+  const meVerifiedHere = !!(
+    meProfile?.id &&
+    coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)
   );
 
   const canAddInviteAsVerifiedStaff =
