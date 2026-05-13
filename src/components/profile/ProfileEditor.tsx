@@ -33,8 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const PRONOUN_PRESETS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any/all'];
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -82,6 +80,7 @@ import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
 import { profileEditorPath } from '@/lib/profilePath';
 import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
+import { sanitizeProfilePronouns, PROFILE_PRONOUN_OPTIONS } from '@/lib/profilePronouns';
 
 /** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
 const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
@@ -170,7 +169,10 @@ const profileSchema = z.object({
     .optional()
     .refine((v) => !v || PROFILE_LOCATION_OPTIONS.includes(v), 'Choose a county or region from the list.'),
   timezone: z.string().trim().max(40).optional(),
-  pronouns: z.string().trim().max(30).optional(),
+  pronouns: z
+    .string()
+    .trim()
+    .refine((v) => v === '' || sanitizeProfilePronouns(v) !== null, 'Use he/him, she/her, or don’t display.'),
   status: z.string().trim().max(140).optional(),
   availability: z.string().trim().max(40).optional(),
   banner_url: z
@@ -290,7 +292,7 @@ const ProfileEditor = ({
     bio: profile.bio || '',
     location: normalizeStoredCounty(profile.location || ''),
     timezone: profile.timezone || '',
-    pronouns: profile.pronouns || '',
+    pronouns: sanitizeProfilePronouns(profile.pronouns) ?? '',
     status: profile.status || '',
     availability: profile.availability || '',
     banner_url: profile.banner_url || '',
@@ -514,7 +516,7 @@ const ProfileEditor = ({
         bio: filteredForm.bio || null,
         location: filteredForm.location || null,
         timezone: filteredForm.timezone || null,
-        pronouns: filteredForm.pronouns || null,
+        pronouns: sanitizeProfilePronouns(filteredForm.pronouns) ?? null,
         status: filteredForm.status || null,
         availability: filteredForm.availability || null,
         website: null,
@@ -684,45 +686,26 @@ const ProfileEditor = ({
             icon={UserIcon}
           >
             <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Pronouns">
-                {(() => {
-                  const isPreset = PRONOUN_PRESETS.includes(form.pronouns);
-                  const selectValue = !form.pronouns ? '__none' : isPreset ? form.pronouns : '__custom';
-                  return (
-                    <div className="space-y-2">
-                      <Select
-                        value={selectValue}
-                        onValueChange={(v) => {
-                          if (v === '__none') update('pronouns', '');
-                          else if (v === '__custom') update('pronouns', form.pronouns && !isPreset ? form.pronouns : ' ');
-                          else update('pronouns', v);
-                        }}
-                      >
-                        <SelectTrigger className={editorSelect}>
-                          <SelectValue placeholder="Select pronouns" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none">Prefer not to say</SelectItem>
-                          {PRONOUN_PRESETS.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="__custom">Other (custom)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {selectValue === '__custom' && (
-                        <Input
-                          value={form.pronouns.trim()}
-                          maxLength={30}
-                          autoFocus
-                          onChange={(e) => update('pronouns', e.target.value)}
-                          className={editorInput}
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
+              <Field
+                label="Pronouns"
+                hint="Only he/him or she/her appear on your public profile — or choose not to display."
+              >
+                <Select
+                  value={form.pronouns ? form.pronouns : '__none'}
+                  onValueChange={(v) => update('pronouns', v === '__none' ? '' : v)}
+                >
+                  <SelectTrigger className={editorSelect}>
+                    <SelectValue placeholder="Pronouns" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Don&apos;t display</SelectItem>
+                    {PROFILE_PRONOUN_OPTIONS.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Availability" hint="Short phrase — hiring, open to collab, etc.">
                 <Input
