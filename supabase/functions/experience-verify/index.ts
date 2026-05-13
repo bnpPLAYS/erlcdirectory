@@ -438,9 +438,11 @@ Deno.serve(async (req) => {
       const verifierUsername = typeof me.username === 'string' ? me.username : 'staff'
       const verifierDisplay =
         (typeof me.global_name === 'string' && me.global_name.trim()) || verifierUsername
+      const avHash = me.avatar ? String(me.avatar) : ''
+      const avExt = avHash.startsWith('a_') ? 'gif' : 'png'
       const verifierAvatarUrl =
-        me.avatar && verifierDiscordId
-          ? `https://cdn.discordapp.com/avatars/${verifierDiscordId}/${me.avatar}.png?size=128`
+        avHash && verifierDiscordId
+          ? `https://cdn.discordapp.com/avatars/${verifierDiscordId}/${avHash}.${avExt}?size=128`
           : null
 
       if (!verifierProfile && !skipVerifierMirror) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect, useMemo } from 'react';
+import { useEffect, useState, useLayoutEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -26,7 +26,7 @@ import { discordInviteLooksValid, normalizeDiscordInvite } from '@/lib/discordIn
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
-import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 
 interface GuildExperienceRow {
   id: string;
@@ -225,10 +225,9 @@ const ServerDetail = () => {
   const joinHrefSafe = inviteLooksValid ? joinHref : null;
   const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
 
-  const meVerifiedHere = useMemo(
-    () =>
-      !!(meProfile?.id && coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)),
-    [meProfile?.id, coworkers],
+  const meVerifiedHere = !!(
+    meProfile?.id &&
+    coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)
   );
 
   const canAddInviteAsVerifiedStaff =
@@ -284,7 +283,12 @@ const ServerDetail = () => {
 
       <div className="relative h-48 md:h-60 w-full overflow-hidden border-b border-white/10">
         {server.banner ? (
-          <img src={server.banner} alt="" className="w-full h-full object-cover" />
+          <img
+            src={normalizeDiscordCdnMediaUrl(server.banner) ?? server.banner}
+            alt=""
+            draggable={false}
+            className="w-full h-full object-cover no-image-drag"
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/15 via-background to-background" />
         )}
