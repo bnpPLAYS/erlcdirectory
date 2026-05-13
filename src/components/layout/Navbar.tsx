@@ -33,6 +33,7 @@ import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
 import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import { NotificationsBell } from '@/components/layout/NotificationsBell';
 
@@ -226,7 +227,7 @@ const Navbar = () => {
                       'hover:bg-white/[0.07] hover:border-white/15 transition-colors',
                     )}
                   >
-                    <ProAvatarFrame isPro={!!profile?.is_pro} orbit="nav">
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
                       <Avatar className="h-8 w-8 ring-1 ring-white/10">
                         <AvatarImage
                           src={navAvatarUrl}
@@ -246,7 +247,7 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 bg-zinc-950 border-white/10">
                   <div className="flex items-center gap-3 p-3">
-                    <ProAvatarFrame isPro={!!profile?.is_pro} orbit="nav">
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
                       <Avatar className="h-10 w-10 ring-1 ring-white/10">
                         <AvatarImage
                           src={navAvatarUrl}

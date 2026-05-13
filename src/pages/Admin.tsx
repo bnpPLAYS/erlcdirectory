@@ -1158,6 +1158,27 @@ const Admin = () => {
                       build or a preview deployment). When you start a session, testers must enter the one-time test code
                       on the canary site before it loads. Stop the session to revoke everyone immediately.
                     </p>
+                    <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-xs text-muted-foreground space-y-2">
+                      <p className="font-medium text-foreground text-sm">Discord sign-in on canary</p>
+                      <ul className="list-disc pl-4 space-y-1.5 leading-relaxed">
+                        <li>
+                          <span className="text-zinc-200">Discord Developer Portal</span> → OAuth2 → Redirects → add{' '}
+                          <code className="rounded bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200">
+                            https://canary.erlc.directory/discord/callback
+                          </code>{' '}
+                          exactly (same string the canary site sends to Discord).
+                        </li>
+                        <li>
+                          <span className="text-zinc-200">Supabase</span> → Authentication → URL Configuration → Redirect URLs → include that same URL.
+                        </li>
+                        <li>
+                          On the <span className="text-zinc-200">canary</span> Vercel environment, remove{' '}
+                          <code className="rounded bg-black/40 px-1 py-0.5 text-[11px]">VITE_DISCORD_REDIRECT_URI</code> if
+                          it points only at <code className="rounded bg-black/40 px-1 py-0.5 text-[11px]">www</code> — that
+                          mismatch is a common cause of &quot;invalid&quot; / failed Discord auth on canary.
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm space-y-2">
                     <p>

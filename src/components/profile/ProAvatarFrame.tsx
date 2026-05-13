@@ -14,7 +14,8 @@ const ORBIT: Record<
 };
 
 type ProAvatarFrameProps = {
-  isPro: boolean;
+  /** When true, show orbit animation (e.g. Pro member who opted in). */
+  active: boolean;
   /** Where the avatar is shown — controls orbit radius. */
   orbit?: keyof typeof ORBIT;
   children: ReactNode;
@@ -22,15 +23,16 @@ type ProAvatarFrameProps = {
 };
 
 /**
- * Subtle monochrome orbit for Pro members: dual counter-rotating accent rings
- * plus a slow “spark” segment. Respects `prefers-reduced-motion` via CSS.
+ * Animated monochrome rings around an avatar when `active` is true.
+ * Subtle dual counter-rotating accent rings plus a slow “spark” segment.
+ * CSS respects `prefers-reduced-motion`.
  */
-export function ProAvatarFrame({ isPro, orbit = 'card', children, className }: ProAvatarFrameProps) {
+export function ProAvatarFrame({ active, orbit = 'card', children, className }: ProAvatarFrameProps) {
   const o = ORBIT[orbit];
 
   return (
     <div className={cn('relative inline-flex items-center justify-center shrink-0', className)}>
-      {isPro ? (
+      {active ? (
         <>
           <span
             aria-hidden
@@ -62,7 +64,7 @@ export function ProAvatarFrame({ isPro, orbit = 'card', children, className }: P
           />
         </>
       ) : null}
-      <div className={cn(isPro && 'relative z-[1]')}>{children}</div>
+      <div className={cn(active && 'relative z-[1]')}>{children}</div>
     </div>
   );
 }

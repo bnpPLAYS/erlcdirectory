@@ -26,7 +26,6 @@ import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
 import ProfileEditor from '@/components/profile/ProfileEditor';
 import ReviewsSection from '@/components/profile/ReviewsSection';
-import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,6 +38,8 @@ import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
 import { safeAvatarUrl, avatarReferrerPolicy, normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
+import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import type { Json } from '@/integrations/supabase/types';
 import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 
@@ -66,6 +67,7 @@ interface ProfileData {
   social_links?: Json | null;
   is_pro?: boolean;
   pro_badge_label?: string | null;
+  show_pro_avatar_decor?: boolean;
   roblox_user_id?: string | null;
 }
 
@@ -453,7 +455,7 @@ const Profile = () => {
                       style={{ background: `radial-gradient(circle, ${accent}55, transparent 70%)` }}
                       aria-hidden
                     />
-                    <ProAvatarFrame isPro={!!profile.is_pro} orbit="hero" className="relative">
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="hero" className="relative">
                       <Avatar
                         className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
                         style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}

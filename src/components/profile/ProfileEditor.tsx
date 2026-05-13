@@ -133,6 +133,7 @@ interface ProfileLike {
   skills: string[];
   is_pro?: boolean;
   pro_badge_label?: string | null;
+  show_pro_avatar_decor?: boolean | null;
   roblox_user_id?: string | null;
   roblox_verified_at?: string | null;
 }
@@ -307,6 +308,9 @@ const ProfileEditor = ({
   const [activeTab, setActiveTab] = useState<EditorTab>(() => parseEditorTab(initialTab));
   const [dmWebsiteUpdates, setDmWebsiteUpdates] = useState(!!profile.dm_website_updates);
   const [dmExperienceUpdates, setDmExperienceUpdates] = useState(!!profile.dm_experience_status_updates);
+  const [showProAvatarDecor, setShowProAvatarDecor] = useState(
+    () => !!profile.is_pro && !!profile.show_pro_avatar_decor,
+  );
   const [discordMediaBusy, setDiscordMediaBusy] = useState(false);
   const [discordSyncTarget, setDiscordSyncTarget] = useState<DiscordProfileMediaSyncMode>('both');
   const [livePreviewExpanded, setLivePreviewExpanded] = useState(false);
@@ -327,6 +331,10 @@ const ProfileEditor = ({
   useEffect(() => {
     setProBadgeLabel(profile.pro_badge_label || '');
   }, [profile.id, profile.pro_badge_label]);
+
+  useEffect(() => {
+    setShowProAvatarDecor(!!profile.is_pro && !!profile.show_pro_avatar_decor);
+  }, [profile.id, profile.is_pro, profile.show_pro_avatar_decor]);
 
   useEffect(() => {
     if (!openAddExperienceOnMount) return;
@@ -516,7 +524,10 @@ const ProfileEditor = ({
         skills: filteredSkills,
         social_links: serializeProfileSocialLinks(socialPayload),
         ...(profile.is_pro
-          ? { pro_badge_label: badgeF.text.slice(0, 28) || null }
+          ? {
+              pro_badge_label: badgeF.text.slice(0, 28) || null,
+              show_pro_avatar_decor: showProAvatarDecor,
+            }
           : {}),
       };
       const dmPrefs = {
@@ -589,8 +600,8 @@ const ProfileEditor = ({
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent pointer-events-none" />
           </div>
           <div className="relative z-10 px-5 pb-5 -mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end gap-4">
-            <ProAvatarFrame isPro={!!profile.is_pro} orbit="editor">
-              <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10">
+            <ProAvatarFrame active={!!profile.is_pro && showProAvatarDecor} orbit="editor">
+              <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10 shrink-0">
                 {(() => {
                   const av = safeAvatarUrl(profile.discord_avatar);
                   return av ? (
@@ -1004,6 +1015,7 @@ const ProfileEditor = ({
                   'Four exclusive accent palettes (Aurora, Crimson, Midnight, Neon lime)',
                   'Higher placement in the Member Directory after staff-featured profiles',
                   'Pro badge with optional short custom tagline',
+                  'Optional animated ring around your avatar (toggle below — off by default)',
                   'Supports moderation tooling and hosting for the directory',
                 ].map((t) => (
                   <li
@@ -1029,6 +1041,16 @@ const ProfileEditor = ({
                     placeholder="e.g. LEO Trainer"
                   />
                 </Field>
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-black/30 px-3 py-3">
+                  <div className="space-y-0.5 min-w-0 pr-2">
+                    <p className="text-sm font-medium text-zinc-200">Animated avatar ring</p>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Subtle orbit around your photo on your profile, directory cards, and the top bar when you are
+                      signed in. Off by default — turn on if you want it.
+                    </p>
+                  </div>
+                  <Switch checked={showProAvatarDecor} onCheckedChange={setShowProAvatarDecor} />
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Game pass listing:{' '}
                   <a
@@ -1095,7 +1117,7 @@ const ProfileEditor = ({
                   />
                   <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <ProAvatarFrame isPro={!!profile.is_pro} orbit="preview">
+                      <ProAvatarFrame active={!!profile.is_pro && showProAvatarDecor} orbit="preview">
                         <div
                           className="h-12 w-12 shrink-0 rounded-full ring-2 ring-background shadow-lg overflow-hidden"
                           style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
