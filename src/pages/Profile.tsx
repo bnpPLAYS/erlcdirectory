@@ -33,6 +33,7 @@ import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { ProfileStaffTools } from '@/components/staff/ProfileStaffTools';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
+import { sanitizeProfilePronouns } from '@/lib/profilePronouns';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
@@ -140,6 +141,7 @@ const Profile = () => {
     () => experiences.filter((e) => !isExperienceAwaitingVerification(e)),
     [experiences],
   );
+  const pronounDisplay = useMemo(() => sanitizeProfilePronouns(profile?.pronouns), [profile?.pronouns]);
   const hasOnlyPendingExperience =
     !!isOwner && experiences.length > 0 && publicExperiences.length === 0;
 
@@ -500,9 +502,9 @@ const Profile = () => {
                           {profile.pro_badge_label}
                         </Badge>
                       )}
-                      {profile.pronouns && (
+                      {pronounDisplay && (
                         <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full glass">
-                          {profile.pronouns}
+                          {pronounDisplay}
                         </span>
                       )}
                     </div>

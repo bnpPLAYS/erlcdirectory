@@ -199,8 +199,9 @@ const Docs = () => {
               </p>
               <ul className="mt-3 list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
                 <li>
-                  <strong className="text-foreground">General</strong> — Display name (also editable in the banner card), pronouns, availability,
-                  county/region, timezone, status line, bio, skills, and optional Discord notification preferences where offered.
+                  <strong className="text-foreground">General</strong> — Display name (also editable in the banner card), pronouns (he/him or
+                  she/her only, or hidden), availability, county/region, timezone, status line, bio, skills, and optional Discord notification
+                  preferences where offered.
                 </li>
                 <li>
                   <strong className="text-foreground">Customize</strong> — Theme presets, accent color, banner image URL, and live accent preview.
