@@ -58,30 +58,30 @@ export function SubmitReportDialog({
     if (t.length < minLen) {
       toast.error(
         category === 'other'
-          ? 'Please describe the issue in more detail (at least a sentence).'
-          : 'Please describe the issue (at least a few words).',
+          ? 'Add a bit more detail (a sentence or so).'
+          : 'Add a few words about what happened.',
       );
       return;
     }
     if (!profile?.id) {
-      toast.error('Sign in to submit a report.');
+      toast.error('Log in to report.');
       return;
     }
     if (kind === 'review' && !reviewId) {
-      toast.error('Missing review reference.');
+      toast.error('Review ID missing.');
       return;
     }
     if (kind === 'message' && !messageId) {
-      toast.error('Missing message reference.');
+      toast.error('Message ID missing.');
       return;
     }
     if (kind === 'server' && !serverId) {
-      toast.error('Missing server reference.');
+      toast.error('Server ID missing.');
       return;
     }
 
     if (!session?.access_token) {
-      toast.error('Your session expired. Sign in again.');
+      toast.error('Session expired — sign in again.');
       return;
     }
 
@@ -103,12 +103,12 @@ export function SubmitReportDialog({
     if (!r.ok) {
       toast.error(
         isModerationReportsSchemaMissingError(r.error)
-          ? 'Reporting isn’t enabled on this database yet. Run the migrations for moderation reports (see Docs → Reporting).'
+          ? 'Reporting is not wired up on this database yet (run the moderation migrations — see Docs).'
           : r.error,
       );
       return;
     }
-    toast.success('Report sent. Staff will review it.');
+    toast.success('Sent. Staff will see it.');
     setReason('');
     onOpenChange(false);
   };

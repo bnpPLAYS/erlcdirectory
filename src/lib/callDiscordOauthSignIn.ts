@@ -43,16 +43,16 @@ async function parseRes(res: Response): Promise<{ data: OkBody | null; error: st
     json = JSON.parse(text);
   } catch {
     if (res.status === 404) {
-      return { data: null, error: 'Discord sign-in service is not deployed for this project.' };
+      return { data: null, error: 'Sign-in backend is missing (404).' };
     }
-    return { data: null, error: `Sign-in service returned a non-JSON response (${res.status}).` };
+    return { data: null, error: `Bad response from sign-in (${res.status}).` };
   }
   if (!res.ok) {
-    return { data: null, error: fnErrorPayload(json) || `Sign-in request failed (${res.status}).` };
+    return { data: null, error: fnErrorPayload(json) || `Sign-in failed (${res.status}).` };
   }
   const o = json as OkBody;
   if (!o?.actionLink || typeof o.actionLink !== 'string') {
-    return { data: null, error: 'Sign-in service returned an unexpected response.' };
+    return { data: null, error: 'Sign-in returned an invalid payload.' };
   }
   return { data: o, error: null };
 }
@@ -99,8 +99,8 @@ export async function invokeDiscordOauthSignIn(params: {
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
     }
-    return { ok: false, error: lastErr || 'Could not finish Discord sign-in.' };
+    return { ok: false, error: lastErr || 'Discord sign-in did not finish.' };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Could not reach Discord sign-in.' };
+    return { ok: false, error: e instanceof Error ? e.message : 'Network error talking to sign-in.' };
   }
 }

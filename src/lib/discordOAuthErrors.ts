@@ -31,7 +31,7 @@ export function getPublicDiscordSignInMessage(params: {
   const d = raw.toLowerCase();
 
   if (params.source === 'exchange' && d.includes('code verifier')) {
-    return 'This sign-in step expired. Close this tab and sign in again from the site.';
+    return 'That sign-in link expired. Start over from the site.';
   }
 
   if (
@@ -39,22 +39,22 @@ export function getPublicDiscordSignInMessage(params: {
     d.includes('email from external provider') ||
     d.includes('unable to get email')
   ) {
-    return "Sign-in didn't finish. Close this tab and use Sign in again from the site.";
+    return 'Discord sign-in bailed. Close this tab and hit Sign in on the site again.';
   }
 
   if (params.oauthErrorCode === 'access_denied' || d === 'access_denied' || d.includes('access denied')) {
-    return 'Sign-in was cancelled.';
+    return 'Cancelled.';
   }
 
   if (isDiscordTokenExchangeFailure(raw)) {
-    return "We couldn't finish connecting to Discord. Try again in a moment.";
+    return 'Discord connection failed. Try again in a bit.';
   }
 
   if (params.oauthErrorCode === 'server_error' || d.includes('server_error')) {
-    return "Sign-in didn't finish. Please try again.";
+    return 'Discord had a hiccup. Try again.';
   }
 
-  return "Sign-in didn't complete. Please try again.";
+  return 'Sign-in failed. Try again from the site.';
 }
 
 /** Messages Supabase returns when Discord client secret / redirect URIs are misconfigured. */

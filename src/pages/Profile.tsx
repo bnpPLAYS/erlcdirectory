@@ -293,7 +293,7 @@ const Profile = () => {
     }
 
     if (error) {
-      toast.error('Failed: ' + error.message);
+      toast.error(error.message || 'Profile failed to load');
       return;
     }
     toast.success(`${field === 'is_verified' ? 'Verified' : 'Featured'} ${newVal ? 'granted' : 'removed'}`);

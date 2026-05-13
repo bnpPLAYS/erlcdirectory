@@ -33,11 +33,11 @@ const Pro = () => {
 
   const onVerify = async () => {
     if (!linked && robloxUsername.trim().length < 3) {
-      toast.error('Enter the Roblox username that bought Pro, or link Roblox in Edit profile first.');
+      toast.error('Add the Roblox account that bought Pro (or link Roblox in Edit profile).');
       return;
     }
     if (linked && robloxUsername.trim().length > 0 && robloxUsername.trim().length < 3) {
-      toast.error('Username must be at least 3 characters, or leave the field empty to use your linked account.');
+      toast.error('Username too short — or leave blank to use your linked Roblox.');
       return;
     }
 
@@ -45,7 +45,7 @@ const Pro = () => {
     try {
       const useUsername = !linked || overrideName;
       if (!useUsername && !profile?.roblox_user_id) {
-        toast.error('Link your Roblox account in Edit profile first.');
+        toast.error('Link Roblox in Edit profile first.');
         return;
       }
       const r = useUsername
