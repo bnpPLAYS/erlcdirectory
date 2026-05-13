@@ -1,54 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Sparkles,
-  ExternalLink,
-  Check,
-  Shield,
-  Palette,
-  TrendingUp,
-  BadgeCheck,
-  Users,
-} from 'lucide-react';
+import { Check, RefreshCw, ExternalLink } from 'lucide-react';
 import { RobloxIcon } from '@/components/icons/RobloxIcon';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
-import { cn } from '@/lib/utils';
-import { pageHeroEnter } from '@/lib/pageHero';
+import { RobloxLinkedPreview } from '@/components/profile/RobloxLinkedPreview';
+import { profileEditorPath } from '@/lib/profilePath';
 
-const perks = [
-  {
-    icon: Palette,
-    title: 'Extra accent themes',
-    body: 'Unlock four Pro-only palettes (Aurora, Crimson, Midnight, Neon lime). Everyone can use the rest of Customize — preview, theme tuning, banner upload, URL paste, and Discord sync.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Directory boost',
-    body: 'Pro members sort higher in the Member Directory after staff-featured profiles (same filters and sort modes apply).',
-  },
-  {
-    icon: BadgeCheck,
-    title: 'Pro badge + custom label',
-    body: 'Show an ERLC Pro badge on your profile and set a short custom tagline next to it.',
-  },
-  {
-    icon: Users,
-    title: 'Stronger presence in browse',
-    body: 'Your card stands out with Pro styling and better default ordering so more visitors see you first.',
-  },
-  {
-    icon: Shield,
-    title: 'Supports the directory',
-    body: 'One-time Robux purchase helps keep moderation and hosting sustainable.',
-  },
+const PRO_FEATURES = [
+  'Pro badge and custom label on your profile',
+  'Extra accent themes and full customize controls',
+  'Stronger visibility in the Member Directory',
+  'Helps keep moderation and hosting sustainable',
 ];
 
 const Pro = () => {
@@ -56,115 +25,162 @@ const Pro = () => {
   const [robloxUsername, setRobloxUsername] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const linked = !!profile?.roblox_user_id;
+  const overrideName = robloxUsername.trim().length >= 3;
+  const canVerify =
+    !busy &&
+    (linked ? overrideName || robloxUsername.trim().length === 0 : robloxUsername.trim().length >= 3);
+
   const onVerify = async () => {
+    if (!linked && robloxUsername.trim().length < 3) {
+      toast.error('Enter the Roblox username that bought Pro, or link Roblox in Edit profile first.');
+      return;
+    }
+    if (linked && robloxUsername.trim().length > 0 && robloxUsername.trim().length < 3) {
+      toast.error('Username must be at least 3 characters, or leave the field empty to use your linked account.');
+      return;
+    }
+
     setBusy(true);
     try {
-      const r = await invokeVerifyRobloxPro({ roblox_username: robloxUsername.trim() });
+      const useUsername = !linked || overrideName;
+      if (!useUsername && !profile?.roblox_user_id) {
+        toast.error('Link your Roblox account in Edit profile first.');
+        return;
+      }
+      const r = useUsername
+        ? await invokeVerifyRobloxPro({ roblox_username: robloxUsername.trim() })
+        : await invokeVerifyRobloxPro({ roblox_user_id: String(profile.roblox_user_id) });
       if (!r.ok) {
         toast.error(r.error);
         return;
       }
-      toast.success('Pro unlocked! Your profile has been updated.');
+      toast.success('Pro unlocked. Your profile is updated.');
       await refreshProfile();
+      setRobloxUsername('');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col">
       <Navbar />
-      <main className="flex-1">
-        <div className="container mx-auto px-4 py-12 max-w-4xl">
-          <header className={cn('text-center mb-12', pageHeroEnter)}>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-xs font-medium text-zinc-200 mb-4">
-              <Sparkles className="h-3.5 w-3.5 text-white/90" aria-hidden />
-              {ERLC_PRO_PRICE_ROBUX} Robux · one-time
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">ERLC Directory Pro</h1>
-            <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Upgrade on Roblox, then link your Roblox account here. We verify ownership automatically with Roblox Open
-              Cloud — no manual codes.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="gap-2 rounded-xl border border-white/18 bg-white/[0.12] text-white hover:bg-white/[0.18] shadow-lg shadow-white/10"
-              >
-                <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer">
-                  <RobloxIcon className="h-4 w-4" /> Buy on Roblox <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-              {user ? (
-                <Button asChild variant="secondary" size="lg" className="rounded-xl">
-                  <Link to={profile ? `/${profile.discord_username?.replace(/\.+$/u, '') || 'me'}?edit=1&tab=customize` : '/browse'}>
-                    Edit profile
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild variant="secondary" size="lg" className="rounded-xl">
-                  <Link to="/auth">Sign in to verify</Link>
-                </Button>
-              )}
-            </div>
-          </header>
+      <main className="flex-1 flex flex-col items-center px-4 py-14 sm:py-20">
+        <div className="w-full max-w-md text-center mb-10">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">Simple pricing for Pro</h1>
+          <p className="mt-3 text-sm sm:text-base text-zinc-500 leading-relaxed">
+            Pay on Roblox, then tap <span className="text-zinc-300">Verify purchase</span> here. We check your game pass
+            automatically — no codes.
+          </p>
+        </div>
 
-          <div className="stagger-enter grid sm:grid-cols-2 gap-4 mb-12">
-            {perks.map(({ icon: Icon, title, body }) => (
-              <Card key={title} className="hover-lift border-white/10 bg-white/[0.02] transition-colors duration-300 hover:border-white/16">
-                <CardContent className="p-5 flex gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/12 bg-white/[0.06] text-zinc-100">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-foreground">{title}</h2>
-                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{body}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-zinc-950/80 p-6 sm:p-8 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+          {user && profile && linked ? (
+            <div className="rounded-xl border border-white/[0.06] bg-black/40 px-4 py-3 mb-6 flex items-center gap-3">
+              <RobloxLinkedPreview robloxUserId={String(profile.roblox_user_id)} variant="compact" />
+              <span className="text-xs font-medium text-emerald-400 shrink-0">Linked</span>
+            </div>
+          ) : user ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 mb-6 text-left">
+              <p className="text-xs text-amber-100/90 leading-relaxed">
+                <Link to={profile ? profileEditorPath(profile, { tab: 'customize' }) : '/browse'} className="underline underline-offset-2 font-medium text-white">
+                  Link Roblox
+                </Link>{' '}
+                in Edit profile so you can verify in one tap. Or enter the buyer username below.
+              </p>
+            </div>
+          ) : null}
+
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500 mb-2">ERLC Directory Pro</p>
+          <h2 className="text-lg font-semibold text-white mb-5">Directory Pro access</h2>
+
+          <div className="flex items-end justify-center gap-3 mb-2">
+            <RobloxIcon className="h-9 w-9 shrink-0 text-amber-400/95" aria-hidden />
+            <span className="text-4xl sm:text-5xl font-bold tabular-nums text-white tracking-tight">{ERLC_PRO_PRICE_ROBUX}</span>
+            <span className="text-sm text-zinc-500 pb-1.5">Robux</span>
           </div>
+          <p className="text-xs text-zinc-500 text-center mb-8">Game pass on Roblox · unlocks Pro on this site after verification</p>
+
+          <ul className="space-y-3 mb-8 text-left">
+            {PRO_FEATURES.map((line) => (
+              <li key={line} className="flex gap-3 text-sm text-zinc-400">
+                <Check className="h-4 w-4 shrink-0 text-zinc-500 mt-0.5" aria-hidden />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
 
           {user ? (
-            <Card className="border-white/15 bg-gradient-to-b from-white/[0.06] to-transparent mb-10">
-              <CardContent className="p-6 sm:p-8">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Check className="h-5 w-5 text-white/90" />
-                  Verify your purchase
-                </h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  Use the <strong className="text-foreground">exact Roblox username</strong> that bought the pass. If
-                  verification fails, open Roblox → Settings → Privacy and set “Who can see my inventory?” to{' '}
-                  <strong className="text-foreground">Everyone</strong>.
-                </p>
-                {profile?.is_pro ? (
-                  <p className="mt-4 text-sm font-medium text-zinc-200">
-                    You already have Pro. Manage your badge, themes, and perks in{' '}
-                    <strong className="text-foreground">Edit profile → Customize</strong>.
+            profile?.is_pro ? (
+              <p className="text-sm text-zinc-400 text-center py-2">
+                You already have Pro. Adjust your badge and themes in{' '}
+                <Link
+                  to={profile ? profileEditorPath(profile, { tab: 'customize' }) : '/browse'}
+                  className="text-white underline underline-offset-2"
+                >
+                  Edit profile → Customize
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  disabled={!canVerify}
+                  onClick={() => void onVerify()}
+                  className="w-full h-12 rounded-full bg-white text-black hover:bg-zinc-100 font-medium gap-2 shadow-none border-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} aria-hidden />
+                  {busy ? 'Checking…' : 'Verify purchase'}
+                </Button>
+
+                <Button variant="outline" asChild className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06] hover:text-white">
+                  <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
+                    Purchase on Roblox
+                    <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                  </a>
+                </Button>
+
+                <div className="pt-2">
+                  <label htmlFor="pro-roblox-username" className="sr-only">
+                    Roblox username (if different from linked account)
+                  </label>
+                  <Input
+                    id="pro-roblox-username"
+                    placeholder={linked ? 'Different buyer username (optional)' : 'Roblox username that bought Pro'}
+                    value={robloxUsername}
+                    onChange={(e) => setRobloxUsername(e.target.value)}
+                    className="h-10 rounded-xl border-white/10 bg-black/50 text-sm text-zinc-200 placeholder:text-zinc-600"
+                  />
+                  <p className="text-[11px] text-zinc-600 mt-2 text-center leading-relaxed">
+                    Inventory must be visible to Everyone in Roblox → Settings → Privacy if verification fails.
                   </p>
-                ) : (
-                  <div className="mt-4 flex flex-col sm:flex-row gap-3 max-w-lg">
-                    <Input
-                      placeholder="Roblox username"
-                      value={robloxUsername}
-                      onChange={(e) => setRobloxUsername(e.target.value)}
-                      className="h-11 rounded-xl border-white/12 bg-black/30"
-                    />
-                    <Button
-                      type="button"
-                      className="h-11 rounded-xl shrink-0"
-                      disabled={busy || robloxUsername.trim().length < 3}
-                      onClick={() => void onVerify()}
-                    >
-                      {busy ? 'Checking…' : 'Verify with Roblox'}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="space-y-3">
+              <Button asChild className="w-full h-12 rounded-full bg-white text-black hover:bg-zinc-100 font-medium">
+                <Link to="/auth">Sign in to verify</Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06]">
+                <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
+                  Purchase on Roblox
+                  <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                </a>
+              </Button>
+            </div>
+          )}
         </div>
+
+        <p className="mt-8 max-w-md text-center text-xs text-zinc-600 leading-relaxed px-2">
+          Manage your Pro look anytime under Edit profile. Questions? See{' '}
+          <Link to="/docs" className="text-zinc-400 underline underline-offset-2 hover:text-zinc-300">
+            Docs
+          </Link>
+          .
+        </p>
       </main>
       <SiteFooter />
     </div>
