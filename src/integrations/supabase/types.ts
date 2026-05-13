@@ -346,6 +346,7 @@ export type Database = {
           id: string
           kind: string
           message_id: string | null
+          page_path: string | null
           reason: string
           report_category: string | null
           reporter_profile_id: string
@@ -354,6 +355,7 @@ export type Database = {
           server_id: string | null
           staff_notes: string | null
           status: string
+          user_agent: string | null
         }
         Insert: {
           conversation_id?: string | null
@@ -361,6 +363,7 @@ export type Database = {
           id?: string
           kind: string
           message_id?: string | null
+          page_path?: string | null
           reason: string
           report_category?: string | null
           reporter_profile_id: string
@@ -369,6 +372,7 @@ export type Database = {
           server_id?: string | null
           staff_notes?: string | null
           status?: string
+          user_agent?: string | null
         }
         Update: {
           conversation_id?: string | null
@@ -376,6 +380,7 @@ export type Database = {
           id?: string
           kind?: string
           message_id?: string | null
+          page_path?: string | null
           reason?: string
           report_category?: string | null
           reporter_profile_id?: string
@@ -384,6 +389,7 @@ export type Database = {
           server_id?: string | null
           staff_notes?: string | null
           status?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
