@@ -23,9 +23,9 @@ function escapeHtml(s: string): string {
 }
 
 function embedHtml(canonicalUrl: string, imageUrl: string): string {
-  const title = 'Verify experience — erlc.directory';
+  const title = 'Verify experience — ERLC.Directory';
   const description =
-    'Open this link to confirm staff experience with your Discord login. Hire staff, post resumes and portfolios, connect with friends.';
+    'Open this link to confirm staff experience with your Discord login. Discover ER:LC roleplay servers, staff portfolios, and communities.';
   const escTitle = escapeHtml(title);
   const escDesc = escapeHtml(description);
   const escUrl = escapeHtml(canonicalUrl);
@@ -42,14 +42,14 @@ function embedHtml(canonicalUrl: string, imageUrl: string): string {
 <meta property="og:description" content="${escDesc}" />
 <meta property="og:url" content="${escUrl}" />
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="erlc.directory" />
+<meta property="og:site_name" content="ERLC.Directory" />
 <meta property="og:image" content="${escImg}" />
 <meta property="og:image:alt" content="${escTitle}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escTitle}" />
 <meta name="twitter:description" content="${escDesc}" />
 <meta name="twitter:image" content="${escImg}" />
-<meta name="theme-color" content="#0b0b0f" />
+<meta name="theme-color" content="#5865F2" />
 </head>
 <body style="margin:0;background:#0b0b0f;color:#e8e8ec;font-family:system-ui,sans-serif;padding:2rem;line-height:1.5">
 <p style="max-width:28rem"><a href="${escUrl}" style="color:#93c5fd">Continue to verification</a> — you will sign in with Discord on the next screen.</p>
@@ -74,8 +74,8 @@ export default function middleware(request: Request): Response | Promise<Respons
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  /** Wide screenshot read by Discord/Facebook crawlers (no JS). Keep file in `public/`. */
-  const imageUrl = `${url.origin}/share-verify-preview.png`;
+  /** Wide image read by Discord/Facebook crawlers (no JS). Served from `public/embed.png`. */
+  const imageUrl = `${url.origin}/embed.png`;
 
   return new Response(embedHtml(canonicalUrl, imageUrl), {
     status: 200,

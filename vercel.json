@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/share-verify-preview.png",
+      "destination": "/embed.png"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
