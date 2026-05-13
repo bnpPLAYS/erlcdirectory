@@ -63,6 +63,7 @@ import {
 } from '@/lib/callDiscordProfileMedia';
 import { imageFileToBannerDataUrl } from '@/lib/processBannerImage';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import { RobloxLinkedPreview } from '@/components/profile/RobloxLinkedPreview';
 import { RobloxIcon } from '@/components/icons/RobloxIcon';
 import { discordUserProfileUrl } from '@/lib/discordProfileUrl';
@@ -588,24 +589,26 @@ const ProfileEditor = ({
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent pointer-events-none" />
           </div>
           <div className="relative z-10 px-5 pb-5 -mt-12 sm:-mt-14 flex flex-col sm:flex-row sm:items-end gap-4">
-            <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10 shrink-0">
-              {(() => {
-                const av = safeAvatarUrl(profile.discord_avatar);
-                return av ? (
-                  <img
-                    src={av}
-                    alt=""
-                    draggable={false}
-                    className="h-full w-full object-cover no-image-drag"
-                    referrerPolicy={avatarReferrerPolicy(av)}
-                  />
-                ) : (
-                  <div className="h-full w-full grid place-items-center text-2xl font-semibold">
-                    {(form.display_name || profile.discord_username || '?').charAt(0).toUpperCase()}
-                  </div>
-                );
-              })()}
-            </div>
+            <ProAvatarFrame isPro={!!profile.is_pro} orbit="editor">
+              <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full ring-4 ring-background overflow-hidden bg-white/10">
+                {(() => {
+                  const av = safeAvatarUrl(profile.discord_avatar);
+                  return av ? (
+                    <img
+                      src={av}
+                      alt=""
+                      draggable={false}
+                      className="h-full w-full object-cover no-image-drag"
+                      referrerPolicy={avatarReferrerPolicy(av)}
+                    />
+                  ) : (
+                    <div className="h-full w-full grid place-items-center text-2xl font-semibold">
+                      {(form.display_name || profile.discord_username || '?').charAt(0).toUpperCase()}
+                    </div>
+                  );
+                })()}
+              </div>
+            </ProAvatarFrame>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <Input
@@ -1092,27 +1095,29 @@ const ProfileEditor = ({
                   />
                   <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="h-12 w-12 shrink-0 rounded-full ring-2 ring-background shadow-lg"
-                        style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
-                      >
-                        {(() => {
-                          const av = safeAvatarUrl(profile.discord_avatar);
-                          return av ? (
-                            <img
-                              src={av}
-                              alt=""
-                              draggable={false}
-                              className="h-full w-full rounded-full object-cover no-image-drag"
-                              referrerPolicy={avatarReferrerPolicy(av)}
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
-                              {(form.display_name || '?').charAt(0).toUpperCase()}
-                            </div>
-                          );
-                        })()}
-                      </div>
+                      <ProAvatarFrame isPro={!!profile.is_pro} orbit="preview">
+                        <div
+                          className="h-12 w-12 shrink-0 rounded-full ring-2 ring-background shadow-lg overflow-hidden"
+                          style={{ boxShadow: `0 0 24px ${form.accent_color}55` }}
+                        >
+                          {(() => {
+                            const av = safeAvatarUrl(profile.discord_avatar);
+                            return av ? (
+                              <img
+                                src={av}
+                                alt=""
+                                draggable={false}
+                                className="h-full w-full rounded-full object-cover no-image-drag"
+                                referrerPolicy={avatarReferrerPolicy(av)}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+                                {(form.display_name || '?').charAt(0).toUpperCase()}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </ProAvatarFrame>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold truncate max-w-[200px]">{form.display_name || 'Your name'}</p>
                         <p className="text-[11px] text-muted-foreground" style={{ color: form.accent_color }}>

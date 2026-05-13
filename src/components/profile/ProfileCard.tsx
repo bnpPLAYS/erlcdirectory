@@ -9,6 +9,7 @@ import { experienceRoleDisplay } from '@/lib/experienceConstants';
 import { cn } from '@/lib/utils';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 
 interface ExperiencePreview {
   id: string;
@@ -135,10 +136,12 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
               </div>
             </div>
 
-            <Avatar className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 ring-2 ring-white/10 group-hover:ring-primary/40 transition-all rounded-full">
-              <AvatarImage src={cardAvatarSrc} referrerPolicy={avatarReferrerPolicy(cardAvatarSrc)} />
-              <AvatarFallback className="bg-secondary text-base font-semibold">{initial}</AvatarFallback>
-            </Avatar>
+            <ProAvatarFrame isPro={!!profile.is_pro} orbit="card">
+              <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-white/10 group-hover:ring-primary/40 transition-all rounded-full">
+                <AvatarImage src={cardAvatarSrc} referrerPolicy={avatarReferrerPolicy(cardAvatarSrc)} />
+                <AvatarFallback className="bg-secondary text-base font-semibold">{initial}</AvatarFallback>
+              </Avatar>
+            </ProAvatarFrame>
           </div>
 
           {/* Skills */}
