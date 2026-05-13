@@ -834,6 +834,7 @@ export type Database = {
         Args: { p_post_id: string; p_status: string }
         Returns: undefined
       }
+      is_site_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
       discord_invite_looks_valid: { Args: { p_invite: string }; Returns: boolean }
       verified_staff_set_server_discord_invite: {

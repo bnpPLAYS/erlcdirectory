@@ -23,22 +23,25 @@ export function useStaffAccess() {
     }
     prevUserIdRef.current = user.id;
 
-    if (isSiteOwnerDiscordUsername(profile?.discord_username ?? null)) {
-      setIsStaff(true);
-      return;
-    }
-
     let cancelled = false;
-    void supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        setIsStaff(!!data);
-      });
+    void (async () => {
+      const { data: staffRpc, error } = await supabase.rpc('is_staff');
+      if (!cancelled && !error && typeof staffRpc === 'boolean') {
+        setIsStaff(staffRpc);
+        return;
+      }
+      if (isSiteOwnerDiscordUsername(profile?.discord_username ?? null)) {
+        setIsStaff(true);
+        return;
+      }
+      const { data } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (!cancelled) setIsStaff(!!data);
+    })();
     return () => {
       cancelled = true;
     };

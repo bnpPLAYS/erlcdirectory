@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { fetchStaffGate } from '@/lib/fetchStaffGate';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
 import { reportCategoryLabel } from '@/lib/reportCategories';
 import { callModerationFn } from '@/lib/callModerationFn';
@@ -26,7 +27,7 @@ import {
 type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 
 const Admin = () => {
-  const { user, session, loading: authLoading } = useAuth();
+  const { user, session, profile, loading: authLoading } = useAuth();
   const [access, setAccess] = useState<StaffAccess | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -75,18 +76,17 @@ const Admin = () => {
     let cancelled = false;
     setAccess(null);
     void (async () => {
-      const [{ data: prof }, { data: roleRow }] = await Promise.all([
-        supabase.from('profiles').select('discord_username').eq('user_id', user.id).maybeSingle(),
-        supabase.from('user_roles').select('id').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
-      ]);
+      const gate = await fetchStaffGate(supabase, {
+        userId: user.id,
+        discordUsername: profile?.discord_username,
+      });
       if (cancelled) return;
-      const owner = isSiteOwnerDiscordUsername(prof?.discord_username ?? null);
-      setAccess({ canModerate: owner || !!roleRow, isSiteOwner: owner });
+      setAccess(gate);
     })();
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, profile?.discord_username]);
 
   const loadAuditLogs = useCallback(async () => {
     if (!access?.isSiteOwner) return;
