@@ -27,6 +27,7 @@ interface Profile {
   is_featured: boolean;
   is_pro: boolean;
   pro_badge_label?: string | null;
+  show_pro_avatar_decor?: boolean;
   rating: number;
   review_count: number;
   skills: string[];
@@ -184,7 +185,7 @@ const Browse = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, is_pro, pro_badge_label, rating, review_count, skills, created_at',
+        'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, is_pro, pro_badge_label, show_pro_avatar_decor, rating, review_count, skills, created_at',
       )
       .limit(150);
 
@@ -235,6 +236,7 @@ const Browse = () => {
         is_featured: !!p.is_featured,
         is_pro: !!p.is_pro,
         pro_badge_label: p.pro_badge_label ?? null,
+        show_pro_avatar_decor: !!p.show_pro_avatar_decor,
         rating: finiteNum(p.rating),
         review_count: finiteNum(p.review_count),
         created_at: p.created_at,

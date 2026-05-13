@@ -34,6 +34,7 @@ function normalizeProfileRow(row: Profile): Profile {
     ...row,
     is_pro: !!row.is_pro,
     pro_badge_label: row.pro_badge_label ?? null,
+    show_pro_avatar_decor: !!row.show_pro_avatar_decor,
     roblox_user_id: row.roblox_user_id ?? null,
     roblox_verified_at: row.roblox_verified_at ?? null,
   };
@@ -53,6 +54,8 @@ interface Profile {
   is_featured: boolean;
   is_pro: boolean;
   pro_badge_label: string | null;
+  /** Pro opt-in: animated rings around avatar on profile, directory, nav. */
+  show_pro_avatar_decor?: boolean;
   roblox_user_id: string | null;
   roblox_verified_at: string | null;
   rating: number;

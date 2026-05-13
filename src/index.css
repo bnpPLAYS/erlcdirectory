@@ -467,9 +467,38 @@
   }
 }
 
+@keyframes pro-avatar-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pro-avatar-orbit-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
 @layer utilities {
   .no-image-drag {
     -webkit-user-drag: none;
     user-select: none;
+  }
+
+  .pro-avatar-orbit-cw {
+    animation: pro-avatar-orbit-spin 11s linear infinite;
+  }
+  .pro-avatar-orbit-ccw {
+    animation: pro-avatar-orbit-spin-reverse 16s linear infinite;
+  }
+  .pro-avatar-orbit-spark {
+    animation: pro-avatar-orbit-spin 26s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-avatar-orbit-cw,
+  .pro-avatar-orbit-ccw,
+  .pro-avatar-orbit-spark {
+    animation: none !important;
   }
 }
