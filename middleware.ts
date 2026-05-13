@@ -114,7 +114,8 @@ export default function middleware(request: Request): Response | Promise<Respons
     const afterPrefix = path.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/share-verify-preview.png`;
+      /** Wide image read by Discord/Facebook crawlers (no JS). Served from `public/embed.png`. */
+      const imageUrl = `${url.origin}/embed.png`;
       const title = `Verify experience — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Open this link to confirm staff experience with your Discord login.`;
       return new Response(
@@ -138,7 +139,8 @@ export default function middleware(request: Request): Response | Promise<Respons
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const imageUrl = `${url.origin}/share-verify-preview.png`;
+  /** Wide image read by Discord/Facebook crawlers (no JS). Served from `public/embed.png`. */
+  const imageUrl = `${url.origin}/embed.png`;
 
   return new Response(
     ogDocument({
