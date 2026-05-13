@@ -26,6 +26,7 @@ const REPORT_CATEGORIES = new Set([
   'nsfw',
   'copyright',
   'other',
+  'bug',
 ])
 
 Deno.serve(async (req) => {
@@ -53,6 +54,8 @@ Deno.serve(async (req) => {
     message_id?: string | null
     conversation_id?: string | null
     server_id?: string | null
+    page_path?: string | null
+    user_agent?: string | null
   }
   try {
     body = await req.json()
@@ -62,27 +65,41 @@ Deno.serve(async (req) => {
 
   const kindRaw = (body.kind ?? '').toString()
   const kind =
-    kindRaw === 'message' ? 'message' : kindRaw === 'review' ? 'review' : kindRaw === 'server' ? 'server' : ''
-  if (kind !== 'review' && kind !== 'message' && kind !== 'server') {
+    kindRaw === 'message'
+      ? 'message'
+      : kindRaw === 'review'
+        ? 'review'
+        : kindRaw === 'server'
+          ? 'server'
+          : kindRaw === 'bug'
+            ? 'bug'
+            : ''
+  if (kind !== 'review' && kind !== 'message' && kind !== 'server' && kind !== 'bug') {
     return json({ ok: false, error: 'Invalid kind' }, 400)
   }
 
-  const catRaw = (body.report_category ?? 'other').toString().trim()
+  const catRaw = (body.report_category ?? (kind === 'bug' ? 'bug' : 'other')).toString().trim()
   const report_category = REPORT_CATEGORIES.has(catRaw) ? catRaw : null
   if (!report_category) {
     return json({ ok: false, error: 'Invalid report category' }, 400)
   }
+  if (kind === 'bug' && report_category !== 'bug') {
+    return json({ ok: false, error: 'Bug reports must use report_category bug.' }, 400)
+  }
 
   const reason = (body.reason ?? '').toString().trim()
-  const minLen = report_category === 'other' ? 8 : 3
+  const minLen =
+    kind === 'bug' ? 12 : report_category === 'other' ? 8 : 3
   if (reason.length < minLen || reason.length > 2000) {
     return json(
       {
         ok: false,
         error:
-          report_category === 'other'
-            ? 'Please explain the issue (8–2000 characters) when you choose Other.'
-            : 'Details must be 3–2000 characters.',
+          kind === 'bug'
+            ? 'Describe the bug in at least 12 characters (what broke, what you expected).'
+            : report_category === 'other'
+              ? 'Please explain the issue (8–2000 characters) when you choose Other.'
+              : 'Details must be 3–2000 characters.',
       },
       400,
     )
@@ -92,6 +109,8 @@ Deno.serve(async (req) => {
   const messageId = body.message_id?.toString().trim() || ''
   const conversationId = body.conversation_id?.toString().trim() || ''
   const serverId = body.server_id?.toString().trim() || ''
+  const pagePath = (body.page_path ?? '').toString().trim().slice(0, 2000)
+  const userAgent = (body.user_agent ?? '').toString().trim().slice(0, 800)
 
   if (kind === 'review' && !UUID_RE.test(reviewId)) {
     return json({ ok: false, error: 'Invalid review_id' }, 400)
@@ -139,16 +158,20 @@ Deno.serve(async (req) => {
     if (conversationId) row.conversation_id = conversationId
   }
   if (kind === 'server') row.server_id = serverId
+  if (kind === 'bug') {
+    if (pagePath) row.page_path = pagePath
+    if (userAgent) row.user_agent = userAgent
+  }
 
   const { error: insErr } = await admin.from('moderation_reports').insert(row as never)
   if (insErr) {
     const msg = insErr.message || ''
-    if (/relation|does not exist|schema cache|report_category|server_id|moderation_reports_kind/i.test(msg)) {
+    if (/relation|does not exist|schema cache|report_category|server_id|page_path|user_agent|moderation_reports_kind/i.test(msg)) {
       return json(
         {
           ok: false,
           error:
-            'Reporting schema may be outdated. In Supabase → SQL Editor, run supabase/migrations/20260531120000_reports_server_category_bans.sql (and ensure 20260530120000_staff_warnings_reports.sql was applied).',
+            'Reporting schema is behind this build. In Supabase SQL Editor, apply migrations through 20260628140000_moderation_reports_bug_context.sql (and earlier moderation_reports migrations).',
         },
         503,
       )

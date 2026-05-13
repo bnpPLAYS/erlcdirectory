@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy, Sparkles, ScrollText } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,6 +58,14 @@ const Admin = () => {
   const [reportModReason, setReportModReason] = useState('');
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [reportStatusFilter, setReportStatusFilter] = useState<'all' | 'open' | 'resolved' | 'dismissed'>('open');
+  const [reportKindFilter, setReportKindFilter] = useState<'all' | 'review' | 'message' | 'server' | 'bug'>('all');
+  const [postStatusFilter, setPostStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [closeReportDlg, setCloseReportDlg] = useState<{
+    row: Record<string, unknown>;
+    status: 'resolved' | 'dismissed';
+  } | null>(null);
+  const [closeReportNotes, setCloseReportNotes] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -110,10 +118,10 @@ const Admin = () => {
       supabase
         .from('moderation_reports')
         .select(
-          'id, kind, reason, report_category, status, created_at, reporter_profile_id, review_id, message_id, conversation_id, server_id, staff_notes, resolved_at',
+          'id, kind, reason, report_category, status, created_at, reporter_profile_id, review_id, message_id, conversation_id, server_id, staff_notes, resolved_at, page_path, user_agent',
         )
         .order('created_at', { ascending: false })
-        .limit(100),
+        .limit(250),
     ]);
     setProfiles(p.data || []);
     setServers(s.data || []);
@@ -380,14 +388,44 @@ const Admin = () => {
   const filter = (list: any[], keys: string[]) =>
     !q ? list : list.filter((x) => keys.some((k) => (x[k] || '').toString().toLowerCase().includes(q.toLowerCase())));
 
-  const resolveReport = async (row: any, status: 'resolved' | 'dismissed') => {
+  const filteredReportsForTab = useMemo(() => {
+    return reports.filter((r) => {
+      if (reportStatusFilter !== 'all' && r.status !== reportStatusFilter) return false;
+      if (reportKindFilter !== 'all' && r.kind !== reportKindFilter) return false;
+      return true;
+    });
+  }, [reports, reportStatusFilter, reportKindFilter]);
+
+  const filteredPostsForTab = useMemo(() => {
+    if (postStatusFilter === 'all') return posts;
+    return posts.filter((p) => (p.status || 'pending') === postStatusFilter);
+  }, [posts, postStatusFilter]);
+
+  const resolveReport = async (row: any, status: 'resolved' | 'dismissed', staffNotes: string) => {
+    const trimmed = staffNotes.trim();
     const { error } = await supabase
       .from('moderation_reports')
-      .update({ status, resolved_at: new Date().toISOString() })
+      .update({
+        status,
+        resolved_at: new Date().toISOString(),
+        staff_notes: trimmed ? trimmed.slice(0, 2000) : null,
+      })
       .eq('id', row.id);
-    if (error) return toast({ title: error.message, variant: 'destructive' });
-    toast({ title: 'Report updated' });
+    if (error) {
+      toast({ title: error.message, variant: 'destructive' });
+      return false;
+    }
+    toast({ title: status === 'resolved' ? 'Marked handled' : 'Dismissed' });
     refresh();
+    return true;
+  };
+
+  const confirmCloseReport = async () => {
+    if (!closeReportDlg) return;
+    const ok = await resolveReport(closeReportDlg.row, closeReportDlg.status, closeReportNotes);
+    if (!ok) return;
+    setCloseReportDlg(null);
+    setCloseReportNotes('');
   };
 
   const staffReportAction = async (
@@ -512,7 +550,8 @@ const Admin = () => {
       await refresh();
       await loadAuditLogs();
     } catch (e) {
-      toast({ title: e instanceof Error ? e.message : 'That action did not go through', variant: 'destructive' });
+      const msg = e instanceof Error ? e.message : 'That action did not go through';
+      toast({ title: 'Action blocked', description: msg, variant: 'destructive' });
     } finally {
       setStaffDlgBusy(false);
     }
@@ -860,7 +899,22 @@ const Admin = () => {
           )}
 
           <TabsContent value="openings" className="space-y-2">
-            {filter(posts, ['title']).map((p) => (
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="text-xs text-muted-foreground">Post status</span>
+              {(['all', 'pending', 'approved', 'rejected'] as const).map((s) => (
+                <Button
+                  key={s}
+                  type="button"
+                  size="sm"
+                  variant={postStatusFilter === s ? 'default' : 'outline'}
+                  className="h-8 text-xs capitalize"
+                  onClick={() => setPostStatusFilter(s)}
+                >
+                  {s}
+                </Button>
+              ))}
+            </div>
+            {filter(filteredPostsForTab, ['title']).map((p) => (
               <Card key={p.id}><CardContent className="p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="outline" className="capitalize">{p.type}</Badge>
@@ -898,15 +952,64 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-2">
-            {filter(reports, ['reason', 'reporter_label', 'kind', 'report_category', 'server_label', 'message_preview']).length ===
-            0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <span className="text-xs text-muted-foreground shrink-0">Queue</span>
+              {(['all', 'open', 'resolved', 'dismissed'] as const).map((s) => (
+                <Button
+                  key={s}
+                  type="button"
+                  size="sm"
+                  variant={reportStatusFilter === s ? 'default' : 'outline'}
+                  className="h-8 text-xs capitalize"
+                  onClick={() => setReportStatusFilter(s)}
+                >
+                  {s}
+                </Button>
+              ))}
+              <span className="text-xs text-muted-foreground shrink-0 ml-2">Kind</span>
+              {(['all', 'review', 'message', 'server', 'bug'] as const).map((k) => (
+                <Button
+                  key={k}
+                  type="button"
+                  size="sm"
+                  variant={reportKindFilter === k ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs capitalize"
+                  onClick={() => setReportKindFilter(k)}
+                >
+                  {k}
+                </Button>
+              ))}
+              <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                {filteredReportsForTab.length} shown
+              </span>
+            </div>
+            {filter(filteredReportsForTab, [
+              'reason',
+              'reporter_label',
+              'kind',
+              'report_category',
+              'server_label',
+              'message_preview',
+              'page_path',
+              'user_agent',
+            ]).length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No user reports yet. Reports appear when someone uses Report on a review, DM, or server.
+                  No reports match these filters. Bug reports from the floating button show as kind{' '}
+                  <span className="font-mono text-foreground">bug</span>.
                 </CardContent>
               </Card>
             ) : (
-              filter(reports, ['reason', 'reporter_label', 'kind', 'report_category', 'server_label', 'message_preview']).map(
+              filter(filteredReportsForTab, [
+                'reason',
+                'reporter_label',
+                'kind',
+                'report_category',
+                'server_label',
+                'message_preview',
+                'page_path',
+                'user_agent',
+              ]).map(
                 (r) => (
                   <Card key={r.id}>
                     <CardContent className="p-4 space-y-3">
@@ -944,6 +1047,26 @@ const Admin = () => {
                       {r.server_label && (
                         <p className="text-xs text-muted-foreground">
                           Server: <span className="text-foreground font-medium">{r.server_label}</span>
+                        </p>
+                      )}
+                      {r.kind === 'bug' && (r.page_path || r.user_agent) && (
+                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs space-y-1">
+                          {r.page_path ? (
+                            <p className="text-muted-foreground">
+                              Path:{' '}
+                              <span className="text-foreground font-mono break-all">{String(r.page_path)}</span>
+                            </p>
+                          ) : null}
+                          {r.user_agent ? (
+                            <p className="text-muted-foreground line-clamp-2" title={String(r.user_agent)}>
+                              UA: <span className="text-foreground/90">{String(r.user_agent)}</span>
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                      {r.staff_notes && r.status !== 'open' && (
+                        <p className="text-xs text-muted-foreground border-l-2 border-white/20 pl-2">
+                          Staff notes: <span className="text-foreground whitespace-pre-wrap">{r.staff_notes}</span>
                         </p>
                       )}
                       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground font-mono">
@@ -992,41 +1115,55 @@ const Admin = () => {
                                 <Trash2 className="h-3.5 w-3.5" /> Remove server
                               </Button>
                             )}
+                            {r.kind !== 'bug' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    setWarnForReportId(r.id);
+                                    setWarnBody('');
+                                  }}
+                                >
+                                  <AlertTriangle className="h-3.5 w-3.5" /> Warn member
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="gap-1 text-destructive"
+                                  onClick={() => {
+                                    if (access.isSiteOwner) {
+                                      void staffReportAction(r, 'ban');
+                                      return;
+                                    }
+                                    setReportModReason('');
+                                    setReportMod({ row: r, action: 'ban' });
+                                  }}
+                                >
+                                  <Ban className="h-3.5 w-3.5" /> Ban member
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
                               variant="secondary"
                               className="gap-1"
                               onClick={() => {
-                                setWarnForReportId(r.id);
-                                setWarnBody('');
+                                setCloseReportDlg({ row: r, status: 'resolved' });
+                                setCloseReportNotes((r.staff_notes as string) || '');
                               }}
-                            >
-                              <AlertTriangle className="h-3.5 w-3.5" /> Warn member
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="gap-1 text-destructive"
-                              onClick={() => {
-                                if (access.isSiteOwner) {
-                                  void staffReportAction(r, 'ban');
-                                  return;
-                                }
-                                setReportModReason('');
-                                setReportMod({ row: r, action: 'ban' });
-                              }}
-                            >
-                              <Ban className="h-3.5 w-3.5" /> Ban member
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="gap-1"
-                              onClick={() => void resolveReport(r, 'resolved')}
                             >
                               <Check className="h-3.5 w-3.5" /> Mark handled
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => void resolveReport(r, 'dismissed')}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setCloseReportDlg({ row: r, status: 'dismissed' });
+                                setCloseReportNotes((r.staff_notes as string) || '');
+                              }}
+                            >
                               Dismiss
                             </Button>
                           </div>
@@ -1354,6 +1491,51 @@ const Admin = () => {
           </TabsContent>
           )}
         </Tabs>
+
+        <Dialog
+          open={!!closeReportDlg}
+          onOpenChange={(o) => {
+            if (!o) {
+              setCloseReportDlg(null);
+              setCloseReportNotes('');
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg border-white/12 bg-background">
+            <DialogHeader>
+              <DialogTitle>
+                {closeReportDlg?.status === 'resolved' ? 'Mark report handled' : 'Dismiss report'}
+              </DialogTitle>
+              <DialogDescription>
+                Optional staff notes (saved on the report row). Leave blank if you do not need a paper trail.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={closeReportNotes}
+              onChange={(e) => setCloseReportNotes(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              className="border-white/12 bg-white/[0.04] resize-none text-sm"
+              placeholder="What you did, repro notes, or why you dismissed…"
+            />
+            <p className="text-[10px] text-muted-foreground text-right tabular-nums">{closeReportNotes.length}/2000</p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setCloseReportDlg(null);
+                  setCloseReportNotes('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={() => void confirmCloseReport()}>
+                Save & close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={!!staffDlg}

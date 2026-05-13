@@ -28,6 +28,7 @@ export function isReportCategoryId(v: string): v is ReportCategoryId {
 
 export function reportCategoryLabel(id: string | null | undefined): string {
   if (!id) return '—';
+  if (id === 'bug') return 'Site bug';
   const o = REPORT_CATEGORY_OPTIONS.find((x) => x.id === id);
   return o?.label ?? id;
 }
