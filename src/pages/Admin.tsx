@@ -434,7 +434,7 @@ const Admin = () => {
     opts?: { warn_body?: string; reason?: string },
   ) => {
     if (!session?.access_token) {
-      toast({ title: 'Session dead — sign in again', variant: 'destructive' });
+      toast({ title: 'Session expired. Try again.', variant: 'destructive' });
       return;
     }
     if (action === 'ban' && !opts?.reason?.trim() && !access?.isSiteOwner) {
@@ -470,7 +470,7 @@ const Admin = () => {
 
   const startCanarySession = async () => {
     if (!session?.access_token) {
-      toast({ title: 'Session dead — sign in again', variant: 'destructive' });
+      toast({ title: 'Session expired. Try again.', variant: 'destructive' });
       return;
     }
     setCanaryBusy(true);
@@ -484,7 +484,7 @@ const Admin = () => {
 
   const stopCanarySession = async () => {
     if (!session?.access_token) return;
-    if (!confirm('End the canary session? Testers will lose access immediately.')) return;
+    if (!confirm('Are you sure you want to end the canary session?')) return;
     setCanaryBusy(true);
     const r = await canaryStaffStop(session.access_token);
     setCanaryBusy(false);
@@ -532,7 +532,7 @@ const Admin = () => {
       : null;
   const defaultTab = tabFromUrl ?? (access.isSiteOwner ? 'members' : 'openings');
 
-  const ownerOnlyTitle = 'Only the site owner account can use this.';
+  const ownerOnlyTitle = 'This is only allowed by developers.';
 
   const confirmStaffDlg = async () => {
     if (!staffDlg) return;
