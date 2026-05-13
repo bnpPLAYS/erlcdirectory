@@ -130,7 +130,12 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     .maybeSingle();
 
   if (existing?.id) {
-    const { error } = await supabase.from('profiles').update(patch).eq('user_id', user.id);
+    // Never overwrite `discord_avatar` from the Supabase JWT on routine sync — after a Discord-side
+    // avatar change, `user_metadata.avatar_url` / identity_data often stays stale for a long time.
+    // Fresh URLs come from `discord-profile-media` (@me) or native discord-oauth; this patch only
+    // updates tokens + identity fields.
+    const { discord_avatar: _omitAvatar, ...patchSansAvatar } = patch;
+    const { error } = await supabase.from('profiles').update(patchSansAvatar).eq('user_id', user.id);
     return { error: error ? new Error(error.message) : null };
   }
 

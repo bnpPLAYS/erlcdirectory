@@ -324,9 +324,12 @@ export default async function handler(request: Request): Promise<Response> {
     action: auditAction,
     reason: auditReason,
     target_profile_id: targetProfile,
-    target_server_id: action === 'remove_server' ? targetServer : null,
+    target_server_id: null,
     report_id: reportId,
-    metadata: { moderation_action: action },
+    metadata:
+      action === 'remove_server' && targetServer
+        ? { moderation_action: action, deleted_server_id: targetServer }
+        : { moderation_action: action },
   });
   if (!log.ok) return json(400, { ok: false, error: log.error });
 

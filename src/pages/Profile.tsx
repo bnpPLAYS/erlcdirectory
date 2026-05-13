@@ -38,6 +38,8 @@ import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { getProfileLocationDisplay } from '@/lib/profileLocationDisplay';
 import { ProfileSocialBadges } from '@/components/profile/ProfileSocialBadges';
 import { safeAvatarUrl, avatarReferrerPolicy, normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
+import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import type { Json } from '@/integrations/supabase/types';
 import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 
@@ -65,6 +67,7 @@ interface ProfileData {
   social_links?: Json | null;
   is_pro?: boolean;
   pro_badge_label?: string | null;
+  show_pro_avatar_decor?: boolean;
   roblox_user_id?: string | null;
 }
 
@@ -452,18 +455,20 @@ const Profile = () => {
                       style={{ background: `radial-gradient(circle, ${accent}55, transparent 70%)` }}
                       aria-hidden
                     />
-                    <Avatar
-                      className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
-                      style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
-                    >
-                      <AvatarImage
-                        src={heroAvatarSrc}
-                        loading="eager"
-                        fetchPriority="high"
-                        referrerPolicy={avatarReferrerPolicy(heroAvatarSrc)}
-                      />
-                      <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
-                    </Avatar>
+                    <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="hero" className="relative">
+                      <Avatar
+                        className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
+                        style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
+                      >
+                        <AvatarImage
+                          src={heroAvatarSrc}
+                          loading="eager"
+                          fetchPriority="high"
+                          referrerPolicy={avatarReferrerPolicy(heroAvatarSrc)}
+                        />
+                        <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
+                      </Avatar>
+                    </ProAvatarFrame>
                   </div>
 
                   <div className="flex-1 min-w-0">

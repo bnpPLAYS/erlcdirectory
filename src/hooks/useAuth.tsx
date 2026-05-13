@@ -14,10 +14,7 @@ import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
 import { isCanarySiteHost } from '@/lib/canaryHost';
 import { buildDiscordNativeSignInUrl } from '@/lib/discordOAuth';
 import { toast } from 'sonner';
-import {
-  pullDiscordProfileAfterOAuth,
-  syncDiscordProfileFromSession,
-} from '@/lib/syncDiscordProfile';
+import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +31,7 @@ function normalizeProfileRow(row: Profile): Profile {
     ...row,
     is_pro: !!row.is_pro,
     pro_badge_label: row.pro_badge_label ?? null,
+    show_pro_avatar_decor: !!row.show_pro_avatar_decor,
     roblox_user_id: row.roblox_user_id ?? null,
     roblox_verified_at: row.roblox_verified_at ?? null,
   };
@@ -53,6 +51,8 @@ interface Profile {
   is_featured: boolean;
   is_pro: boolean;
   pro_badge_label: string | null;
+  /** Pro opt-in: animated rings around avatar on profile, directory, nav. */
+  show_pro_avatar_decor?: boolean;
   roblox_user_id: string | null;
   roblox_verified_at: string | null;
   rating: number;
@@ -85,13 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   /** Dedupe rapid double hydration (e.g. getSession + SIGNED_IN) within a few seconds. */
   const lastDiscordMediaPullRef = useRef<{ userId: string; at: number } | null>(null);
+  /** Throttle Discord @me avatar pulls when returning to the tab (Discord CDN + DB stay in sync). */
+  const lastDiscordAvatarPullOnVisibleRef = useRef(0);
 
   const pullDiscordAvatarBannerAfterLogin = useCallback(async (session: Session) => {
     const uid = session.user.id;
     const now = Date.now();
     const prev = lastDiscordMediaPullRef.current;
     if (prev?.userId === uid && now - prev.at < 10_000) {
-      await syncDiscordProfileFromSession(session);
+      // Do not call `syncDiscordProfileFromSession` here — it would push a stale JWT avatar_url onto
+      // `profiles` right after `pullDiscordProfileAfterOAuth` populated the correct URL from Discord API.
       return;
     }
     lastDiscordMediaPullRef.current = { userId: uid, at: now };
@@ -208,12 +211,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchProfile, pullDiscordAvatarBannerAfterLogin]);
 
   useEffect(() => {
+    const VIS_AVATAR_PULL_MS = 2.5 * 60 * 1000;
+
     const refresh = () => {
       void supabase.auth.getSession();
       void supabase.auth.refreshSession().catch(() => {});
     };
+
+    const refreshAndMaybePullDiscordAvatar = () => {
+      void (async () => {
+        await supabase.auth.getSession();
+        await supabase.auth.refreshSession().catch(() => {});
+        if (document.visibilityState !== 'visible') return;
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid || !session) return;
+        const now = Date.now();
+        if (now - lastDiscordAvatarPullOnVisibleRef.current < VIS_AVATAR_PULL_MS) return;
+        lastDiscordAvatarPullOnVisibleRef.current = now;
+        await pullDiscordProfileAfterOAuth(session).catch(() => {});
+        await fetchProfile(uid);
+      })();
+    };
+
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') refreshAndMaybePullDiscordAvatar();
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', refresh);
@@ -223,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('online', refresh);
       window.removeEventListener('focus', refresh);
     };
-  }, []);
+  }, [fetchProfile]);
 
   const refreshProfile = useCallback(async () => {
     const { data } = await supabase.auth.getSession();

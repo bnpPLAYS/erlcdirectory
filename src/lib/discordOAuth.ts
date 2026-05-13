@@ -8,7 +8,7 @@ import { getPublicSiteOrigin } from '@/lib/publicSiteUrl';
  * - **Canary** (`canary.erlc.directory`, or `VITE_FORCE_CANARY_GATE` for local gate testing): always uses
  *   the current browser origin. This ignores `VITE_DISCORD_REDIRECT_URI`, which is often set to production
  *   `www` on Vercel and would otherwise make Discord reject the authorize request (“Invalid OAuth2 redirect_uri”).
- * - Optional `VITE_DISCORD_REDIRECT_URI` overrides on other hosts (must match Portal).
+ * - Optional `VITE_DISCORD_REDIRECT_URI` overrides on **other** hosts (must match Portal).
  * - Otherwise we use the same canonical origin as public links (`getPublicSiteOrigin`), so preview
  *   hosts (*.vercel.app) still OAuth against `https://www.erlc.directory/discord/callback` — no extra
  *   Discord redirects per deployment URL.
@@ -26,32 +26,33 @@ export function getDiscordRedirectUri(): string {
   }
 
   if (typeof window !== 'undefined') {
+    const origin = window.location.origin.replace(/\/+$/, '');
+    const host = window.location.hostname.toLowerCase();
+
     if (
       import.meta.env.VITE_DISABLE_CANONICAL_HOST_REDIRECT === 'true' &&
-      window.location.hostname.endsWith('.vercel.app')
+      host.endsWith('.vercel.app')
     ) {
-      return `${window.location.origin}/discord/callback`;
+      return `${origin}/discord/callback`;
     }
-
-    const host = window.location.hostname.toLowerCase();
 
     // Discord matches redirect_uri exactly. Use the same origin the user is on for apex vs www so it
     // matches Developer Portal entries (many teams only register one of erlc.directory / www.erlc.directory).
     if (host === 'erlc.directory' || host === 'www.erlc.directory') {
-      return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
-    }
-
-    if (host.endsWith('.vercel.app')) {
-      const origin = getPublicSiteOrigin();
-      if (origin) return `${origin}/discord/callback`;
-    }
-
-    const origin = getPublicSiteOrigin();
-    if (origin) {
       return `${origin}/discord/callback`;
     }
 
-    return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
+    if (host.endsWith('.vercel.app')) {
+      const pub = getPublicSiteOrigin();
+      if (pub) return `${pub}/discord/callback`;
+    }
+
+    const pub = getPublicSiteOrigin();
+    if (pub) {
+      return `${pub}/discord/callback`;
+    }
+
+    return `${origin}/discord/callback`;
   }
 
   return 'http://localhost:5173/discord/callback';
