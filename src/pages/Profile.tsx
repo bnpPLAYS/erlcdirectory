@@ -135,7 +135,12 @@ const Profile = () => {
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
-  const heroAvatarSrc = profile ? safeAvatarUrl(profile.discord_avatar) : undefined;
+  /** When viewing your own profile, prefer `useAuth().profile.discord_avatar` so the hero matches the navbar after Discord sync (page fetch can be stale until slug/deps change). */
+  const heroDiscordAvatar =
+    profile && meProfile?.id === profile.id && (meProfile.discord_avatar ?? '').trim() !== ''
+      ? meProfile.discord_avatar
+      : profile?.discord_avatar ?? null;
+  const heroAvatarSrc = profile ? safeAvatarUrl(heroDiscordAvatar) : undefined;
 
   const publicExperiences = useMemo(
     () => experiences.filter((e) => !isExperienceAwaitingVerification(e)),
