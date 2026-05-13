@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect } from 'react';
+import { useEffect, useState, useLayoutEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,11 +17,12 @@ import Navbar from '@/components/layout/Navbar';
 import { profilePath } from '@/lib/profilePath';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import ReviewsSection from '@/components/profile/ReviewsSection';
-import { normalizeDiscordInvite } from '@/lib/discordInvite';
+import { discordInviteLooksValid, normalizeDiscordInvite } from '@/lib/discordInvite';
 import { useAuth } from '@/hooks/useAuth';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
@@ -94,12 +95,15 @@ const ServerDetail = () => {
   const [loading, setLoading] = useState(true);
   const [inviteEnrichBusy, setInviteEnrichBusy] = useState(false);
   const [inviteRetryTick, setInviteRetryTick] = useState(0);
+  const [staffInviteValue, setStaffInviteValue] = useState('');
+  const [staffInviteBusy, setStaffInviteBusy] = useState(false);
 
   useLayoutEffect(() => {
     setServer(null);
     setCoworkers([]);
     setLoading(true);
     setInviteRetryTick(0);
+    setStaffInviteValue('');
   }, [id]);
 
   useEffect(() => {
@@ -217,7 +221,47 @@ const ServerDetail = () => {
   }
 
   const joinHref = normalizeDiscordInvite(server.discord_invite);
+  const inviteLooksValid = discordInviteLooksValid(server.discord_invite);
+  const joinHrefSafe = inviteLooksValid ? joinHref : null;
   const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
+
+  const meVerifiedHere = useMemo(
+    () =>
+      !!(meProfile?.id && coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)),
+    [meProfile?.id, coworkers],
+  );
+
+  const canAddInviteAsVerifiedStaff =
+    !!user && !!server.guild_id && meVerifiedHere && !inviteLooksValid;
+
+  const saveStaffInvite = async () => {
+    if (!server) return;
+    const trimmed = staffInviteValue.trim();
+    if (!trimmed) {
+      toast.error('Paste a Discord invite link or code.');
+      return;
+    }
+    if (!discordInviteLooksValid(trimmed)) {
+      toast.error('Use a discord.gg link, discord.com/invite/…, or the invite code.');
+      return;
+    }
+    setStaffInviteBusy(true);
+    try {
+      const { error } = await supabase.rpc('verified_staff_set_server_discord_invite', {
+        p_server_id: server.id,
+        p_invite: trimmed,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success('Invite saved for this server.');
+      setServer({ ...server, discord_invite: trimmed });
+      setStaffInviteValue('');
+    } finally {
+      setStaffInviteBusy(false);
+    }
+  };
 
   const toggleDirectoryVerified = async () => {
     if (!server) return;
@@ -292,8 +336,8 @@ const ServerDetail = () => {
                     {server.is_verified ? 'Remove verify badge' : 'Grant verify badge'}
                   </Button>
                 )}
-                {joinHref ? (
-                  <a href={joinHref} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                {joinHrefSafe ? (
+                  <a href={joinHrefSafe} target="_blank" rel="noopener noreferrer" className="inline-flex">
                     <Button className="gap-2 w-full sm:w-auto">
                       <ExternalLink className="h-4 w-4" /> Join Discord
                     </Button>
@@ -304,19 +348,53 @@ const ServerDetail = () => {
                       <Loader2 className="h-4 w-4 animate-spin" /> Looking up invite…
                     </Button>
                   ) : (
-                    <div className="flex flex-col gap-1 items-stretch sm:items-end max-w-[16rem]">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="gap-2 w-full sm:w-auto"
-                        onClick={() => setInviteRetryTick((t) => t + 1)}
-                      >
-                        <RefreshCw className="h-4 w-4" /> Find join link
-                      </Button>
-                      <p className="text-xs text-muted-foreground text-right leading-snug">
-                        If this stays empty, enable the server widget, add the directory bot with invite permissions, or
-                        sync from Discord under Edit profile → Customize.
-                      </p>
+                    <div className="flex flex-col gap-3 items-stretch sm:items-end w-full sm:max-w-sm">
+                      <div className="flex flex-col gap-1 items-stretch sm:items-end">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="gap-2 w-full sm:w-auto"
+                          onClick={() => setInviteRetryTick((t) => t + 1)}
+                        >
+                          <RefreshCw className="h-4 w-4" /> Find join link
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-right leading-snug">
+                          If this stays empty, enable the server widget, add the directory bot with invite permissions,
+                          or sync from Discord under Edit profile → Customize.
+                        </p>
+                      </div>
+                      {canAddInviteAsVerifiedStaff && (
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2 w-full text-left">
+                          <p className="text-xs font-medium text-foreground">Verified staff — add invite</p>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            If there is no valid join link yet, paste a working Discord invite (only when you have
+                            verified experience here).
+                          </p>
+                          <Input
+                            value={staffInviteValue}
+                            onChange={(e) => setStaffInviteValue(e.target.value)}
+                            placeholder="https://discord.gg/… or invite code"
+                            className="h-9 text-sm bg-background/80 border-white/10"
+                            disabled={staffInviteBusy}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            disabled={staffInviteBusy || !staffInviteValue.trim()}
+                            onClick={() => void saveStaffInvite()}
+                          >
+                            {staffInviteBusy ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" aria-hidden />
+                                Saving…
+                              </>
+                            ) : (
+                              'Save invite'
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )
                 ) : null}

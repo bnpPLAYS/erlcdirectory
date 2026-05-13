@@ -826,6 +826,11 @@ export type Database = {
         Returns: undefined
       }
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      discord_invite_looks_valid: { Args: { p_invite: string }; Returns: boolean }
+      verified_staff_set_server_discord_invite: {
+        Args: { p_server_id: string; p_invite: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
