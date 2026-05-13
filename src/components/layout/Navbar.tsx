@@ -57,7 +57,9 @@ const Navbar = () => {
   const discordUi = useMemo(() => getDiscordSessionDisplay(user), [user]);
   const navDisplayName = profile?.display_name ?? discordUi?.displayName ?? 'Member';
   const navDiscordUsername = profile?.discord_username ?? discordUi?.discordUsername ?? 'user';
-  const navAvatarUrl = safeAvatarUrl(profile?.discord_avatar ?? discordUi?.avatarUrl ?? null);
+  const navAvatarUrl = safeAvatarUrl(
+    profile != null ? profile.discord_avatar : (discordUi?.avatarUrl ?? null),
+  );
   const navInitial = (navDisplayName || 'U').charAt(0).toUpperCase();
 
   const navLinks = useMemo(() => {
@@ -230,6 +232,7 @@ const Navbar = () => {
                     <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
                       <Avatar className="h-8 w-8 ring-1 ring-white/10">
                         <AvatarImage
+                          key={navAvatarUrl || 'nav-avatar'}
                           src={navAvatarUrl}
                           loading="eager"
                           fetchPriority="high"
@@ -250,6 +253,7 @@ const Navbar = () => {
                     <ProAvatarFrame active={showsProAvatarDecor(profile)} orbit="nav">
                       <Avatar className="h-10 w-10 ring-1 ring-white/10">
                         <AvatarImage
+                          key={navAvatarUrl || 'nav-avatar-dd'}
                           src={navAvatarUrl}
                           loading="eager"
                           fetchPriority="high"
