@@ -3,6 +3,7 @@ import { sendDiscordUserDm } from '../_shared/discordDm.ts'
 import { discordIconCdnUrl, enrichDiscordGuildForDirectory } from '../_shared/discordGuildEnrichment.ts'
 import { fetchMemberDiscordRolesForGuild } from '../_shared/discordMemberRoles.ts'
 import { publicProfileAbsoluteUrl } from '../_shared/publicProfilePath.ts'
+import { discordDefaultAvatarCdnUrl } from '../_shared/discordDefaultAvatar.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -443,7 +444,7 @@ Deno.serve(async (req) => {
       const verifierAvatarUrl =
         avHash && verifierDiscordId
           ? `https://cdn.discordapp.com/avatars/${verifierDiscordId}/${avHash}.${avExt}?size=128`
-          : null
+          : discordDefaultAvatarCdnUrl(verifierDiscordId)
 
       if (!verifierProfile && !skipVerifierMirror) {
         const syntheticEmail = `discord-${verifierDiscordId}@verifier.erlc.directory`
