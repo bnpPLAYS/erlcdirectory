@@ -183,7 +183,7 @@ const Messages = () => {
 
       setConversations(rows);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Could not load conversations');
+      toast.error(e instanceof Error ? e.message : 'Inbox failed to load');
       setConversations([]);
     } finally {
       setListLoading(false);
@@ -228,7 +228,7 @@ const Messages = () => {
       if (retry?.id) return retry.id;
     }
 
-    throw new Error(error?.message || 'Could not create conversation');
+    throw new Error(error?.message || 'Conversation failed to create');
   }, []);
 
   const openThread = useCallback(
@@ -236,7 +236,7 @@ const Messages = () => {
       if (!profile?.id || otherId === profile.id) return;
       const connected = await assertConnected(profile.id, otherId);
       if (!connected) {
-        toast.error('You can only message people you have connected with.');
+        toast.error('Messages only work with people you are connected to.');
         return;
       }
 
@@ -244,7 +244,7 @@ const Messages = () => {
       try {
         conversationId = await ensureConversationRow(profile.id, otherId);
       } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : 'Could not open conversation');
+        toast.error(e instanceof Error ? e.message : 'Could not start that chat');
         return;
       }
 
@@ -255,7 +255,7 @@ const Messages = () => {
         .maybeSingle();
 
       if (pe || !p) {
-        toast.error('Could not load profile');
+        toast.error('Profile failed to load');
         return;
       }
 
@@ -326,7 +326,7 @@ const Messages = () => {
     });
 
     if (error) {
-      toast.error(error.message || 'Could not send message');
+      toast.error(error.message || 'Message did not send');
       return;
     }
 

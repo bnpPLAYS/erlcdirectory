@@ -51,7 +51,7 @@ function stripOAuthParamsFromUrl() {
 const DiscordCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Connecting your Discord account...');
+  const [message, setMessage] = useState('Talking to Discord…');
   const [showExchangeHelp, setShowExchangeHelp] = useState(false);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ const DiscordCallback = () => {
 
       if (!cancelled) {
         setStatus('success');
-        setMessage('Signed in. Redirecting…');
+        setMessage('Signed in. Sending you home…');
         window.location.replace(`${window.location.origin}/`);
       }
       return true;
@@ -122,7 +122,7 @@ const DiscordCallback = () => {
               if (!cancelled) {
                 setStatus('error');
                 setShowExchangeHelp(false);
-                setMessage('This sign-in step expired. Close this tab and use Sign in again from the site.');
+                setMessage('That sign-in link expired. Start over from the site.');
               }
               stripOAuthParamsFromUrl();
               return;
@@ -209,7 +209,7 @@ const DiscordCallback = () => {
 
       if (!finished && !cancelled) {
         setStatus('error');
-        setMessage("Sign-in didn't complete. Go back and use Sign in again.");
+        setMessage('Sign-in stalled. Go back and try again.');
       }
 
       subscription.unsubscribe();

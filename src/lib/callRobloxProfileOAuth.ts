@@ -24,7 +24,7 @@ function verifyHeaders(accessToken: string): Record<string, string> {
 }
 
 const FN_MISSING =
-  'Roblox sign-in is not deployed. The site owner must deploy roblox-oauth-start and roblox-oauth-complete on Supabase.';
+  'Roblox OAuth is not deployed on Supabase (roblox-oauth-start / roblox-oauth-complete).';
 
 function expandFnMissing(msg: string): string {
   const m = msg.trim();
@@ -48,7 +48,7 @@ async function postFn(
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) {
-    return { ok: false, error: 'Sign in required.' };
+    return { ok: false, error: 'Log in to the directory first.' };
   }
   let headers: Record<string, string>;
   try {
@@ -102,7 +102,7 @@ async function postFn(
     lastErr = e instanceof Error ? e.message : String(e);
   }
 
-  return { ok: false, error: lastErr || 'Could not reach the server. Try again.' };
+  return { ok: false, error: lastErr || 'Roblox sign-in did not finish.' };
 }
 
 export async function invokeRobloxOAuthStart(): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
@@ -112,12 +112,12 @@ export async function invokeRobloxOAuthStart(): Promise<{ ok: true; url: string 
   try {
     j = JSON.parse(r.text) as StartJson;
   } catch {
-    return { ok: false, error: 'Unexpected response from Roblox sign-in.' };
+    return { ok: false, error: 'Bad response from Roblox OAuth.' };
   }
   if (j.ok === true && typeof j.url === 'string' && j.url.startsWith('https://')) {
     return { ok: true, url: j.url };
   }
-  const err = typeof j.error === 'string' ? expandFnMissing(j.error) : 'Could not start Roblox sign-in.';
+  const err = typeof j.error === 'string' ? expandFnMissing(j.error) : 'Roblox OAuth did not start.';
   return { ok: false, error: err };
 }
 
@@ -131,7 +131,7 @@ export async function invokeRobloxOAuthComplete(opts: {
   try {
     j = JSON.parse(r.text) as typeof j;
   } catch {
-    return { ok: false, error: 'Unexpected response from Roblox sign-in.' };
+    return { ok: false, error: 'Bad response from Roblox OAuth.' };
   }
   if (j.ok === true && j.roblox_user_id != null && j.roblox_verified_at) {
     return {
@@ -140,5 +140,5 @@ export async function invokeRobloxOAuthComplete(opts: {
       roblox_verified_at: j.roblox_verified_at,
     };
   }
-  return { ok: false, error: expandFnMissing(typeof j.error === 'string' ? j.error : 'Sign-in did not complete.') };
+  return { ok: false, error: expandFnMissing(typeof j.error === 'string' ? j.error : 'Roblox link did not finish.') };
 }

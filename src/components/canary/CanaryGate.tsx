@@ -109,7 +109,7 @@ export function CanaryGate({ children }: { children: ReactNode }) {
     try {
       sessionStorage.setItem(CANARY_PASS_STORAGE_KEY, res.access_token);
     } catch {
-      setError('Could not save session in this browser (private mode?).');
+      setError('This browser blocked saving the pass (private window?).');
       return;
     }
     setCodeInput('');

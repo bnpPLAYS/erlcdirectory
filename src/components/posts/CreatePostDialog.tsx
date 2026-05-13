@@ -92,7 +92,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       setGuilds(list);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      toast({ title: 'Could not load your verified servers', description: msg, variant: 'destructive' });
+      toast({ title: 'Verified servers failed to load', description: msg, variant: 'destructive' });
     } finally {
       setLoadingGuilds(false);
     }
@@ -117,7 +117,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       .select('id')
       .single();
     if (error) {
-      toast({ title: 'Could not link server', description: error.message, variant: 'destructive' });
+      toast({ title: 'Server link failed', description: error.message, variant: 'destructive' });
       return null;
     }
     return created.id;
@@ -157,7 +157,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
         if (u.protocol === 'http:' || u.protocol === 'https:') applicationUrlClean = u.toString();
         else throw new Error('invalid');
       } catch {
-        toast({ title: 'Application link must be a valid http(s) URL', variant: 'destructive' });
+        toast({ title: 'Application URL needs http:// or https://', variant: 'destructive' });
         return;
       }
     }
@@ -204,7 +204,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     }
     setSubmitting(false);
     if (error) {
-      toast({ title: 'Could not create post', description: error.message, variant: 'destructive' });
+      toast({ title: 'Post did not save', description: error.message, variant: 'destructive' });
       return;
     }
     toast({ title: 'Posted!' });

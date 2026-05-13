@@ -145,7 +145,7 @@ const Posts = () => {
 
   const applyToHiring = async (post: Post) => {
     if (!user) {
-      toast.error('Sign in with Discord to apply.');
+      toast.error('Log in with Discord to apply.');
       return;
     }
     if (post.require_guild_membership && post.servers?.guild_id) {
@@ -153,18 +153,18 @@ const Posts = () => {
       try {
         guilds = await fetchDiscordGuilds();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Could not verify Discord.');
+        toast.error(e instanceof Error ? e.message : 'Discord server list failed to load.');
         return;
       }
       const ok = guilds.some((g) => g.id === post.servers!.guild_id);
       if (!ok) {
-        toast.error('Join the server on Discord first—this post requires membership.');
+        toast.error('You need to be in that Discord server to apply.');
         return;
       }
     }
     if (post.require_roblox_verified) {
       if (!profile?.roblox_verified_at) {
-        toast.error('This post requires a verified Roblox account. Use Edit profile → Continue with Roblox, then try again.');
+        toast.error('Author wants Roblox verified accounts only — link Roblox under Edit profile, then retry.');
         return;
       }
     }
