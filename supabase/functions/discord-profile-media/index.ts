@@ -9,6 +9,7 @@ import {
   discordIconCdnUrl,
   enrichDiscordGuildForDirectory,
 } from '../_shared/discordGuildEnrichment.ts'
+import { discordDefaultAvatarCdnUrl } from '../_shared/discordDefaultAvatar.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -296,7 +297,12 @@ Deno.serve(async (req) => {
 
   const du = me.user
   const discordId = du.id || row.discord_id
-  const avatarUrl = discordId ? avatarCdn(discordId, du.avatar ?? null) : null
+  const customAvatar = discordId ? avatarCdn(discordId, du.avatar ?? null) : null
+  /** When `avatar` is null Discord uses a default image — still write it so we never keep a stale custom CDN URL. */
+  const avatarUrl =
+    syncMode !== 'banner' && discordId
+      ? customAvatar ?? discordDefaultAvatarCdnUrl(String(discordId))
+      : null
   const bannerUrl = discordId ? bannerCdn(discordId, du.banner ?? null) : null
 
   const patch: Record<string, unknown> = {
@@ -304,7 +310,6 @@ Deno.serve(async (req) => {
     discord_refresh_token: refreshToken || null,
     updated_at: new Date().toISOString(),
   }
-  // Only overwrite media URLs when Discord returns hashes — avoid wiping a custom banner/avatar.
   // Respect syncMode so "banner only" does not replace the profile picture (and vice versa).
   if (syncMode !== 'banner' && avatarUrl != null) patch.discord_avatar = avatarUrl
   if (syncMode !== 'avatar' && bannerUrl != null) patch.banner_url = bannerUrl

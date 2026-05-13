@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+import { discordDefaultAvatarCdnUrl } from '@/lib/discordDefaultAvatar';
 
 /** Discord CDN avatar URL from user id + avatar hash (OAuth sometimes omits full `avatar_url` in JWT). */
 export function discordAvatarCdnUrl(userId: string, avatarHash: string | null | undefined): string | null {
@@ -49,6 +50,9 @@ export function getDiscordSessionDisplay(user: User | null | undefined): Discord
     if (!avatarUrl && typeof idata.avatar === 'string' && discordIdForAvatar) {
       avatarUrl = discordAvatarCdnUrl(String(discordIdForAvatar), idata.avatar);
     }
+  }
+  if (!avatarUrl && discordIdForAvatar) {
+    avatarUrl = discordDefaultAvatarCdnUrl(String(discordIdForAvatar));
   }
 
   const displayName =
@@ -100,6 +104,9 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     if (!avatarUrl && typeof idata.avatar === 'string') {
       avatarUrl = discordAvatarCdnUrl(String(discordId), idata.avatar);
     }
+  }
+  if (!avatarUrl) {
+    avatarUrl = discordDefaultAvatarCdnUrl(String(discordId));
   }
 
   const displayName =

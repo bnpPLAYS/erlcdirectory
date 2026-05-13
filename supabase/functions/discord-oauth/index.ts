@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { discordDefaultAvatarCdnUrl } from '../_shared/discordDefaultAvatar.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     const avatarExt = avatarHash.startsWith('a_') ? 'gif' : 'png'
     const avatarUrl = avatarHash
       ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${avatarHash}.${avatarExt}?size=256`
-      : null
+      : discordDefaultAvatarCdnUrl(String(discordUser.id))
     const bannerUrl = discordUser.banner
       ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.${discordUser.banner.startsWith('a_') ? 'gif' : 'png'}?size=600`
       : null

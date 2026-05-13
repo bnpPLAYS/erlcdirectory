@@ -83,21 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  /** Dedupe rapid double hydration (e.g. getSession + SIGNED_IN) within a few seconds. */
-  const lastDiscordMediaPullRef = useRef<{ userId: string; at: number } | null>(null);
   /** Throttle Discord @me avatar pulls when returning to the tab (Discord CDN + DB stay in sync). */
   const lastDiscordAvatarPullOnVisibleRef = useRef(0);
 
   const pullDiscordAvatarBannerAfterLogin = useCallback(async (session: Session) => {
-    const uid = session.user.id;
-    const now = Date.now();
-    const prev = lastDiscordMediaPullRef.current;
-    if (prev?.userId === uid && now - prev.at < 10_000) {
-      // Do not call `syncDiscordProfileFromSession` here — it would push a stale JWT avatar_url onto
-      // `profiles` right after `pullDiscordProfileAfterOAuth` populated the correct URL from Discord API.
-      return;
-    }
-    lastDiscordMediaPullRef.current = { userId: uid, at: now };
+    // Always run: `syncDiscordProfileFromSession` no longer writes `discord_avatar` on existing rows
+    // (JWT avatar is often stale). Skipping pulls here caused `fetchProfile` to reload old URLs from DB
+    // on quick successive refreshes.
     await pullDiscordProfileAfterOAuth(session);
   }, []);
 
