@@ -283,18 +283,17 @@
     transform: translateY(0);
   }
 
-  /* Page-level entrance applied to <main> on every route. */
+  /* Page-level entrance: opacity only. A `transform` on this ancestor breaks `position: fixed`
+     (Navbar would scroll away) by creating a new containing block. */
   .route-enter {
     animation: routeEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   @keyframes routeEnter {
     from {
       opacity: 0;
-      transform: translateY(8px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
 
