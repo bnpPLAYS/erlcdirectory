@@ -26,6 +26,7 @@ import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
 import ProfileEditor from '@/components/profile/ProfileEditor';
 import ReviewsSection from '@/components/profile/ReviewsSection';
+import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -452,18 +453,20 @@ const Profile = () => {
                       style={{ background: `radial-gradient(circle, ${accent}55, transparent 70%)` }}
                       aria-hidden
                     />
-                    <Avatar
-                      className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
-                      style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
-                    >
-                      <AvatarImage
-                        src={heroAvatarSrc}
-                        loading="eager"
-                        fetchPriority="high"
-                        referrerPolicy={avatarReferrerPolicy(heroAvatarSrc)}
-                      />
-                      <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
-                    </Avatar>
+                    <ProAvatarFrame isPro={!!profile.is_pro} orbit="hero" className="relative">
+                      <Avatar
+                        className="relative h-28 w-28 md:h-32 md:w-32 ring-4 ring-background"
+                        style={{ boxShadow: `0 0 0 3px ${accent}66, 0 8px 30px ${accent}33` }}
+                      >
+                        <AvatarImage
+                          src={heroAvatarSrc}
+                          loading="eager"
+                          fetchPriority="high"
+                          referrerPolicy={avatarReferrerPolicy(heroAvatarSrc)}
+                        />
+                        <AvatarFallback className="text-3xl bg-secondary">{initial}</AvatarFallback>
+                      </Avatar>
+                    </ProAvatarFrame>
                   </div>
 
                   <div className="flex-1 min-w-0">
