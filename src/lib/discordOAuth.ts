@@ -1,10 +1,14 @@
+import { isCanarySiteHost } from '@/lib/canaryHost';
 import { getPublicSiteOrigin } from '@/lib/publicSiteUrl';
 
 /**
  * Discord OAuth uses **one** redirect URL per environment: `{origin}/discord/callback`.
  * It must match Discord Developer Portal exactly — never vary by `/verify/:token` or other paths.
  *
- * - Optional `VITE_DISCORD_REDIRECT_URI` overrides everything (must match Portal).
+ * - **Canary** (`canary.erlc.directory`, or `VITE_FORCE_CANARY_GATE` for local gate testing): always uses
+ *   the current browser origin. This ignores `VITE_DISCORD_REDIRECT_URI`, which is often set to production
+ *   `www` on Vercel and would otherwise make Discord reject the authorize request (“Invalid OAuth2 redirect_uri”).
+ * - Optional `VITE_DISCORD_REDIRECT_URI` overrides on other hosts (must match Portal).
  * - Otherwise we use the same canonical origin as public links (`getPublicSiteOrigin`), so preview
  *   hosts (*.vercel.app) still OAuth against `https://www.erlc.directory/discord/callback` — no extra
  *   Discord redirects per deployment URL.
@@ -12,6 +16,10 @@ import { getPublicSiteOrigin } from '@/lib/publicSiteUrl';
  *   origin so sessionStorage and PKCE stay same-origin (add that preview `/discord/callback` once in Discord).
  */
 export function getDiscordRedirectUri(): string {
+  if (typeof window !== 'undefined' && isCanarySiteHost()) {
+    return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
+  }
+
   const explicit = import.meta.env.VITE_DISCORD_REDIRECT_URI?.trim();
   if (explicit) {
     return explicit.replace(/\/+$/, '');
@@ -30,10 +38,6 @@ export function getDiscordRedirectUri(): string {
     // Discord matches redirect_uri exactly. Use the same origin the user is on for apex vs www so it
     // matches Developer Portal entries (many teams only register one of erlc.directory / www.erlc.directory).
     if (host === 'erlc.directory' || host === 'www.erlc.directory') {
-      return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
-    }
-
-    if (host === 'canary.erlc.directory') {
       return `${window.location.origin.replace(/\/+$/, '')}/discord/callback`;
     }
 
