@@ -2,8 +2,9 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 
 /**
- * Wraps the route tree and replays a short fade-up entrance whenever the path changes.
- * Animation is gated by `prefers-reduced-motion` in CSS (no JS work for that case).
+ * Wraps the route tree and replays a short fade-in whenever the path changes.
+ * Avoid `transform` on this wrapper so descendants with `position: fixed` (e.g. Navbar)
+ * stay pinned to the viewport. Animation is gated by `prefers-reduced-motion` in CSS.
  */
 export function RouteTransition({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
