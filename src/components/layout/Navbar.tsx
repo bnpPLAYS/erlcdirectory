@@ -38,8 +38,10 @@ import { NotificationsBell } from '@/components/layout/NotificationsBell';
 const NAV_FLOAT_TOP_PX = 12;
 const NAV_BAR_H_PX = 56;
 const NAV_FLOAT_BOTTOM_PX = 12;
-const SCROLL_TIGHT_THRESHOLD = 48;
-const SCROLL_DELTA_TRIGGER = 8;
+/** Below this scroll position the bar always uses wide spacing. */
+const SCROLL_LOOSE_AT_TOP_PX = 32;
+/** Treat scroll deltas above this (px/frame) as intentional direction — trackpads often emit 1–4px. */
+const SCROLL_DIRECTION_EPS = 2;
 
 const Navbar = () => {
   const location = useLocation();
@@ -75,7 +77,7 @@ const Navbar = () => {
 
   useEffect(() => {
     lastScrollY.current = window.scrollY;
-    if (window.scrollY < SCROLL_TIGHT_THRESHOLD) setNavTightSpacing(false);
+    if (window.scrollY < SCROLL_LOOSE_AT_TOP_PX) setNavTightSpacing(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -84,21 +86,24 @@ const Navbar = () => {
       return;
     }
     lastScrollY.current = window.scrollY;
-    const onScroll = () => {
+
+    const applyScroll = () => {
       const y = window.scrollY;
       const prev = lastScrollY.current;
       const delta = y - prev;
       lastScrollY.current = y;
 
-      if (y < SCROLL_TIGHT_THRESHOLD) {
+      if (y < SCROLL_LOOSE_AT_TOP_PX) {
         setNavTightSpacing(false);
         return;
       }
-      if (delta > SCROLL_DELTA_TRIGGER) setNavTightSpacing(true);
-      else if (delta < -SCROLL_DELTA_TRIGGER) setNavTightSpacing(false);
+      if (delta > SCROLL_DIRECTION_EPS) setNavTightSpacing(true);
+      else if (delta < -SCROLL_DIRECTION_EPS) setNavTightSpacing(false);
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+
+    applyScroll();
+    window.addEventListener('scroll', applyScroll, { passive: true });
+    return () => window.removeEventListener('scroll', applyScroll);
   }, [mobileMenuOpen]);
 
   const isActive = (path: string) => location.pathname === path;
@@ -118,20 +123,25 @@ const Navbar = () => {
       >
         <div
           className={cn(
-            'pointer-events-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-white/[0.09]',
+            'pointer-events-auto w-full overflow-hidden rounded-2xl border border-white/[0.09]',
             'bg-zinc-950/90 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/75',
             'shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_10px_40px_-10px_rgba(0,0,0,0.65),0_0_28px_-12px_rgba(255,255,255,0.12)]',
+            'transition-[max-width] duration-300 ease-out max-w-5xl',
+            navTightSpacing && 'max-w-4xl',
           )}
         >
           <div
             className={cn(
-              'flex h-14 w-full items-center px-3 sm:px-4 transition-[justify-content,gap] duration-300 ease-out',
-              navTightSpacing ? 'justify-between gap-2 md:gap-3' : 'gap-2 sm:gap-4',
+              'flex h-14 w-full min-w-0 px-3 sm:px-4 max-md:justify-between max-md:items-center md:grid md:grid-cols-[auto_1fr_auto] md:justify-items-stretch',
+              'transition-[column-gap,gap,padding-left,padding-right] duration-300 ease-out',
+              navTightSpacing
+                ? 'md:gap-x-2 md:px-3 lg:gap-x-3'
+                : 'md:gap-x-10 md:px-5 lg:gap-x-16 xl:gap-x-20',
             )}
           >
           <Link
             to="/"
-            className="flex items-center gap-2.5 shrink-0 group rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+            className="flex items-center gap-2.5 shrink-0 min-w-0 justify-self-start md:col-start-1 group rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
             <img
               src={logo}
@@ -148,10 +158,7 @@ const Navbar = () => {
 
           <nav
             id="tutorial-main-nav"
-            className={cn(
-              'hidden md:flex items-center justify-center gap-0.5 min-w-0',
-              navTightSpacing ? 'flex-none' : 'flex-1',
-            )}
+            className="hidden md:flex md:col-start-2 min-w-0 w-full items-center justify-center gap-0.5"
             aria-label="Main"
           >
             {visibleLinks.map(({ path, label, icon: Icon }) => {
@@ -180,12 +187,7 @@ const Navbar = () => {
             })}
           </nav>
 
-          <div
-            className={cn(
-              'flex items-center gap-2 shrink-0',
-              !navTightSpacing && 'ml-auto',
-            )}
-          >
+          <div className="flex items-center gap-2 shrink-0 min-w-0 justify-self-end md:col-start-3">
             {user && profile?.id && (
               <>
                 <button
