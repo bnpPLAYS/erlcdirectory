@@ -80,12 +80,20 @@ async function postCanary(
   return postProxy(body, headers);
 }
 
-export async function canaryPublicStatus(): Promise<{ gate_required: boolean; error?: string }> {
+export type CanaryPublicStatus =
+  | { ok: true; gate_required: boolean }
+  | { ok: false; error: string };
+
+/** Public canary gate state. On transport/backend failure, `ok: false` so the UI does not treat the site as “closed”. */
+export async function canaryPublicStatus(): Promise<CanaryPublicStatus> {
   const j = await postCanary({ action: 'public_status' }, anonHeaders());
   if (j.ok === true && typeof j.gate_required === 'boolean') {
-    return { gate_required: j.gate_required };
+    return { ok: true, gate_required: j.gate_required };
   }
-  return { gate_required: false, error: typeof j.error === 'string' ? j.error : 'Status unavailable' };
+  return {
+    ok: false,
+    error: typeof j.error === 'string' ? j.error : 'Could not reach canary. Check your connection and try again.',
+  };
 }
 
 export async function canaryVerifyToken(token: string): Promise<boolean> {

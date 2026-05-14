@@ -11,7 +11,11 @@ import {
   isDiscordTokenExchangeFailure,
   parseOAuthErrorDescription,
 } from '@/lib/discordOAuthErrors';
-import { getDiscordRedirectUri, isFreshDiscordSignInState } from '@/lib/discordOAuth';
+import {
+  getDiscordRedirectUri,
+  isFreshDiscordSignInState,
+  rewriteDiscordMagicLinkRedirectToCurrentOrigin,
+} from '@/lib/discordOAuth';
 import { isCanarySiteHost } from '@/lib/canaryHost';
 import { invokeDiscordOauthSignIn } from '@/lib/callDiscordOauthSignIn';
 import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
@@ -143,7 +147,7 @@ const DiscordCallback = () => {
               return;
             }
             stripOAuthParamsFromUrl();
-            window.location.assign(signIn.actionLink);
+            window.location.assign(rewriteDiscordMagicLinkRedirectToCurrentOrigin(signIn.actionLink));
             return;
           }
         } catch {

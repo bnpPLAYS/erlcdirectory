@@ -58,6 +58,35 @@ export function getDiscordRedirectUri(): string {
   return 'http://localhost:5173/discord/callback';
 }
 
+const PROD_SITE_HOSTS = new Set(['www.erlc.directory', 'erlc.directory']);
+
+/**
+ * Supabase `generateLink` magic URLs include `redirect_to`. If that URL is only allowed as production
+ * www/apex, Supabase may still emit www even when sign-in started on canary. Rewrite `redirect_to` to
+ * the current origin when we are on the canary host so the browser returns to canary after the magic link.
+ */
+export function rewriteDiscordMagicLinkRedirectToCurrentOrigin(actionLink: string): string {
+  if (typeof window === 'undefined') return actionLink;
+  if (!isCanarySiteHost()) return actionLink;
+  try {
+    const u = new URL(actionLink);
+    const raw = u.searchParams.get('redirect_to');
+    if (!raw) return actionLink;
+    let host = '';
+    try {
+      host = new URL(raw).hostname.toLowerCase();
+    } catch {
+      return actionLink;
+    }
+    if (!PROD_SITE_HOSTS.has(host)) return actionLink;
+    const origin = window.location.origin.replace(/\/+$/, '');
+    u.searchParams.set('redirect_to', `${origin}/`);
+    return u.toString();
+  } catch {
+    return actionLink;
+  }
+}
+
 /** Must be the same Discord application as DISCORD_CLIENT_ID in Supabase Edge Function secrets. */
 export function getDiscordClientId(): string {
   return import.meta.env.VITE_DISCORD_CLIENT_ID?.trim() || '1495931923237703792';

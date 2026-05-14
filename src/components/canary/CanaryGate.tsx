@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Bird, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +12,27 @@ import {
   canaryVerifyToken,
 } from '@/lib/callCanarySession';
 
-type GatePhase = 'loading' | 'no_session' | 'need_code' | 'ready';
+type GatePhase = 'loading' | 'no_session' | 'need_code' | 'ready' | 'config_error';
+
+/** Let `/discord/callback` mount even without a canary pass so OAuth codes are exchanged before they expire. */
+function canaryDiscordOAuthCallbackBypass(pathname: string, search: string, hash: string): boolean {
+  if (pathname !== '/discord/callback' && !pathname.endsWith('/discord/callback')) return false;
+  const qs = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const hp = hash.length > 1 ? new URLSearchParams(hash.slice(1)) : null;
+  const code = qs.get('code') ?? hp?.get('code') ?? null;
+  const state = qs.get('state') ?? hp?.get('state') ?? null;
+  const oauthErr = qs.get('error') ?? hp?.get('error') ?? null;
+  if (oauthErr) return true;
+  return Boolean(code && state);
+}
 
 export function CanaryGate({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const enforce = useMemo(() => isCanarySiteHost(), []);
+  const oauthBypass = useMemo(
+    () => enforce && canaryDiscordOAuthCallbackBypass(location.pathname, location.search, location.hash),
+    [enforce, location.pathname, location.search, location.hash],
+  );
   const [phase, setPhase] = useState<GatePhase>(enforce ? 'loading' : 'ready');
   const [codeInput, setCodeInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +61,10 @@ export function CanaryGate({ children }: { children: ReactNode }) {
     }
     setError(null);
     const status = await canaryPublicStatus();
-    if (status.error) {
+    if (!status.ok) {
       setError(status.error);
+      setPhase('config_error');
+      return;
     }
     if (!status.gate_required) {
       clearPass();
@@ -64,14 +84,19 @@ export function CanaryGate({ children }: { children: ReactNode }) {
   }, [clearPass, enforce, readPass]);
 
   useEffect(() => {
+    if (oauthBypass) {
+      setPhase('ready');
+      return;
+    }
     void hydrate();
-  }, [hydrate]);
+  }, [hydrate, oauthBypass]);
 
   useEffect(() => {
-    if (!enforce || phase === 'loading') return;
+    if (!enforce || oauthBypass || phase === 'loading') return;
     const id = window.setInterval(() => {
       void (async () => {
         const status = await canaryPublicStatus();
+        if (!status.ok) return;
         if (!status.gate_required) {
           clearPass();
           setPhase('no_session');
@@ -90,7 +115,7 @@ export function CanaryGate({ children }: { children: ReactNode }) {
       })();
     }, 45_000);
     return () => window.clearInterval(id);
-  }, [clearPass, enforce, phase, readPass]);
+  }, [clearPass, enforce, oauthBypass, phase, readPass]);
 
   const submitCode = async () => {
     const raw = codeInput.trim().toLowerCase();
@@ -117,12 +142,40 @@ export function CanaryGate({ children }: { children: ReactNode }) {
   };
 
   if (!enforce) return <>{children}</>;
+  if (oauthBypass) return <>{children}</>;
 
   if (phase === 'loading') {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-4">
         <Loader2 className="h-10 w-10 animate-spin text-zinc-400" aria-hidden />
         <p className="text-sm text-zinc-400">Checking canary access…</p>
+      </div>
+    );
+  }
+
+  if (phase === 'config_error') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md border-white/10 bg-zinc-900/80">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+              <Bird className="h-7 w-7 text-zinc-200" aria-hidden />
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight">Could not verify canary</h1>
+            <p className="text-sm text-zinc-400 leading-relaxed">{error ?? 'Something went wrong reaching the canary service.'}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                setPhase('loading');
+                void hydrate();
+              }}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
