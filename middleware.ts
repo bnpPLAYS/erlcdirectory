@@ -1,18 +1,4 @@
-/**
- * Discord and other messengers fetch shared URLs without running JavaScript.
- * They must receive real `<meta property="og:*">` tags in the first HTML response.
- *
- * Vercel "Security Checkpoint" / bot mitigation can return a 429 + challenge page
- * with no Open Graph tags. Crawlers cannot execute that JS, so link previews disappear.
- * Serving a tiny HTML document from Edge Middleware runs before that path and restores
- * previews for known embed user agents.
- *
- * If previews still fail after deploy, allowlist these crawlers in the Vercel project
- * Firewall / Bot Management (Discordbot, facebookexternalhit, Twitterbot, Slackbot, …).
- *
- * @see https://vercel.com/docs/routing/middleware
- * @see https://vercel.com/docs/vercel-firewall
- */
+// OG HTML for crawler user agents (no JS). Helps when upstream returns a challenge page.
 
 export const config = {
   matcher: [
@@ -21,14 +7,12 @@ export const config = {
   ],
 };
 
-/** Crawlers that should receive static OG HTML from middleware (no JS). */
 const EMBED_UA =
   /Discordbot|Twitterbot|facebookexternalhit|Facebot|Slackbot|LinkedInBot|Embedly|Pinterest|vkShare|TelegramBot|WhatsApp|SkypeUriPreview|Slack-ImgProxy/i;
 
 const SITE_NAME = 'ERLC.Directory';
 const SITE_TITLE = 'ERLC.Directory';
-const SITE_DESCRIPTION =
-  'Discover ER:LC roleplay servers, staff portfolios, and communities.';
+const SITE_DESCRIPTION = 'ER:LC servers, staff profiles, invites.';
 const THEME_COLOR = '#0b0b0f';
 
 function escapeHtml(s: string): string {
@@ -44,7 +28,6 @@ function ogDocument(opts: {
   description: string;
   canonicalUrl: string;
   imageUrl: string;
-  siteName: string;
   themeColor: string;
   bodyHtml: string;
 }): string {
@@ -52,7 +35,6 @@ function ogDocument(opts: {
   const escDesc = escapeHtml(opts.description);
   const escUrl = escapeHtml(opts.canonicalUrl);
   const escImg = escapeHtml(opts.imageUrl);
-  const escSite = escapeHtml(opts.siteName);
   const escTheme = escapeHtml(opts.themeColor);
   return `<!DOCTYPE html>
 <html lang="en">
@@ -66,14 +48,8 @@ function ogDocument(opts: {
 <meta property="og:description" content="${escDesc}" />
 <meta property="og:url" content="${escUrl}" />
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="${escSite}" />
 <meta property="og:image" content="${escImg}" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="${escTitle}" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${escTitle}" />
-<meta name="twitter:description" content="${escDesc}" />
 <meta name="twitter:image" content="${escImg}" />
 <meta name="theme-color" content="${escTheme}" />
 </head>
@@ -85,7 +61,7 @@ ${opts.bodyHtml}
 
 function verifyEmbedBody(canonicalUrl: string): string {
   const escUrl = escapeHtml(canonicalUrl);
-  return `<p style="max-width:28rem"><a href="${escUrl}" style="color:#93c5fd">Continue to verification</a> — you will sign in with Discord on the next screen.</p>`;
+  return `<p style="max-width:28rem"><a href="${escUrl}" style="color:#93c5fd">Continue</a> — Discord sign-in on the next screen.</p>`;
 }
 
 function siteEmbedBody(canonicalUrl: string): string {
@@ -109,22 +85,19 @@ export default function middleware(request: Request): Response | Promise<Respons
   const ua = request.headers.get('user-agent') ?? '';
   const isEmbed = EMBED_UA.test(ua);
 
-  // `/verify/:token` — dedicated preview for verification links
   if (path.startsWith('/verify/')) {
     const afterPrefix = path.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      /** Wide image read by Discord/Facebook crawlers (no JS). Served from `public/embed.png`. */
       const imageUrl = `${url.origin}/embed.png`;
-      const title = `Verify experience — ${SITE_NAME}`;
-      const description = `${SITE_DESCRIPTION} Open this link to confirm staff experience with your Discord login.`;
+      const title = `Verify — ${SITE_NAME}`;
+      const description = `${SITE_DESCRIPTION} Sign in with Discord to confirm.`;
       return new Response(
         ogDocument({
           title,
           description,
           canonicalUrl,
           imageUrl,
-          siteName: SITE_NAME,
           themeColor: THEME_COLOR,
           bodyHtml: verifyEmbedBody(canonicalUrl),
         }),
@@ -139,7 +112,6 @@ export default function middleware(request: Request): Response | Promise<Respons
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  /** Wide image read by Discord/Facebook crawlers (no JS). Served from `public/embed.png`. */
   const imageUrl = `${url.origin}/embed.png`;
 
   return new Response(
@@ -148,7 +120,6 @@ export default function middleware(request: Request): Response | Promise<Respons
       description: SITE_DESCRIPTION,
       canonicalUrl,
       imageUrl,
-      siteName: SITE_NAME,
       themeColor: THEME_COLOR,
       bodyHtml: siteEmbedBody(canonicalUrl),
     }),
