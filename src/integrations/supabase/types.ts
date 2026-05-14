@@ -724,6 +724,8 @@ export type Database = {
           staff_count: number | null
           tags: string[] | null
           updated_at: string
+          claim_open: boolean
+          claimed_at: string | null
         }
         Insert: {
           banner?: string | null
@@ -743,6 +745,8 @@ export type Database = {
           staff_count?: number | null
           tags?: string[] | null
           updated_at?: string
+          claim_open?: boolean
+          claimed_at?: string | null
         }
         Update: {
           banner?: string | null
@@ -762,11 +766,70 @@ export type Database = {
           staff_count?: number | null
           tags?: string[] | null
           updated_at?: string
+          claim_open?: boolean
+          claimed_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "servers_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_claim_requests: {
+        Row: {
+          id: string
+          server_id: string
+          claimant_profile_id: string
+          status: string
+          discord_link: string
+          message: string | null
+          staff_notes: string | null
+          decided_at: string | null
+          decided_by_user_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          server_id: string
+          claimant_profile_id: string
+          status?: string
+          discord_link: string
+          message?: string | null
+          staff_notes?: string | null
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          server_id?: string
+          claimant_profile_id?: string
+          status?: string
+          discord_link?: string
+          message?: string | null
+          staff_notes?: string | null
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_claim_requests_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_claim_requests_claimant_profile_id_fkey"
+            columns: ["claimant_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -840,6 +903,22 @@ export type Database = {
       verified_staff_set_server_discord_invite: {
         Args: { p_server_id: string; p_invite: string }
         Returns: undefined
+      }
+      staff_pending_server_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          server_id: string
+          server_name: string
+          guild_id: string
+          claimant_profile_id: string
+          claimant_display_name: string
+          claimant_discord_username: string
+          discord_link: string
+          message: string | null
+          status: string
+          created_at: string
+        }[]
       }
     }
     Enums: {
