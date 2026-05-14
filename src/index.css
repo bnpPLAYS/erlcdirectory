@@ -1,0 +1,504 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ER:LC Directory — dark, minimal (staff-directory inspired) */
+
+@layer base {
+  :root,
+  .dark {
+    --background: 240 7% 5%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 6% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 6% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 8% 8%;
+
+    --secondary: 240 5% 12%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 58%;
+
+    --accent: 240 6% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5% 18%;
+    --input: 240 6% 12%;
+    --ring: 0 0% 78%;
+
+    --radius: 0.875rem;
+
+    --success: 152 35% 18%;
+    --success-foreground: 140 40% 92%;
+    --warning: 26 55% 18%;
+    --warning-foreground: 45 90% 92%;
+    --verified: 240 5% 20%;
+    --featured: 250 20% 22%;
+    --rating: 45 80% 55%;
+    --discord: 235 86% 65%;
+
+    --card-hover: 240 6% 11%;
+    --card-elevated: 240 6% 9%;
+
+    --sidebar-background: 240 7% 5%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 240 8% 8%;
+    --sidebar-accent: 240 5% 14%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 240 5% 16%;
+    --sidebar-ring: 0 0% 78%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    /* SPA route changes use ScrollToTop; smooth global scroll fights instant jumps and feels laggy. */
+    scroll-behavior: auto;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(ellipse 120% 90% at 50% -25%, hsl(255 38% 24% / 0.42), transparent 55%),
+      radial-gradient(ellipse 90% 55% at 50% 110%, hsl(220 45% 18% / 0.22), transparent 50%),
+      radial-gradient(ellipse 70% 45% at 100% 0%, hsl(250 30% 18% / 0.12), transparent 45%);
+    background-attachment: fixed;
+  }
+}
+
+/* Raster logo → white mark on dark UI */
+.logo-mark {
+  filter: brightness(0) invert(1);
+}
+
+@layer utilities {
+  .glass {
+    background: hsl(240 7% 7% / 0.72);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    box-shadow: 0 12px 40px hsl(0 0% 0% / 0.35);
+  }
+
+  .glass-strong {
+    background: hsl(240 7% 6% / 0.88);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid hsl(0 0% 100% / 0.1);
+    box-shadow: 0 20px 50px hsl(0 0% 0% / 0.45);
+  }
+
+  .glass-hover {
+    @apply transition-all duration-300;
+  }
+  .glass-hover:hover {
+    background: hsl(240 7% 9% / 0.82);
+    border-color: hsl(0 0% 100% / 0.14);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.95) 0%, hsl(0 0% 82% / 0.9) 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(240 10% 72%) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card-elevated {
+    background: hsl(var(--card));
+    border: 1px solid hsl(0 0% 100% / 0.06);
+    box-shadow: 0 14px 36px hsl(0 0% 0% / 0.35);
+  }
+
+  .card-interactive {
+    background: hsl(var(--card));
+    border: 1px solid hsl(0 0% 100% / 0.06);
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-interactive:hover {
+    background: hsl(var(--card-hover));
+    border-color: hsl(0 0% 100% / 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 44px hsl(0 0% 0% / 0.4);
+  }
+
+  /* Homepage screenshots: subtle lift on hover */
+  .home-image-pop {
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+  .home-image-pop:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.55);
+  }
+
+  .badge-verified {
+    background: hsl(0 0% 100% / 0.08);
+    color: hsl(0 0% 98%);
+    border: 1px solid hsl(0 0% 100% / 0.16);
+    backdrop-filter: blur(8px);
+  }
+
+  .badge-featured {
+    background: hsl(0 0% 100% / 0.1);
+    color: hsl(0 0% 98%);
+    border: 1px solid hsl(0 0% 100% / 0.2);
+    backdrop-filter: blur(8px);
+  }
+
+  .liquid-edge {
+    position: relative;
+  }
+  .liquid-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 100% / 0.18),
+      hsl(0 0% 100% / 0) 45%,
+      hsl(0 0% 100% / 0) 55%,
+      hsl(0 0% 100% / 0.08)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+
+  @keyframes homeHeroIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes homeHeroGlow {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  /** Hero load-in (respect reduced motion below) */
+  .home-hero-aurora {
+    position: relative;
+  }
+  .home-hero-aurora::before {
+    content: '';
+    position: absolute;
+    inset: -30% -15% auto;
+    height: 70%;
+    background: radial-gradient(ellipse 80% 70% at 50% 0%, hsl(255 42% 32% / 0.28), transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+    animation: homeHeroGlow 10s ease-in-out infinite;
+  }
+  .home-hero-aurora > .container {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .home-hero-item {
+      animation: homeHeroIn 0.72s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(1) {
+      animation-delay: 0.04s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+    .home-hero-stagger .home-hero-item:nth-child(4) {
+      animation-delay: 0.22s;
+    }
+    .home-hero-side-preview {
+      animation-delay: 0.14s;
+    }
+  }
+
+  .home-reveal-row {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .home-reveal-row.home-reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Page-level entrance: opacity only. A `transform` on this ancestor breaks `position: fixed`
+     (Navbar would scroll away) by creating a new containing block. */
+  .route-enter {
+    animation: routeEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes routeEnter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Stagger entrance for direct children of a grid/list (capped to keep CSS short). */
+  .stagger-enter > * {
+    animation: staggerIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    opacity: 0;
+  }
+  .stagger-enter > *:nth-child(1)  { animation-delay: 0.04s; }
+  .stagger-enter > *:nth-child(2)  { animation-delay: 0.08s; }
+  .stagger-enter > *:nth-child(3)  { animation-delay: 0.12s; }
+  .stagger-enter > *:nth-child(4)  { animation-delay: 0.16s; }
+  .stagger-enter > *:nth-child(5)  { animation-delay: 0.20s; }
+  .stagger-enter > *:nth-child(6)  { animation-delay: 0.24s; }
+  .stagger-enter > *:nth-child(7)  { animation-delay: 0.28s; }
+  .stagger-enter > *:nth-child(8)  { animation-delay: 0.32s; }
+  .stagger-enter > *:nth-child(9)  { animation-delay: 0.36s; }
+  .stagger-enter > *:nth-child(10) { animation-delay: 0.40s; }
+  .stagger-enter > *:nth-child(11) { animation-delay: 0.42s; }
+  .stagger-enter > *:nth-child(12) { animation-delay: 0.44s; }
+  .stagger-enter > *:nth-child(n + 13) { animation-delay: 0.48s; }
+  @keyframes staggerIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Subtle hover lift for clickable cards used across grids. */
+  .hover-lift {
+    transition:
+      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 280ms ease;
+    will-change: transform;
+  }
+  .hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.55);
+  }
+  .hover-lift:focus-visible {
+    transform: translateY(-2px);
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--ring) / 0.5),
+      0 18px 40px -16px rgb(0 0 0 / 0.55);
+  }
+
+  /* Smooth color/opacity transitions for interactive elements without an explicit transition. */
+  .smooth-interact {
+    transition:
+      color 200ms ease,
+      background-color 200ms ease,
+      border-color 200ms ease,
+      opacity 200ms ease;
+  }
+}
+
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .route-enter,
+    .stagger-enter > * {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .hover-lift:hover {
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .home-hero-aurora::before {
+      animation: none !important;
+      opacity: 0.4;
+    }
+    .home-hero-item {
+      animation: none !important;
+      opacity: 1;
+      transform: none;
+    }
+    .home-reveal-row {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+/* First-login tour (driver.js) — dark UI + subtle spotlight zoom */
+@layer components {
+  .driverjs-erlc.driver-popover {
+    min-width: 17rem !important;
+    max-width: min(28rem, calc(100vw - 1.5rem)) !important;
+    background-color: hsl(240 6% 10%) !important;
+    color: hsl(0 0% 96%) !important;
+    border: 1px solid hsl(0 0% 100% / 0.14) !important;
+    border-radius: 1rem !important;
+    box-shadow:
+      0 0 0 1px hsl(0 0% 100% / 0.06),
+      0 24px 48px -12px rgb(0 0 0 / 0.65) !important;
+    padding: 1.125rem 1.25rem !important;
+  }
+
+  .driverjs-erlc .driver-popover-title {
+    color: hsl(0 0% 98%) !important;
+    font-size: 1.0625rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em;
+  }
+
+  .driverjs-erlc .driver-popover-description {
+    color: hsl(240 5% 68%) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .driverjs-erlc .driver-popover-progress-text {
+    color: hsl(240 5% 52%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-footer button {
+    background: hsl(0 0% 100% / 0.1) !important;
+    border: 1px solid hsl(0 0% 100% / 0.18) !important;
+    color: hsl(0 0% 96%) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    text-shadow: none !important;
+  }
+
+  .driverjs-erlc .driver-popover-footer button:hover,
+  .driverjs-erlc .driver-popover-footer button:focus {
+    background: hsl(0 0% 100% / 0.16) !important;
+  }
+
+  .driverjs-erlc .driver-popover-close-btn {
+    color: hsl(240 5% 55%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-close-btn:hover,
+  .driverjs-erlc .driver-popover-close-btn:focus {
+    color: hsl(0 0% 92%) !important;
+  }
+
+  .driverjs-erlc .driver-popover-arrow-side-left {
+    border-left-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-right {
+    border-right-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-top {
+    border-top-color: hsl(240 6% 10%) !important;
+  }
+  .driverjs-erlc .driver-popover-arrow-side-bottom {
+    border-bottom-color: hsl(240 6% 10%) !important;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .driver-active .driver-active-element {
+      transform: scale(1.025) !important;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }
+  }
+}
+
+@keyframes pro-avatar-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pro-avatar-orbit-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@layer utilities {
+  .no-image-drag {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  .pro-avatar-orbit-cw {
+    animation: pro-avatar-orbit-spin 11s linear infinite;
+  }
+  .pro-avatar-orbit-ccw {
+    animation: pro-avatar-orbit-spin-reverse 16s linear infinite;
+  }
+  .pro-avatar-orbit-spark {
+    animation: pro-avatar-orbit-spin 26s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-avatar-orbit-cw,
+  .pro-avatar-orbit-ccw,
+  .pro-avatar-orbit-spark {
+    animation: none !important;
+  }
+}

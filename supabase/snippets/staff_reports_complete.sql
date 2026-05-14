@@ -1,0 +1,4 @@
+-- Staff reporting + moderation actions (full setup):
+-- 1) Paste ALL of supabase/migrations/20260530120000_staff_warnings_reports.sql → SQL Editor → Run once.
+-- 2) Paste ALL of supabase/migrations/20260531120000_reports_server_category_bans.sql → Run once.
+-- Vercel needs SUPABASE_SERVICE_ROLE_KEY for /api/submit-report and /api/staff-moderation-action.

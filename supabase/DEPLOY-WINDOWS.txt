@@ -1,0 +1,37 @@
+Deploy experience-verify on Windows
+===================================
+
+1) WHY "File Not Found" on `dir supabase\functions`
+   - You must be in the folder that contains BOTH `package.json` AND a `supabase` folder.
+   - GitHub ZIPs sometimes extract oddly, or you may be one folder too shallow/deep.
+   - Fix: clone the repo (recommended):
+     git clone https://github.com/bnpPLAYS/erlcdirectory.git
+     cd erlcdirectory
+   Then run:
+     dir supabase\functions
+   You should see: dev-login, discord-guilds, discord-oauth, experience-verify, ...
+
+2) Install / update Supabase CLI
+   - npm:  npm install -g supabase
+   - Or:   scoop install supabase
+   - Check: supabase --version   (use a recent v1.x / v2.x)
+
+3) Login and link (use your project Reference ID from Supabase Dashboard)
+   supabase login
+   supabase link --project-ref YOUR_REF
+
+4) Deploy the function
+   Try first:
+     supabase functions deploy experience-verify
+
+   If Docker Desktop errors (500, "inspect docker image", pipe\dockerDesktopLinuxEngine):
+   - Quit Docker Desktop fully, start it again, wait until it is "running".
+   - Or deploy without local Docker (newer CLI; may need update):
+     supabase functions deploy experience-verify --use-api
+   - Or run the same commands inside WSL2 Ubuntu from a clone of the repo there.
+
+5) Secrets (Dashboard: Edge Functions -> Secrets, or CLI)
+   supabase secrets set DISCORD_CLIENT_ID=your_app_client_id
+   supabase secrets set DISCORD_CLIENT_SECRET=your_app_secret
+
+6) Confirm in Supabase Dashboard -> Edge Functions that "experience-verify" appears.

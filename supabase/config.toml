@@ -1,0 +1,43 @@
+project_id = "quixgplhredovuliauew"
+
+[functions.discord-oauth]
+verify_jwt = false
+
+[functions.discord-guilds]
+verify_jwt = false
+
+[functions.experience-verify]
+verify_jwt = false
+
+[functions.dev-login]
+verify_jwt = false
+
+[functions.website-dm-broadcast]
+verify_jwt = true
+
+[functions.servers-enrich-metadata]
+verify_jwt = false
+
+[functions.discord-profile-media]
+verify_jwt = true
+
+[functions.verify-roblox-pro]
+verify_jwt = false
+
+[functions.roblox-oauth-start]
+verify_jwt = false
+
+[functions.roblox-oauth-complete]
+verify_jwt = false
+
+[functions.canary-session]
+verify_jwt = false
+
+[functions.submit-report]
+verify_jwt = false
+
+[functions.staff-moderation-action]
+verify_jwt = false
+
+[functions.staff-directory-action]
+verify_jwt = false
