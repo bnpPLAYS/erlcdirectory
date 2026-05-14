@@ -1,6 +1,9 @@
 export const config = { runtime: 'edge' };
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+/** Edge route: no generated Database generic; `ReturnType<typeof createClient>` breaks under `tsc --strict`. */
+type SbClient = SupabaseClient<any, 'public', any>;
 
 function isSiteOwnerDiscordUsername(username: string | null | undefined): boolean {
   if (username == null || typeof username !== 'string') return false;
@@ -36,7 +39,7 @@ type StaffActor =
   | { ok: false; error: string };
 
 async function getStaffActor(
-  admin: ReturnType<typeof createClient>,
+  admin: SbClient,
   userId: string,
 ): Promise<StaffActor> {
   const { data: actor, error } = await admin
@@ -60,7 +63,7 @@ async function getStaffActor(
 }
 
 async function insertAudit(
-  admin: ReturnType<typeof createClient>,
+  admin: SbClient,
   row: {
     actor_profile_id: string | null;
     actor_user_id: string;
@@ -87,7 +90,7 @@ async function insertAudit(
 }
 
 async function assertMemberActionRateOk(
-  admin: ReturnType<typeof createClient>,
+  admin: SbClient,
   actorUserId: string,
   isSiteOwner: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -110,7 +113,7 @@ async function assertMemberActionRateOk(
   return { ok: true };
 }
 
-async function loadProfile(admin: ReturnType<typeof createClient>, id: string) {
+async function loadProfile(admin: SbClient, id: string) {
   const { data, error } = await admin
     .from('profiles')
     .select('id, user_id, discord_username')
@@ -152,7 +155,7 @@ export default async function handler(request: Request): Promise<Response> {
     is_verified?: boolean;
   };
   try {
-    body = await request.json();
+    body = (await request.json()) as typeof body;
   } catch {
     return json(400, { ok: false, error: 'Invalid JSON' });
   }
