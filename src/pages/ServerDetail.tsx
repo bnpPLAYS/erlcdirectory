@@ -28,6 +28,7 @@ import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { ServerClaimDialog } from '@/components/server/ServerClaimDialog';
 
 interface GuildExperienceRow {
   id: string;
@@ -68,6 +69,8 @@ interface ServerRow {
   is_hiring: boolean;
   guild_id: string | null;
   tags: string[];
+  owner_id: string | null;
+  claim_open?: boolean | null;
 }
 
 interface CoworkerRow {
@@ -98,6 +101,13 @@ const ServerDetail = () => {
   const [inviteRetryTick, setInviteRetryTick] = useState(0);
   const [staffInviteValue, setStaffInviteValue] = useState('');
   const [staffInviteBusy, setStaffInviteBusy] = useState(false);
+  const [claimDlgOpen, setClaimDlgOpen] = useState(false);
+  const [myPendingClaimId, setMyPendingClaimId] = useState<string | null>(null);
+  const [ownerPreview, setOwnerPreview] = useState<{
+    id: string;
+    display_name: string | null;
+    discord_username: string | null;
+  } | null>(null);
 
   useLayoutEffect(() => {
     setServer(null);
@@ -105,6 +115,9 @@ const ServerDetail = () => {
     setLoading(true);
     setInviteRetryTick(0);
     setStaffInviteValue('');
+    setClaimDlgOpen(false);
+    setMyPendingClaimId(null);
+    setOwnerPreview(null);
   }, [id]);
 
   useEffect(() => {
@@ -196,9 +209,34 @@ const ServerDetail = () => {
       } else {
         setCoworkers([]);
       }
+
+      if (s?.owner_id) {
+        const { data: op } = await supabase
+          .from('profiles')
+          .select('id, display_name, discord_username')
+          .eq('id', s.owner_id)
+          .maybeSingle();
+        setOwnerPreview(op ?? null);
+      } else {
+        setOwnerPreview(null);
+      }
+
+      if (meProfile?.id && s?.id && !s.owner_id) {
+        const { data: pend } = await supabase
+          .from('server_claim_requests')
+          .select('id')
+          .eq('server_id', s.id)
+          .eq('claimant_profile_id', meProfile.id)
+          .eq('status', 'pending')
+          .maybeSingle();
+        setMyPendingClaimId(typeof pend?.id === 'string' ? pend.id : null);
+      } else {
+        setMyPendingClaimId(null);
+      }
+
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, meProfile?.id]);
 
   if (loading) {
     return (
@@ -231,8 +269,16 @@ const ServerDetail = () => {
     coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)
   );
 
+  const serverClaimable =
+    !server.owner_id &&
+    server.claim_open !== false &&
+    !!user &&
+    !!server.guild_id &&
+    meVerifiedHere &&
+    !myPendingClaimId;
+
   const canAddInviteAsVerifiedStaff =
-    !!user && !!server.guild_id && meVerifiedHere && !inviteLooksValid;
+    !!user && !!server.guild_id && meVerifiedHere && !inviteLooksValid && !server.owner_id;
 
   const saveStaffInvite = async () => {
     if (!server) return;
@@ -320,8 +366,27 @@ const ServerDetail = () => {
                       Verified
                     </Badge>
                   )}
+                  {!server.owner_id ? (
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0 border-amber-500/40 text-amber-200/90">
+                      Unclaimed
+                    </Badge>
+                  ) : null}
                   {server.is_hiring && <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/5">Hiring</Badge>}
                 </div>
+                {server.owner_id && ownerPreview ? (
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Claimed by{' '}
+                    <Link
+                      to={profilePath(ownerPreview)}
+                      className="text-foreground font-medium underline-offset-4 hover:underline"
+                    >
+                      {ownerPreview.display_name || ownerPreview.discord_username || 'Member'}
+                    </Link>
+                  </p>
+                ) : null}
+                {myPendingClaimId ? (
+                  <p className="text-xs text-amber-200/85 mb-1">Ownership request pending ERLC staff review.</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {server.member_count} members</span>
@@ -403,6 +468,11 @@ const ServerDetail = () => {
                     </div>
                   )
                 ) : null}
+                {serverClaimable && (
+                  <Button type="button" variant="secondary" size="sm" className="gap-2" onClick={() => setClaimDlgOpen(true)}>
+                    Request ownership
+                  </Button>
+                )}
                 {user && (
                   <Button
                     type="button"
@@ -481,6 +551,25 @@ const ServerDetail = () => {
         onOpenChange={setReportServerOpen}
         kind="server"
         serverId={server.id}
+      />
+      <ServerClaimDialog
+        open={claimDlgOpen}
+        onOpenChange={setClaimDlgOpen}
+        serverId={server.id}
+        serverName={server.name}
+        onSubmitted={() => {
+          void (async () => {
+            if (!meProfile?.id) return;
+            const { data: pend } = await supabase
+              .from('server_claim_requests')
+              .select('id')
+              .eq('server_id', server.id)
+              .eq('claimant_profile_id', meProfile.id)
+              .eq('status', 'pending')
+              .maybeSingle();
+            setMyPendingClaimId(typeof pend?.id === 'string' ? pend.id : null);
+          })();
+        }}
       />
     </div>
   );

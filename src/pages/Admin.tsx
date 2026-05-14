@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
-import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy, Sparkles, ScrollText } from 'lucide-react';
+import { Navigate, useSearchParams, Link } from 'react-router-dom';
+import { Shield, Trash2, CheckCircle2, Crown, Search, UserPlus, X, MessageSquare, Check, Ban, AlertTriangle, Bird, Copy, Sparkles, ScrollText, ServerCog } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { fetchStaffGate } from '@/lib/fetchStaffGate';
+import { profilePath } from '@/lib/profilePath';
 import { callSiteOwnerStaffRole } from '@/lib/callSiteOwnerStaffRole';
 import { reportCategoryLabel } from '@/lib/reportCategories';
 import { callModerationFn } from '@/lib/callModerationFn';
@@ -23,6 +24,21 @@ import {
   canaryStaffStatus,
   canaryStaffStop,
 } from '@/lib/callCanarySession';
+import { staffDecideServerClaim } from '@/lib/callServerClaim';
+
+type ServerClaimRpcRow = {
+  id: string;
+  server_id: string;
+  server_name: string;
+  guild_id: string;
+  claimant_profile_id: string;
+  claimant_display_name: string;
+  claimant_discord_username: string;
+  discord_link: string;
+  message: string | null;
+  status: string;
+  created_at: string;
+};
 
 type StaffAccess = { canModerate: boolean; isSiteOwner: boolean };
 
@@ -67,6 +83,14 @@ const Admin = () => {
     status: 'resolved' | 'dismissed';
   } | null>(null);
   const [closeReportNotes, setCloseReportNotes] = useState('');
+  const [serverClaims, setServerClaims] = useState<ServerClaimRpcRow[]>([]);
+  const [claimFilter, setClaimFilter] = useState<'pending' | 'all'>('pending');
+  const [claimDecideDlg, setClaimDecideDlg] = useState<{
+    id: string;
+    decision: 'approve' | 'reject';
+  } | null>(null);
+  const [claimDecideNotes, setClaimDecideNotes] = useState('');
+  const [claimDecideBusy, setClaimDecideBusy] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -108,6 +132,20 @@ const Admin = () => {
   useEffect(() => {
     void loadAuditLogs();
   }, [loadAuditLogs]);
+
+  const loadServerClaims = useCallback(async () => {
+    if (!access?.canModerate) return;
+    const { data, error } = await supabase.rpc('staff_pending_server_claims');
+    if (error) {
+      setServerClaims([]);
+      return;
+    }
+    setServerClaims((data as ServerClaimRpcRow[]) ?? []);
+  }, [access?.canModerate]);
+
+  useEffect(() => {
+    void loadServerClaims();
+  }, [loadServerClaims]);
 
   const refresh = async () => {
     const [p, s, po, st, rep] = await Promise.all([
@@ -192,6 +230,7 @@ const Admin = () => {
         }),
       );
     }
+    void loadServerClaims();
     void loadAuditLogs();
   };
 
@@ -428,6 +467,31 @@ const Admin = () => {
     setCloseReportNotes('');
   };
 
+  const confirmClaimDecide = async () => {
+    if (!claimDecideDlg) return;
+    const notes = claimDecideNotes.trim();
+    if (!access.isSiteOwner && notes.length < 10) {
+      toast({ title: 'Notes need to be at least 10 characters.', variant: 'destructive' });
+      return;
+    }
+    setClaimDecideBusy(true);
+    const r = await staffDecideServerClaim({
+      requestId: claimDecideDlg.id,
+      decision: claimDecideDlg.decision,
+      staffNotes: notes.length ? notes : '—',
+    });
+    setClaimDecideBusy(false);
+    if (!r.ok) {
+      toast({ title: r.error, variant: 'destructive' });
+      return;
+    }
+    toast({ title: claimDecideDlg.decision === 'approve' ? 'Claim approved' : 'Claim rejected' });
+    setClaimDecideDlg(null);
+    setClaimDecideNotes('');
+    void loadServerClaims();
+    void refresh();
+  };
+
   const staffReportAction = async (
     row: any,
     action: string,
@@ -516,6 +580,7 @@ const Admin = () => {
   const staffPanelTabs = [
     'members',
     'servers',
+    'claims',
     'openings',
     'reports',
     ...(access.isSiteOwner ? (['audit'] as const) : []),
@@ -575,6 +640,9 @@ const Admin = () => {
               <>
                 <TabsTrigger value="members">Members</TabsTrigger>
                 <TabsTrigger value="servers">Servers</TabsTrigger>
+                <TabsTrigger value="claims" className="gap-1.5">
+                  <ServerCog className="h-3.5 w-3.5" /> Claims
+                </TabsTrigger>
               </>
             )}
             <TabsTrigger value="openings">Posts</TabsTrigger>
@@ -896,6 +964,109 @@ const Admin = () => {
               </CardContent></Card>
             ))}
           </TabsContent>
+          )}
+
+          {access.canModerate && (
+            <TabsContent value="claims" className="space-y-3">
+              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                Verified server staff can request ownership of <strong className="text-foreground">unclaimed</strong>{' '}
+                listings. Approve only after you verify their Discord and ownership outside the site.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(['pending', 'all'] as const).map((f) => (
+                  <Button
+                    key={f}
+                    type="button"
+                    size="sm"
+                    variant={claimFilter === f ? 'default' : 'outline'}
+                    className="h-8 text-xs capitalize"
+                    onClick={() => setClaimFilter(f)}
+                  >
+                    {f}
+                  </Button>
+                ))}
+              </div>
+              {serverClaims.filter((c) => claimFilter === 'all' || c.status === 'pending').length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                    No {claimFilter === 'pending' ? 'pending ' : ''}server claims.
+                  </CardContent>
+                </Card>
+              ) : (
+                serverClaims
+                  .filter((c) => claimFilter === 'all' || c.status === 'pending')
+                  .map((c) => (
+                    <Card key={c.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium">
+                              <Link to={`/server/${c.server_id}`} className="hover:underline">
+                                {c.server_name}
+                              </Link>
+                              <Badge variant="outline" className="ml-2 text-[10px] capitalize">
+                                {c.status}
+                              </Badge>
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Claimant:{' '}
+                              <Link
+                                to={profilePath({
+                                  id: c.claimant_profile_id,
+                                  discord_username: c.claimant_discord_username || null,
+                                })}
+                                className="text-foreground hover:underline"
+                              >
+                                {c.claimant_display_name}
+                              </Link>
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Submitted {new Date(c.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          {c.status === 'pending' ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="gap-1"
+                                onClick={() => {
+                                  setClaimDecideNotes('');
+                                  setClaimDecideDlg({ id: c.id, decision: 'approve' });
+                                }}
+                              >
+                                <Check className="h-3.5 w-3.5" /> Approve
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => {
+                                  setClaimDecideNotes('');
+                                  setClaimDecideDlg({ id: c.id, decision: 'reject' });
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" /> Reject
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs space-y-1">
+                          <p>
+                            <span className="text-muted-foreground">Discord / proof:</span>{' '}
+                            <span className="font-mono break-all text-foreground">{c.discord_link}</span>
+                          </p>
+                          {c.message ? (
+                            <p className="text-muted-foreground whitespace-pre-wrap">{c.message}</p>
+                          ) : null}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </TabsContent>
           )}
 
           <TabsContent value="openings" className="space-y-2">
@@ -1491,6 +1662,60 @@ const Admin = () => {
           </TabsContent>
           )}
         </Tabs>
+
+        <Dialog
+          open={!!claimDecideDlg}
+          onOpenChange={(o) => {
+            if (!o) {
+              setClaimDecideDlg(null);
+              setClaimDecideNotes('');
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg border-white/12 bg-background">
+            <DialogHeader>
+              <DialogTitle>
+                {claimDecideDlg?.decision === 'approve' ? 'Approve server claim' : 'Reject server claim'}
+              </DialogTitle>
+              <DialogDescription>
+                {access.isSiteOwner
+                  ? 'Notes are recorded in the audit log (optional for you).'
+                  : 'Minimum 10 characters — stored in the audit log.'}
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={claimDecideNotes}
+              onChange={(e) => setClaimDecideNotes(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              className="border-white/12 bg-white/[0.04] resize-none text-sm"
+              placeholder="How you verified ownership, or why you are rejecting…"
+            />
+            <p className="text-[10px] text-muted-foreground text-right tabular-nums">{claimDecideNotes.length}/2000</p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setClaimDecideDlg(null);
+                  setClaimDecideNotes('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  claimDecideBusy ||
+                  (!access.isSiteOwner && claimDecideNotes.trim().length < 10)
+                }
+                onClick={() => void confirmClaimDecide()}
+              >
+                {claimDecideBusy ? 'Working…' : 'Confirm'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={!!closeReportDlg}
