@@ -708,59 +708,80 @@ export type Database = {
       servers: {
         Row: {
           banner: string | null
+          claim_open: boolean | null
+          claimed_at: string | null
           created_at: string
           description: string | null
           discord_invite: string | null
+          gallery: unknown | null
           guild_id: string | null
           icon: string | null
           id: string
           is_featured: boolean | null
           is_hiring: boolean | null
           is_verified: boolean | null
+          layout: unknown | null
+          long_description: string | null
           member_count: number | null
           name: string
           owner_id: string | null
+          review_webhook_url: string | null
           roblox_link: string | null
           staff_count: number | null
           tags: string[] | null
+          theme: unknown | null
           updated_at: string
         }
         Insert: {
           banner?: string | null
+          claim_open?: boolean | null
+          claimed_at?: string | null
           created_at?: string
           description?: string | null
           discord_invite?: string | null
+          gallery?: unknown | null
           guild_id?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null
           is_hiring?: boolean | null
           is_verified?: boolean | null
+          layout?: unknown | null
+          long_description?: string | null
           member_count?: number | null
           name: string
           owner_id?: string | null
+          review_webhook_url?: string | null
           roblox_link?: string | null
           staff_count?: number | null
           tags?: string[] | null
+          theme?: unknown | null
           updated_at?: string
         }
         Update: {
           banner?: string | null
+          claim_open?: boolean | null
+          claimed_at?: string | null
           created_at?: string
           description?: string | null
           discord_invite?: string | null
+          gallery?: unknown | null
           guild_id?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null
           is_hiring?: boolean | null
           is_verified?: boolean | null
+          layout?: unknown | null
+          long_description?: string | null
           member_count?: number | null
           name?: string
           owner_id?: string | null
+          review_webhook_url?: string | null
           roblox_link?: string | null
           staff_count?: number | null
           tags?: string[] | null
+          theme?: unknown | null
           updated_at?: string
         }
         Relationships: [
@@ -772,6 +793,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      server_claim_requests: {
+        Row: {
+          claimant_discord_id: string | null
+          claimant_discord_link: string | null
+          claimant_discord_username: string | null
+          claimant_profile_id: string
+          claimant_user_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by_user_id: string | null
+          id: string
+          message: string | null
+          server_id: string
+          staff_notes: string | null
+          status: string
+        }
+        Insert: {
+          claimant_discord_id?: string | null
+          claimant_discord_link?: string | null
+          claimant_discord_username?: string | null
+          claimant_profile_id: string
+          claimant_user_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          id?: string
+          message?: string | null
+          server_id: string
+          staff_notes?: string | null
+          status?: string
+        }
+        Update: {
+          claimant_discord_id?: string | null
+          claimant_discord_link?: string | null
+          claimant_discord_username?: string | null
+          claimant_profile_id?: string
+          claimant_user_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          id?: string
+          message?: string | null
+          server_id?: string
+          staff_notes?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -840,6 +909,30 @@ export type Database = {
       verified_staff_set_server_discord_invite: {
         Args: { p_server_id: string; p_invite: string }
         Returns: undefined
+      }
+      staff_pending_server_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          request_id: string
+          created_at: string
+          server_id: string
+          server_name: string | null
+          server_guild_id: string | null
+          server_icon: string | null
+          claimant_profile_id: string
+          claimant_display_name: string | null
+          claimant_discord_username: string | null
+          claimant_discord_id: string | null
+          claimant_discord_link: string | null
+          message: string | null
+          status: string
+          staff_notes: string | null
+          decided_at: string | null
+        }[]
+      }
+      maintenance_prune_expired_ephemeral: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {

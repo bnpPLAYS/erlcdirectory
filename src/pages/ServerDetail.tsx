@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect } from 'react';
+import { useEffect, useState, useLayoutEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,6 +11,10 @@ import {
   Flag,
   Loader2,
   RefreshCw,
+  BadgeCheck,
+  Sparkles,
+  Trash2,
+  Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
@@ -28,6 +32,18 @@ import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { ServerClaimDialog } from '@/components/server/ServerClaimDialog';
+import { ServerOwnerPanel } from '@/components/server/ServerOwnerPanel';
+import {
+  DEFAULT_LAYOUT,
+  sanitizeServerGallery,
+  sanitizeServerLayout,
+  sanitizeServerTheme,
+  serverThemeStyleVars,
+  ServerGalleryItem,
+  ServerLayout,
+  ServerTheme,
+} from '@/lib/serverTheme';
 
 interface GuildExperienceRow {
   id: string;
@@ -59,6 +75,7 @@ interface ServerRow {
   id: string;
   name: string;
   description: string | null;
+  long_description: string | null;
   icon: string | null;
   banner: string | null;
   discord_invite: string | null;
@@ -68,6 +85,22 @@ interface ServerRow {
   is_hiring: boolean;
   guild_id: string | null;
   tags: string[];
+  owner_id: string | null;
+  claimed_at: string | null;
+  theme: ServerTheme | null;
+  gallery: ServerGalleryItem[];
+  layout: ServerLayout | null;
+  review_webhook_url: string | null;
+  claim_open: boolean | null;
+}
+
+interface OwnerProfile {
+  id: string;
+  display_name: string | null;
+  discord_username: string | null;
+  discord_avatar: string | null;
+  discord_id: string | null;
+  is_pro: boolean | null;
 }
 
 interface CoworkerRow {
@@ -90,8 +123,11 @@ const ServerDetail = () => {
   const { id } = useParams();
   const { profile: meProfile, user } = useAuth();
   const [reportServerOpen, setReportServerOpen] = useState(false);
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [showOwnerPanel, setShowOwnerPanel] = useState(false);
   const isStaffSiteOwner = isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null);
   const [server, setServer] = useState<ServerRow | null>(null);
+  const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [coworkers, setCoworkers] = useState<CoworkerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEnrichBusy, setInviteEnrichBusy] = useState(false);
@@ -101,10 +137,12 @@ const ServerDetail = () => {
 
   useLayoutEffect(() => {
     setServer(null);
+    setOwner(null);
     setCoworkers([]);
     setLoading(true);
     setInviteRetryTick(0);
     setStaffInviteValue('');
+    setShowOwnerPanel(false);
   }, [id]);
 
   useEffect(() => {
@@ -157,7 +195,34 @@ const ServerDetail = () => {
     (async () => {
       setLoading(true);
       const { data: s } = await supabase.from('servers').select('*').eq('id', id).maybeSingle();
-      setServer((s as ServerRow | null) ?? null);
+      const sRow: ServerRow | null = s
+        ? ({
+            ...(s as Record<string, unknown>),
+            theme: sanitizeServerTheme((s as { theme?: unknown }).theme),
+            gallery: sanitizeServerGallery((s as { gallery?: unknown }).gallery, 10),
+            layout: sanitizeServerLayout((s as { layout?: unknown }).layout),
+            long_description:
+              ((s as { long_description?: string | null }).long_description ?? null) || null,
+            owner_id: ((s as { owner_id?: string | null }).owner_id ?? null) || null,
+            claimed_at: ((s as { claimed_at?: string | null }).claimed_at ?? null) || null,
+            review_webhook_url:
+              ((s as { review_webhook_url?: string | null }).review_webhook_url ?? null) || null,
+            claim_open: ((s as { claim_open?: boolean | null }).claim_open ?? true) ?? true,
+          } as ServerRow)
+        : null;
+      setServer(sRow);
+
+      if (sRow?.owner_id) {
+        const { data: ownerRow } = await supabase
+          .from('profiles')
+          .select('id, display_name, discord_username, discord_avatar, discord_id, is_pro')
+          .eq('id', sRow.owner_id)
+          .maybeSingle();
+        setOwner((ownerRow as OwnerProfile | null) ?? null);
+      } else {
+        setOwner(null);
+      }
+
       if (s?.guild_id) {
         const { data: expsRaw } = await supabase
           .from('experiences')
@@ -226,13 +291,41 @@ const ServerDetail = () => {
   const joinHrefSafe = inviteLooksValid ? joinHref : null;
   const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
 
+  const isClaimed = !!server.owner_id;
+  const isOwnerHere = !!(meProfile?.id && server.owner_id === meProfile.id);
+
   const meVerifiedHere = !!(
     meProfile?.id &&
     coworkers.some((c) => c.profile?.id === meProfile.id && c.is_verified)
   );
 
+  /** Verified staff can add the invite only while the server has not been claimed yet. */
   const canAddInviteAsVerifiedStaff =
-    !!user && !!server.guild_id && meVerifiedHere && !inviteLooksValid;
+    !!user && !!server.guild_id && meVerifiedHere && !inviteLooksValid && !isClaimed;
+
+  const canSubmitClaim =
+    !!user &&
+    !isClaimed &&
+    !!server.guild_id &&
+    meVerifiedHere &&
+    server.claim_open !== false;
+
+  const layout = useMemo(() => ({ ...DEFAULT_LAYOUT, ...(server.layout ?? {}) }), [server.layout]);
+  const themeVars = useMemo(() => serverThemeStyleVars(server.theme ?? {}), [server.theme]);
+  const bannerOverlay =
+    typeof server.theme?.banner_overlay === 'number' ? server.theme.banner_overlay : 0.4;
+
+  const removeVerifiedStaff = async (coworkerId: string) => {
+    if (!server || !meProfile?.id || server.owner_id !== meProfile.id) return;
+    if (!window.confirm('Remove this member as verified staff of this server?')) return;
+    const { error } = await supabase.from('experiences').delete().eq('id', coworkerId);
+    if (error) {
+      toast.error(error.message || 'Could not remove member.');
+      return;
+    }
+    setCoworkers((prev) => prev.filter((c) => c.id !== coworkerId));
+    toast.success('Verified staff entry removed.');
+  };
 
   const saveStaffInvite = async () => {
     if (!server) return;
@@ -279,7 +372,7 @@ const ServerDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={themeVars}>
       <Navbar />
 
       <div className="relative h-48 md:h-60 w-full overflow-hidden border-b border-white/10">
@@ -290,10 +383,22 @@ const ServerDetail = () => {
             draggable={false}
             className="w-full h-full object-cover no-image-drag"
           />
+        ) : server.theme?.accent_hex ? (
+          <div
+            className="w-full h-full"
+            style={{
+              background: `linear-gradient(135deg, ${server.theme.accent_hex}33, ${
+                server.theme.secondary_hex ?? server.theme.accent_hex
+              }1a, transparent)`,
+            }}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/15 via-background to-background" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none"
+          style={{ opacity: Math.max(0.2, Math.min(1, bannerOverlay + 0.2)) }}
+        />
       </div>
 
       <div className="container mx-auto px-4 -mt-16 relative z-10">
@@ -323,9 +428,28 @@ const ServerDetail = () => {
                   {server.is_hiring && <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/5">Hiring</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3 flex-wrap">
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {server.member_count} members</span>
                   <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {staffListedCount} work here</span>
+                  {isClaimed && owner ? (
+                    <Link
+                      to={profilePath(owner)}
+                      className="inline-flex items-center gap-1.5 text-foreground/90 hover:text-foreground"
+                    >
+                      <BadgeCheck className="h-3.5 w-3.5 text-verified" />
+                      Claimed by {owner.display_name || owner.discord_username || 'owner'}
+                      {owner.is_pro && (
+                        <Sparkles
+                          className="h-3 w-3 text-amber-200/90"
+                          aria-label="Pro owner"
+                        />
+                      )}
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <Shield className="h-3.5 w-3.5" /> Unclaimed
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 shrink-0 md:self-end">
@@ -339,6 +463,29 @@ const ServerDetail = () => {
                   >
                     <Shield className="h-4 w-4" />
                     {server.is_verified ? 'Remove verify badge' : 'Grant verify badge'}
+                  </Button>
+                )}
+                {canSubmitClaim && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="gap-2"
+                    onClick={() => setClaimDialogOpen(true)}
+                  >
+                    <Shield className="h-4 w-4" /> Claim server
+                  </Button>
+                )}
+                {isOwnerHere && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={showOwnerPanel ? 'outline' : 'secondary'}
+                    className="gap-2"
+                    onClick={() => setShowOwnerPanel((v) => !v)}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    {showOwnerPanel ? 'Close customizer' : 'Customize page'}
                   </Button>
                 )}
                 {joinHrefSafe ? (
@@ -419,59 +566,148 @@ const ServerDetail = () => {
           </CardContent>
         </Card>
 
+        {showOwnerPanel && isOwnerHere && (
+          <div className="mb-6">
+            <ServerOwnerPanel
+              serverId={server.id}
+              ownerIsPro={!!owner?.is_pro}
+              initial={{
+                long_description: server.long_description,
+                theme: server.theme,
+                gallery: server.gallery ?? [],
+                layout: server.layout,
+                review_webhook_url: server.review_webhook_url,
+                discord_invite: server.discord_invite,
+              }}
+              onSaved={(next) => {
+                setServer((s) =>
+                  s
+                    ? {
+                        ...s,
+                        long_description: next.long_description,
+                        theme: next.theme,
+                        gallery: next.gallery,
+                        layout: next.layout,
+                        review_webhook_url: next.review_webhook_url,
+                        discord_invite: next.discord_invite,
+                      }
+                    : s,
+                );
+              }}
+            />
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4" /> Members who work here
-              <span className="text-xs text-muted-foreground font-normal">({staffListedCount})</span>
-            </h2>
-            {coworkers.length === 0 ? (
+          <div className="lg:col-span-2 space-y-6">
+            {layout.show_long_description && server.long_description && (
               <Card className="card-elevated">
-                <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No one listed yet. Members who add experience for this server will appear here.
+                <CardContent className="p-5 md:p-6">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                    {server.long_description}
+                  </p>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {coworkers.map((c) => (
-                  <Card key={c.id} className="card-interactive">
-                    <CardContent className="p-4">
-                      <Link
-                        to={c.profile ? profilePath(c.profile) : '/browse'}
-                        className="flex items-center gap-3"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={c.profile?.discord_avatar || undefined} />
-                          <AvatarFallback>{c.profile?.display_name?.[0] || '?'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-sm truncate">{c.profile?.display_name || 'Member'}</p>
-                            {c.is_verified && <CheckCircle2 className="h-3 w-3 text-verified flex-shrink-0" />}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{c.role}{c.is_current ? ' • current' : ''}</p>
-                        </div>
-                      </Link>
+            )}
+
+            {layout.show_gallery && server.gallery && server.gallery.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold">Gallery</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {server.gallery.map((g, i) => (
+                    <figure
+                      key={`${g.url.slice(0, 24)}-${i}`}
+                      className="rounded-xl overflow-hidden border border-white/10 bg-black/20"
+                    >
+                      <div className="aspect-video">
+                        <img
+                          src={g.url}
+                          alt={g.caption || `Gallery ${i + 1}`}
+                          draggable={false}
+                          className="h-full w-full object-cover no-image-drag"
+                        />
+                      </div>
+                      {g.caption && (
+                        <figcaption className="text-xs text-muted-foreground px-3 py-2">
+                          {g.caption}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {layout.show_members && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Members who work here
+                  <span className="text-xs text-muted-foreground font-normal">({staffListedCount})</span>
+                </h2>
+                {coworkers.length === 0 ? (
+                  <Card className="card-elevated">
+                    <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                      No one listed yet. Members who add experience for this server will appear here.
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {coworkers.map((c) => (
+                      <Card key={c.id} className="card-interactive">
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <Link
+                            to={c.profile ? profilePath(c.profile) : '/browse'}
+                            className="flex items-center gap-3 flex-1 min-w-0"
+                          >
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={c.profile?.discord_avatar || undefined} />
+                              <AvatarFallback>{c.profile?.display_name?.[0] || '?'}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium text-sm truncate">{c.profile?.display_name || 'Member'}</p>
+                                {c.is_verified && <CheckCircle2 className="h-3 w-3 text-verified flex-shrink-0" />}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{c.role}{c.is_current ? ' • current' : ''}</p>
+                            </div>
+                          </Link>
+                          {isOwnerHere && c.id && c.profile?.id !== meProfile?.id && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive shrink-0"
+                              aria-label="Remove verified staff"
+                              title="Remove from verified staff"
+                              onClick={() => void removeVerifiedStaff(c.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
           </div>
 
           <div>
-            <ReviewsSection
-              serverId={server.id}
-              serverName={server.name}
-              serverReviewTargets={coworkers
-                .filter((c) => c.profile?.id)
-                .map((c) => ({
-                  profileId: c.profile!.id,
-                  display_name: c.profile!.display_name ?? null,
-                  discord_avatar: c.profile!.discord_avatar ?? null,
-                  discord_username: c.profile!.discord_username ?? null,
-                }))}
-            />
+            {layout.show_reviews && (
+              <ReviewsSection
+                serverId={server.id}
+                serverName={server.name}
+                serverReviewTargets={coworkers
+                  .filter((c) => c.profile?.id)
+                  .map((c) => ({
+                    profileId: c.profile!.id,
+                    display_name: c.profile!.display_name ?? null,
+                    discord_avatar: c.profile!.discord_avatar ?? null,
+                    discord_username: c.profile!.discord_username ?? null,
+                  }))}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -481,6 +717,16 @@ const ServerDetail = () => {
         onOpenChange={setReportServerOpen}
         kind="server"
         serverId={server.id}
+      />
+
+      <ServerClaimDialog
+        open={claimDialogOpen}
+        onOpenChange={setClaimDialogOpen}
+        serverId={server.id}
+        serverName={server.name}
+        defaultDiscordLink={
+          meProfile?.discord_id ? `https://discord.com/users/${meProfile.discord_id}` : ''
+        }
       />
     </div>
   );

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { tryFireServerReviewWebhook } from '@/lib/callServerClaim';
 
 type ProfileChip = {
   id: string;
@@ -234,13 +235,19 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     );
 
     let error;
+    let insertedId: string | null = null;
     if (existing) {
       ({ error } = await supabase
         .from('reviews')
         .update({ rating: payload.rating, content: payload.content })
         .eq('id', existing.id));
     } else {
-      ({ error } = await supabase.from('reviews').insert(payload));
+      const ins = await supabase.from('reviews').insert(payload).select('id').maybeSingle();
+      error = ins.error;
+      insertedId =
+        (ins.data && typeof (ins.data as { id?: unknown }).id === 'string'
+          ? ((ins.data as { id: string }).id as string)
+          : null) || null;
     }
     setSubmitting(false);
     if (error) {
@@ -248,6 +255,9 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
       return;
     }
     toast({ title: existing ? 'Review updated' : 'Review posted' });
+    if (!existing && insertedId && payload.server_id) {
+      void tryFireServerReviewWebhook(insertedId);
+    }
     fetchReviews();
   };
 

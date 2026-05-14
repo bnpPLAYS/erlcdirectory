@@ -21,7 +21,10 @@
     "deploy:function:canary-session": "supabase functions deploy canary-session",
     "deploy:function:submit-report": "supabase functions deploy submit-report",
     "deploy:function:staff-moderation-action": "supabase functions deploy staff-moderation-action",
-    "deploy:function:staff-directory-action": "supabase functions deploy staff-directory-action"
+    "deploy:function:staff-directory-action": "supabase functions deploy staff-directory-action",
+    "deploy:function:submit-server-claim": "supabase functions deploy submit-server-claim",
+    "deploy:function:staff-server-claim-action": "supabase functions deploy staff-server-claim-action",
+    "deploy:function:server-review-webhook": "supabase functions deploy server-review-webhook"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
