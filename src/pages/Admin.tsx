@@ -212,6 +212,19 @@ const Admin = () => {
     void loadCanary();
   }, [loadCanary]);
 
+  const filteredReportsForTab = useMemo(() => {
+    return reports.filter((r) => {
+      if (reportStatusFilter !== 'all' && r.status !== reportStatusFilter) return false;
+      if (reportKindFilter !== 'all' && r.kind !== reportKindFilter) return false;
+      return true;
+    });
+  }, [reports, reportStatusFilter, reportKindFilter]);
+
+  const filteredPostsForTab = useMemo(() => {
+    if (postStatusFilter === 'all') return posts;
+    return posts.filter((p) => (p.status || 'pending') === postStatusFilter);
+  }, [posts, postStatusFilter]);
+
   if (authLoading || access === null) {
     return <div className="min-h-screen bg-background"><Navbar /><div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div></div>;
   }
@@ -387,19 +400,6 @@ const Admin = () => {
 
   const filter = (list: any[], keys: string[]) =>
     !q ? list : list.filter((x) => keys.some((k) => (x[k] || '').toString().toLowerCase().includes(q.toLowerCase())));
-
-  const filteredReportsForTab = useMemo(() => {
-    return reports.filter((r) => {
-      if (reportStatusFilter !== 'all' && r.status !== reportStatusFilter) return false;
-      if (reportKindFilter !== 'all' && r.kind !== reportKindFilter) return false;
-      return true;
-    });
-  }, [reports, reportStatusFilter, reportKindFilter]);
-
-  const filteredPostsForTab = useMemo(() => {
-    if (postStatusFilter === 'all') return posts;
-    return posts.filter((p) => (p.status || 'pending') === postStatusFilter);
-  }, [posts, postStatusFilter]);
 
   const resolveReport = async (row: any, status: 'resolved' | 'dismissed', staffNotes: string) => {
     const trimmed = staffNotes.trim();
