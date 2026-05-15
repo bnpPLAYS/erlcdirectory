@@ -251,6 +251,23 @@ const ServerDetail = () => {
     })();
   }, [id, meProfile?.id]);
 
+  const hiddenStaff = useMemo(() => {
+    const raw = server?.owner_hidden_staff_profile_ids;
+    if (!Array.isArray(raw)) return new Set<string>();
+    return new Set(raw.map((x) => String(x)).filter(Boolean));
+  }, [server?.owner_hidden_staff_profile_ids]);
+
+  const visibleCoworkers = useMemo(
+    () => coworkers.filter((c) => !c.profile?.id || !hiddenStaff.has(c.profile.id)),
+    [coworkers, hiddenStaff],
+  );
+
+  const galleryUrls = useMemo(() => {
+    const g = server?.owner_gallery_urls;
+    if (!Array.isArray(g)) return [] as string[];
+    return g.map((x) => String(x)).filter((u) => u.startsWith('http'));
+  }, [server?.owner_gallery_urls]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -275,16 +292,6 @@ const ServerDetail = () => {
   const joinHref = normalizeDiscordInvite(server.discord_invite);
   const inviteLooksValid = discordInviteLooksValid(server.discord_invite);
   const joinHrefSafe = inviteLooksValid ? joinHref : null;
-  const hiddenStaff = useMemo(() => {
-    const raw = server.owner_hidden_staff_profile_ids;
-    if (!Array.isArray(raw)) return new Set<string>();
-    return new Set(raw.map((x) => String(x)).filter(Boolean));
-  }, [server.owner_hidden_staff_profile_ids]);
-
-  const visibleCoworkers = useMemo(
-    () => coworkers.filter((c) => !c.profile?.id || !hiddenStaff.has(c.profile.id)),
-    [coworkers, hiddenStaff],
-  );
 
   const staffListedCount = server.guild_id ? visibleCoworkers.length : server.staff_count;
 
@@ -320,12 +327,6 @@ const ServerDetail = () => {
 
   const showStaffBlock = server.owner_show_staff_section !== false;
   const showReviewsBlock = server.owner_show_reviews_section !== false;
-
-  const galleryUrls = useMemo(() => {
-    const g = server.owner_gallery_urls;
-    if (!Array.isArray(g)) return [] as string[];
-    return g.map((x) => String(x)).filter((u) => u.startsWith('http'));
-  }, [server.owner_gallery_urls]);
 
   const meVerifiedHere = !!(
     meProfile?.id &&
