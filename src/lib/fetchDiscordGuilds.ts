@@ -8,6 +8,29 @@ export interface DiscordGuildListItem {
   is_admin: boolean;
 }
 
+function normalizeGuildList(raw: unknown): DiscordGuildListItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DiscordGuildListItem[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const g = item as Record<string, unknown>;
+    const id = typeof g.id === 'string' ? g.id : typeof g.id === 'number' ? String(g.id) : '';
+    if (!id) continue;
+    const nameRaw = g.name;
+    const name =
+      typeof nameRaw === 'string' && nameRaw.trim().length > 0 ? nameRaw.trim() : 'Unnamed server';
+    const icon = g.icon === null || typeof g.icon === 'string' ? (g.icon as string | null) : null;
+    out.push({
+      id,
+      name,
+      icon,
+      owner: !!g.owner,
+      is_admin: !!g.is_admin,
+    });
+  }
+  return out;
+}
+
 /**
  * Loads the signed-in user's Discord guilds. Tries Supabase Edge Function first, then
  * same-origin `/api/discord-guilds` (Vercel) with the Discord OAuth access token so the
@@ -30,7 +53,7 @@ export async function fetchDiscordGuilds(): Promise<DiscordGuildListItem[]> {
     (data && typeof data === 'object' && 'error' in data && (data as { error: string }).error) || null;
 
   if (!error && Array.isArray(edgeGuilds) && !edgeErr) {
-    return edgeGuilds as DiscordGuildListItem[];
+    return normalizeGuildList(edgeGuilds);
   }
 
   let discordToken = session.provider_token ?? null;
@@ -74,5 +97,5 @@ export async function fetchDiscordGuilds(): Promise<DiscordGuildListItem[]> {
     throw new Error('Invalid Discord server list.');
   }
 
-  return parsed.guilds;
+  return normalizeGuildList(parsed.guilds);
 }

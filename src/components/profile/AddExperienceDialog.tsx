@@ -26,6 +26,7 @@ import { filterPlaintext } from '@/lib/chatFilter';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { clearExperienceNudgePending, emitExperienceNudgeUpdate } from '@/lib/postTutorialExperienceNudge';
+import { cn } from '@/lib/utils';
 
 interface Guild {
   id: string;
