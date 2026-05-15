@@ -9,6 +9,7 @@ import {
   markTutorialCompleted,
   TUTORIAL_RESUME_EDITOR,
 } from '@/lib/firstLoginTutorialStorage';
+import { maybePromptFirstExperienceAfterTutorial } from '@/lib/postTutorialExperienceNudge';
 
 const POPOVER_CLASS = 'driverjs-erlc';
 
@@ -118,7 +119,7 @@ export function FirstLoginTutorial() {
           popover: {
             title: 'New role',
             description:
-              'Use Add experience to link a Discord server and your time there. Verifiers set your official title when they approve — you can copy the verification link to share in staff channels.',
+              'Use Add experience to link a Discord server or a direct role. Verifiers set your official title when they approve — you can copy the verification link for staff channels. When you finish this tour, if you still have no experience saved, we’ll show a small reminder you can dismiss with ✕.',
             side: 'left',
             align: 'start',
             doneBtnText: 'Done',
@@ -145,6 +146,7 @@ export function FirstLoginTutorial() {
         onDestroyed: () => {
           driverRef.current = null;
           markTutorialCompleted(prof.id);
+          void maybePromptFirstExperienceAfterTutorial(prof.id);
         },
         steps,
       });
@@ -166,7 +168,7 @@ export function FirstLoginTutorial() {
           popover: {
             title: 'Welcome to erlc.directory',
             description:
-              'A quick tour will show how to customize your profile and add verified experience. You can close anytime with ✕ — we won’t show this again once you finish.',
+              'A quick tour will show how to customize your profile and add verified experience. You can close anytime with ✕ — we won’t show this tour again once you finish. Afterward, if you still haven’t added any experience, we’ll show a short reminder you can dismiss.',
             side: 'over',
             align: 'center',
           },

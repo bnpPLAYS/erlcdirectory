@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
-import { cn } from '@/lib/utils';
+import { clearExperienceNudgePending, emitExperienceNudgeUpdate } from '@/lib/postTutorialExperienceNudge';
 
 interface Guild {
   id: string;
@@ -155,12 +155,16 @@ const AddExperienceDialog = ({ open, onOpenChange, profileId, onCreated, onReque
         const msg = String((error as { message?: string }).message ?? '');
         if (code === '23505' || /duplicate key|unique constraint/i.test(msg)) {
           toast.info('That Discord server is already on your experience list.');
+          clearExperienceNudgePending(profileId);
+          emitExperienceNudgeUpdate();
           onCreated();
           onOpenChange(false);
           return;
         }
         throw error;
       }
+      clearExperienceNudgePending(profileId);
+      emitExperienceNudgeUpdate();
       onCreated();
       setSavedRow(inserted as CreatedExperienceSummary);
       setStep('aftercreate');

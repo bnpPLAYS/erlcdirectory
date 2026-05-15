@@ -15,6 +15,7 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { RouteTransition } from "@/components/layout/RouteTransition";
 import { RouteFallback } from "@/components/layout/RouteFallback";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
+import { PostTutorialExperienceNudge } from "@/components/onboarding/PostTutorialExperienceNudge";
 import { CanaryGate } from "@/components/canary/CanaryGate";
 
 const Browse = lazy(() => import("./pages/Browse"));
@@ -56,6 +57,7 @@ const App = () => (
           <CanaryGate>
             <ScrollToTop />
             <BetaBugReportLink />
+            <PostTutorialExperienceNudge />
             <Suspense fallback={null}>
               <FirstLoginTutorial />
             </Suspense>
