@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.staff-server-claim-action]
 verify_jwt = false
+
+[functions.upload-server-gallery]
+verify_jwt = false
+
+[functions.server-review-notify]
+verify_jwt = false

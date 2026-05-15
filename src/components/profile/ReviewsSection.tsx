@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
+import { notifyServerReview } from '@/lib/callServerOwnerApi';
 
 type ProfileChip = {
   id: string;
@@ -240,7 +241,11 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
         .update({ rating: payload.rating, content: payload.content })
         .eq('id', existing.id));
     } else {
-      ({ error } = await supabase.from('reviews').insert(payload));
+      const ins = await supabase.from('reviews').insert(payload).select('id').maybeSingle();
+      error = ins.error;
+      if (!error && serverId && ins.data?.id) {
+        void notifyServerReview(serverId, ins.data.id);
+      }
     }
     setSubmitting(false);
     if (error) {

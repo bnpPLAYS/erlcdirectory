@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect } from 'react';
+import { useEffect, useState, useLayoutEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,6 +29,9 @@ import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { ServerClaimDialog } from '@/components/server/ServerClaimDialog';
+import { ServerOwnerPanel } from '@/components/server/ServerOwnerPanel';
+import { extractYouTubeId, youtubeEmbedSrc } from '@/lib/youtubeEmbed';
+import { cn } from '@/lib/utils';
 
 interface GuildExperienceRow {
   id: string;
@@ -71,6 +74,15 @@ interface ServerRow {
   tags: string[];
   owner_id: string | null;
   claim_open?: boolean | null;
+  owner_long_description?: string | null;
+  owner_accent_hex?: string | null;
+  owner_theme_preset?: string | null;
+  owner_gallery_urls?: unknown;
+  owner_review_webhook_url?: string | null;
+  owner_hidden_staff_profile_ids?: unknown;
+  owner_show_staff_section?: boolean | null;
+  owner_show_reviews_section?: boolean | null;
+  owner_hero_video_url?: string | null;
 }
 
 interface CoworkerRow {
@@ -107,6 +119,7 @@ const ServerDetail = () => {
     id: string;
     display_name: string | null;
     discord_username: string | null;
+    is_pro?: boolean;
   } | null>(null);
 
   useLayoutEffect(() => {
@@ -213,7 +226,7 @@ const ServerDetail = () => {
       if (s?.owner_id) {
         const { data: op } = await supabase
           .from('profiles')
-          .select('id, display_name, discord_username')
+          .select('id, display_name, discord_username, is_pro')
           .eq('id', s.owner_id)
           .maybeSingle();
         setOwnerPreview(op ?? null);
@@ -262,7 +275,57 @@ const ServerDetail = () => {
   const joinHref = normalizeDiscordInvite(server.discord_invite);
   const inviteLooksValid = discordInviteLooksValid(server.discord_invite);
   const joinHrefSafe = inviteLooksValid ? joinHref : null;
-  const staffListedCount = server.guild_id ? coworkers.length : server.staff_count;
+  const hiddenStaff = useMemo(() => {
+    const raw = server.owner_hidden_staff_profile_ids;
+    if (!Array.isArray(raw)) return new Set<string>();
+    return new Set(raw.map((x) => String(x)).filter(Boolean));
+  }, [server.owner_hidden_staff_profile_ids]);
+
+  const visibleCoworkers = useMemo(
+    () => coworkers.filter((c) => !c.profile?.id || !hiddenStaff.has(c.profile.id)),
+    [coworkers, hiddenStaff],
+  );
+
+  const staffListedCount = server.guild_id ? visibleCoworkers.length : server.staff_count;
+
+  const meIsOwner = !!(meProfile?.id && server.owner_id && meProfile.id === server.owner_id);
+  const ownerIsPro = !!ownerPreview?.is_pro;
+
+  const displayDescription =
+    (server.owner_long_description && server.owner_long_description.trim().length > 0
+      ? server.owner_long_description.trim()
+      : null) || server.description || 'No description yet.';
+
+  const accentHex = server.owner_accent_hex && /^#[0-9A-Fa-f]{6}$/.test(server.owner_accent_hex)
+    ? server.owner_accent_hex
+    : null;
+
+  const preset = server.owner_theme_preset || 'zinc';
+  const presetSurface =
+    preset === 'slate'
+      ? 'from-slate-500/10'
+      : preset === 'neutral'
+        ? 'from-neutral-500/10'
+        : preset === 'rose'
+          ? 'from-rose-500/12'
+          : preset === 'cyan'
+            ? 'from-cyan-500/12'
+            : preset === 'amber'
+              ? 'from-amber-500/12'
+              : preset === 'violet'
+                ? 'from-violet-500/12'
+                : 'from-zinc-500/10';
+
+  const heroYt = ownerIsPro ? extractYouTubeId(server.owner_hero_video_url) : null;
+
+  const showStaffBlock = server.owner_show_staff_section !== false;
+  const showReviewsBlock = server.owner_show_reviews_section !== false;
+
+  const galleryUrls = useMemo(() => {
+    const g = server.owner_gallery_urls;
+    if (!Array.isArray(g)) return [] as string[];
+    return g.map((x) => String(x)).filter((u) => u.startsWith('http'));
+  }, [server.owner_gallery_urls]);
 
   const meVerifiedHere = !!(
     meProfile?.id &&
@@ -349,7 +412,28 @@ const ServerDetail = () => {
           </Button>
         </Link>
 
-        <Card className="card-elevated mb-6">
+        {meIsOwner ? (
+          <ServerOwnerPanel
+            server={server}
+            ownerIsPro={ownerIsPro}
+            coworkers={coworkers
+              .filter((c) => c.profile?.id)
+              .map((c) => ({
+                profileId: c.profile!.id,
+                label: c.profile?.display_name || c.profile?.discord_username || 'Member',
+                isVerified: c.is_verified,
+              }))}
+            onPatch={(patch) => setServer((prev) => (prev ? { ...prev, ...patch } : prev))}
+          />
+        ) : null}
+
+        <Card
+          className={cn(
+            'card-elevated mb-6 border border-white/10 bg-gradient-to-br to-transparent',
+            presetSurface,
+          )}
+          style={accentHex ? { borderColor: `${accentHex}66` } : undefined}
+        >
           <CardContent className="p-5 md:p-7">
             <div className="flex flex-col md:flex-row md:items-end gap-5">
               <Avatar className="h-24 w-24 rounded-2xl ring-4 ring-background">
@@ -387,7 +471,7 @@ const ServerDetail = () => {
                 {myPendingClaimId ? (
                   <p className="text-xs text-amber-200/85 mb-1">Ownership request pending ERLC staff review.</p>
                 ) : null}
-                <p className="text-sm text-muted-foreground max-w-2xl">{server.description || 'No description yet.'}</p>
+                <p className="text-sm text-muted-foreground max-w-2xl whitespace-pre-wrap">{displayDescription}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {server.member_count} members</span>
                   <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {staffListedCount} work here</span>
@@ -489,59 +573,102 @@ const ServerDetail = () => {
           </CardContent>
         </Card>
 
+        {heroYt ? (
+          <div className="mb-6 rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black">
+            <iframe
+              title="Server highlight video"
+              src={youtubeEmbedSrc(heroYt)}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        ) : null}
+
+        {galleryUrls.length > 0 ? (
+          <div className="mb-6 grid grid-cols-2 md:grid-cols-3 gap-2">
+            {galleryUrls.map((u) => (
+              <a
+                key={u}
+                href={u}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-xl overflow-hidden border border-white/10 bg-white/[0.02]"
+              >
+                <img src={u} alt="" className="w-full h-40 object-cover hover:opacity-90 transition-opacity" />
+              </a>
+            ))}
+          </div>
+        ) : null}
+
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4" /> Members who work here
-              <span className="text-xs text-muted-foreground font-normal">({staffListedCount})</span>
-            </h2>
-            {coworkers.length === 0 ? (
-              <Card className="card-elevated">
-                <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  No one listed yet. Members who add experience for this server will appear here.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {coworkers.map((c) => (
-                  <Card key={c.id} className="card-interactive">
-                    <CardContent className="p-4">
-                      <Link
-                        to={c.profile ? profilePath(c.profile) : '/browse'}
-                        className="flex items-center gap-3"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={c.profile?.discord_avatar || undefined} />
-                          <AvatarFallback>{c.profile?.display_name?.[0] || '?'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-sm truncate">{c.profile?.display_name || 'Member'}</p>
-                            {c.is_verified && <CheckCircle2 className="h-3 w-3 text-verified flex-shrink-0" />}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{c.role}{c.is_current ? ' • current' : ''}</p>
-                        </div>
-                      </Link>
+            {showStaffBlock ? (
+              <>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Members who work here
+                  <span className="text-xs text-muted-foreground font-normal">({staffListedCount})</span>
+                </h2>
+                {visibleCoworkers.length === 0 ? (
+                  <Card className="card-elevated">
+                    <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                      No one listed yet. Members who add experience for this server will appear here.
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {visibleCoworkers.map((c) => (
+                      <Card key={c.id} className="card-interactive">
+                        <CardContent className="p-4">
+                          <Link
+                            to={c.profile ? profilePath(c.profile) : '/browse'}
+                            className="flex items-center gap-3"
+                          >
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={c.profile?.discord_avatar || undefined} />
+                              <AvatarFallback>{c.profile?.display_name?.[0] || '?'}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium text-sm truncate">{c.profile?.display_name || 'Member'}</p>
+                                {c.is_verified && <CheckCircle2 className="h-3 w-3 text-verified flex-shrink-0" />}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {c.role}
+                                {c.is_current ? ' • current' : ''}
+                              </p>
+                            </div>
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">The owner has hidden the member list for this page.</p>
             )}
           </div>
 
           <div>
-            <ReviewsSection
-              serverId={server.id}
-              serverName={server.name}
-              serverReviewTargets={coworkers
-                .filter((c) => c.profile?.id)
-                .map((c) => ({
-                  profileId: c.profile!.id,
-                  display_name: c.profile!.display_name ?? null,
-                  discord_avatar: c.profile!.discord_avatar ?? null,
-                  discord_username: c.profile!.discord_username ?? null,
-                }))}
-            />
+            {showReviewsBlock ? (
+              <ReviewsSection
+                serverId={server.id}
+                serverName={server.name}
+                serverReviewTargets={coworkers
+                  .filter((c) => c.profile?.id)
+                  .map((c) => ({
+                    profileId: c.profile!.id,
+                    display_name: c.profile!.display_name ?? null,
+                    discord_avatar: c.profile!.discord_avatar ?? null,
+                    discord_username: c.profile!.discord_username ?? null,
+                  }))}
+              />
+            ) : (
+              <Card className="card-elevated">
+                <CardContent className="p-6 text-sm text-muted-foreground">Reviews are hidden for this page.</CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
