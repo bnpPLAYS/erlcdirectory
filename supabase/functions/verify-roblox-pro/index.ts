@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       {
         ok: false,
         error:
-          'Roblox blocked the ownership check. In Roblox: Settings → Privacy → set “Who can see my inventory?” to Everyone, then try again.',
+          'Roblox blocked the ownership check. In Roblox: Settings → Privacy → set “Who can see my inventory?” to Everyone, then try again. If it already is, the site’s Roblox API key may be missing the user.inventory-item:read scope.',
       },
       403,
     )
@@ -109,11 +109,31 @@ Deno.serve(async (req) => {
 
   if (own.kind === 'roblox_error') {
     console.error('[verify-roblox-pro] Roblox API', own.status, own.snippet)
+    if (own.status === 401) {
+      return json(
+        {
+          ok: false,
+          error:
+            'Roblox rejected the server API key (401). Site owner: check ROBLOX_OPEN_CLOUD_API_KEY in Supabase secrets — it may be wrong, expired, or revoked.',
+        },
+        502,
+      )
+    }
+    if (own.status === 403) {
+      return json(
+        {
+          ok: false,
+          error:
+            'Roblox rejected this API key for inventory reads. Site owner: Creator Hub → Credentials → API Keys → edit the key → enable **user.inventory-item:read** on the User / Inventory resource, then paste the new key into ROBLOX_OPEN_CLOUD_API_KEY.',
+        },
+        502,
+      )
+    }
     return json(
       {
         ok: false,
         error:
-          'Could not verify with Roblox right now. If you are the site owner, confirm the Open Cloud API key has Inventory read access.',
+          'Could not verify with Roblox right now. Site owner: confirm ROBLOX_OPEN_CLOUD_API_KEY is an Open Cloud key with **user.inventory-item:read** (User → Inventory). Players: set inventory visibility to Everyone under Roblox → Settings → Privacy.',
       },
       502,
     )

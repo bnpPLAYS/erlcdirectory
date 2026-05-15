@@ -77,6 +77,8 @@ function isDefiniteUserFacing(err: string): boolean {
     err.includes('Profile not found') ||
     err.includes('Pro verification is not configured') ||
     err.includes('Open Cloud API key') ||
+    err.includes('user.inventory-item:read') ||
+    err.includes('ROBLOX_OPEN_CLOUD_API_KEY') ||
     err.includes('That Roblox account does not own')
   );
 }

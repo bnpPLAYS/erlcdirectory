@@ -154,7 +154,9 @@ const Pro = () => {
                     className="h-10 rounded-xl border-white/10 bg-black/50 text-sm text-zinc-200 placeholder:text-zinc-600"
                   />
                   <p className="text-[11px] text-zinc-600 mt-2 text-center leading-relaxed">
-                    Inventory must be visible to Everyone in Roblox → Settings → Privacy if verification fails.
+                    Roblox → Settings → Privacy → set “Who can see my inventory?” to <span className="text-zinc-500">Everyone</span> so
+                    we can see the game pass. If it still fails, the site needs an Open Cloud API key with{' '}
+                    <span className="text-zinc-500">user.inventory-item:read</span>.
                   </p>
                 </div>
               </div>
