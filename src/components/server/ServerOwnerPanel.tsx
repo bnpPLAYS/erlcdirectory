@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  GripVertical,
   ImagePlus,
   Loader2,
   Palette,
@@ -84,6 +85,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
   const [open, setOpen] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dragGalleryIdx, setDragGalleryIdx] = useState<number | null>(null);
 
   const [longDesc, setLongDesc] = useState(server.owner_long_description ?? '');
   const [accent, setAccent] = useState(server.owner_accent_hex ?? '#a1a1aa');
@@ -125,6 +127,43 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
     () => coworkers.filter((c) => c.isVerified && c.profileId),
     [coworkers],
   );
+
+  const persistGalleryUrls = async (next: string[]) => {
+    const prev = galleryUrls;
+    setGalleryUrls(next);
+    const { error } = await supabase.from('servers').update({ owner_gallery_urls: next }).eq('id', server.id);
+    if (error) {
+      toast.error(error.message);
+      setGalleryUrls(prev);
+      return false;
+    }
+    onPatch({ owner_gallery_urls: next });
+    return true;
+  };
+
+  const uploadGalleryFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const r = await uploadServerGalleryImage(server.id, file);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      const next = [...galleryUrls, r.url];
+      const ok = await persistGalleryUrls(next);
+      if (ok) toast.success('Image added');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const reorderGallery = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= galleryUrls.length || to >= galleryUrls.length) return;
+    const next = [...galleryUrls];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    void persistGalleryUrls(next);
+  };
 
   const persist = async (patch: Record<string, unknown>) => {
     setSaving(true);
@@ -192,59 +231,22 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
     });
   };
 
-  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setUploading(true);
-    try {
-      const r = await uploadServerGalleryImage(server.id, file);
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
-      }
-      const next = [...galleryUrls, r.url];
-      setGalleryUrls(next);
-      const { error } = await supabase.from('servers').update({ owner_gallery_urls: next }).eq('id', server.id);
-      if (error) {
-        toast.error(error.message);
-        setGalleryUrls(galleryUrls);
-        return;
-      }
-      onPatch({ owner_gallery_urls: next });
-      toast.success('Image added');
-    } finally {
-      setUploading(false);
-    }
+    void uploadGalleryFile(file);
   };
 
-  const removeGalleryAt = async (idx: number) => {
+  const removeGalleryAt = (idx: number) => {
     const next = galleryUrls.filter((_, i) => i !== idx);
-    setGalleryUrls(next);
-    const { error } = await supabase.from('servers').update({ owner_gallery_urls: next }).eq('id', server.id);
-    if (error) {
-      toast.error(error.message);
-      setGalleryUrls(galleryUrls);
-      return;
-    }
-    onPatch({ owner_gallery_urls: next });
+    void persistGalleryUrls(next);
   };
 
-  const moveGallery = async (idx: number, dir: -1 | 1) => {
+  const moveGallery = (idx: number, dir: -1 | 1) => {
     const j = idx + dir;
     if (j < 0 || j >= galleryUrls.length) return;
-    const next = [...galleryUrls];
-    const t = next[idx];
-    next[idx] = next[j]!;
-    next[j] = t!;
-    setGalleryUrls(next);
-    const { error } = await supabase.from('servers').update({ owner_gallery_urls: next }).eq('id', server.id);
-    if (error) {
-      toast.error(error.message);
-      setGalleryUrls(galleryUrls);
-      return;
-    }
-    onPatch({ owner_gallery_urls: next });
+    reorderGallery(idx, j);
   };
 
   return (
@@ -331,8 +333,23 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
                 <ImagePlus className="h-3.5 w-3.5" /> Gallery
               </Label>
               <p className="text-[11px] text-muted-foreground">
-                {ownerIsPro ? 'Up to 12 images (Pro).' : 'Up to 6 images. Pro owners can use up to 12.'}
+                {ownerIsPro ? 'Up to 12 images (Pro).' : 'Up to 6 images. Pro owners can use up to 12.'} Drag the handle to
+                reorder, or drop a file on the dashed area.
               </p>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const f = e.dataTransfer.files?.[0];
+                  if (f && /^image\//.test(f.type)) void uploadGalleryFile(f);
+                }}
+                className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3 py-6 text-center text-xs text-muted-foreground"
+              >
+                Drop an image here, or use Add image
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" className="relative border-white/12" disabled={uploading}>
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add image'}
@@ -340,7 +357,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
                     type="file"
                     accept="image/png,image/jpeg,image/webp,image/gif"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={(e) => void onPickImage(e)}
+                    onChange={onPickImage}
                     disabled={uploading}
                   />
                 </Button>
@@ -350,19 +367,40 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
                   {galleryUrls.map((url, idx) => (
                     <li
                       key={`${url}-${idx}`}
+                      draggable
+                      onDragStart={() => setDragGalleryIdx(idx)}
+                      onDragEnd={() => setDragGalleryIdx(null)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const from = dragGalleryIdx;
+                        setDragGalleryIdx(null);
+                        if (from === null) return;
+                        reorderGallery(from, idx);
+                      }}
                       className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2"
                     >
-                      <img src={url} alt="" className="h-14 w-24 object-cover rounded border border-white/10" />
+                      <button
+                        type="button"
+                        className="cursor-grab active:cursor-grabbing text-muted-foreground p-1 touch-none"
+                        aria-label="Drag to reorder"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
+                      <img src={url} alt="" className="h-14 w-24 object-cover rounded border border-white/10 no-image-drag" draggable={false} />
                       <span className="flex-1 text-xs text-muted-foreground truncate font-mono">{url}</span>
                       <div className="flex flex-col gap-0.5">
-                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void moveGallery(idx, -1)}>
+                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveGallery(idx, -1)}>
                           <ChevronUp className="h-3.5 w-3.5" />
                         </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void moveGallery(idx, 1)}>
+                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveGallery(idx, 1)}>
                           <ChevronDown className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => void removeGalleryAt(idx)}>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => removeGalleryAt(idx)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </li>
