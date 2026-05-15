@@ -24,26 +24,26 @@ const PRODUCT_SCREENSHOTS: {
   alt: string;
 }[] = [
   {
-    title: 'Profile',
-    description: 'Edit your listing, banner, and verified roles in one place.',
+    title: 'Your profile',
+    description: 'Bio, banner, skills, and the stuff you actually want people to see.',
     image: homeFeatureProfileEditor,
     alt: 'Profile editor on erlc.directory',
   },
   {
     title: 'Posts',
-    description: 'Hiring, looking for work, announcements, and discussion.',
+    description: 'Hiring, LFW, or server news — post it here instead of losing it in a random channel.',
     image: homeFeatureCreatePost,
     alt: 'Create post on erlc.directory',
   },
   {
-    title: 'Network',
-    description: 'Connections and requests — find people through the directory.',
+    title: 'Connections',
+    description: 'Send a request, get accepted, then you can message. Same idea as elsewhere, but for this scene.',
     image: homeFeatureConnections,
     alt: 'Connections on erlc.directory',
   },
   {
     title: 'Servers',
-    description: 'Community pages with join links, members who work there, and reviews.',
+    description: 'Browse ER:LC communities, see who\'s involved, grab an invite when there is one.',
     image: homeFeatureServerDetail,
     alt: 'Server directory page on erlc.directory',
   },
@@ -56,9 +56,9 @@ function HomeSectionIntro() {
       ref={ref}
       className={cn('max-w-2xl mb-12 md:mb-14 home-reveal-row', visible && 'home-reveal-visible')}
     >
-      <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">How it works</h2>
+      <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">What you&apos;ll find</h2>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Screens from the live site — no mockups.
+        Real screenshots from the site — not mockups.
       </p>
     </div>
   );
@@ -120,7 +120,7 @@ function HomeCtaBar({ signedIn }: { signedIn: boolean }) {
       <div className="container mx-auto px-4 text-center md:text-left">
         <Link to={signedIn ? '/browse' : '/auth'}>
           <Button size="lg" className="rounded-md px-8 font-medium gap-2">
-            {signedIn ? 'Browse members' : 'Get started'}
+            {signedIn ? 'Open directory' : 'Sign in with Discord'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
@@ -182,10 +182,11 @@ const Index = () => {
 
               <div className="home-hero-item space-y-4">
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-semibold tracking-tight text-foreground leading-[1.06]">
-                  Staff, resumes, and connections for ER:LC communities.
+                  A directory for ER:LC people and servers.
                 </h1>
                 <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 leading-relaxed">
-                  Hire staff, post resumes and portfolios, connect with friends.
+                  Put your staff history somewhere people actually look. Find servers, post an opening, DM someone
+                  after you connect — that’s pretty much it.
                 </p>
               </div>
 
@@ -215,7 +216,7 @@ const Index = () => {
                         variant="outline"
                         className="gap-2 h-11 rounded-md w-full sm:w-auto border-white/15 bg-transparent font-medium"
                       >
-                        Join our Discord
+                        Discord server
                         <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
                       </Button>
                     </a>
@@ -249,7 +250,7 @@ const Index = () => {
                         variant="outline"
                         className="gap-2 h-11 rounded-md w-full sm:w-auto border-white/15 bg-transparent font-medium"
                       >
-                        Join our Discord
+                        Discord server
                         <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
                       </Button>
                     </a>
@@ -259,8 +260,8 @@ const Index = () => {
 
               {(stats.profiles > 0 || stats.servers > 0) && (
                 <p className="home-hero-item text-sm text-muted-foreground">
-                  <span className="tabular-nums text-foreground font-medium">{stats.profiles}</span> members ·{' '}
-                  <span className="tabular-nums text-foreground font-medium">{stats.servers}</span> servers
+                  <span className="tabular-nums text-foreground font-medium">{stats.profiles}</span> profiles ·{' '}
+                  <span className="tabular-nums text-foreground font-medium">{stats.servers}</span> servers listed
                 </p>
               )}
             </div>

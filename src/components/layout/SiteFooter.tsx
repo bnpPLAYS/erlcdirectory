@@ -36,7 +36,7 @@ const SiteFooter = ({ className }: { className?: string }) => {
               <span className="font-semibold text-white text-lg tracking-tight">ERLC Directory</span>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-              Staff listings, verified experience, and community posts for ER:LC servers.
+              ER:LC staff and servers in one place — profiles, posts, invites.
             </p>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
