@@ -22,6 +22,8 @@ interface ServerCardProps {
     is_hiring: boolean;
     tags: string[];
     discord_invite?: string | null;
+    owner_id?: string | null;
+    owner_profile?: { display_name: string | null; discord_username: string | null } | null;
   };
 }
 
@@ -66,6 +68,15 @@ const ServerCard = ({ server }: ServerCardProps) => {
                 <Badge className="badge-featured text-[10px] px-1.5 py-0">Featured</Badge>
               )}
             </div>
+
+            {server.owner_id && server.owner_profile ? (
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Claimed by{' '}
+                <span className="text-foreground/90 font-medium">
+                  {server.owner_profile.display_name || server.owner_profile.discord_username || 'Member'}
+                </span>
+              </p>
+            ) : null}
             
             <div className="flex items-center gap-2 mb-2">
               {server.is_hiring && (

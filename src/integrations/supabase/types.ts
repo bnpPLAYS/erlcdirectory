@@ -726,6 +726,15 @@ export type Database = {
           updated_at: string
           claim_open: boolean
           claimed_at: string | null
+          owner_long_description: string | null
+          owner_accent_hex: string | null
+          owner_theme_preset: string
+          owner_gallery_urls: unknown
+          owner_review_webhook_url: string | null
+          owner_hidden_staff_profile_ids: unknown
+          owner_show_staff_section: boolean
+          owner_show_reviews_section: boolean
+          owner_hero_video_url: string | null
         }
         Insert: {
           banner?: string | null
@@ -747,6 +756,15 @@ export type Database = {
           updated_at?: string
           claim_open?: boolean
           claimed_at?: string | null
+          owner_long_description?: string | null
+          owner_accent_hex?: string | null
+          owner_theme_preset?: string
+          owner_gallery_urls?: unknown
+          owner_review_webhook_url?: string | null
+          owner_hidden_staff_profile_ids?: unknown
+          owner_show_staff_section?: boolean
+          owner_show_reviews_section?: boolean
+          owner_hero_video_url?: string | null
         }
         Update: {
           banner?: string | null
@@ -768,6 +786,15 @@ export type Database = {
           updated_at?: string
           claim_open?: boolean
           claimed_at?: string | null
+          owner_long_description?: string | null
+          owner_accent_hex?: string | null
+          owner_theme_preset?: string
+          owner_gallery_urls?: unknown
+          owner_review_webhook_url?: string | null
+          owner_hidden_staff_profile_ids?: unknown
+          owner_show_staff_section?: boolean
+          owner_show_reviews_section?: boolean
+          owner_hero_video_url?: string | null
         }
         Relationships: [
           {

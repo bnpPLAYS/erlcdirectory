@@ -33,6 +33,8 @@ interface ServerData {
   is_hiring: boolean;
   tags: string[];
   discord_invite: string | null;
+  owner_id: string | null;
+  owner_profile?: { display_name: string | null; discord_username: string | null } | null;
 }
 
 const Servers = () => {
@@ -47,11 +49,9 @@ const Servers = () => {
     const silent = !!opts?.silent;
     if (!silent) setLoading(true);
     try {
-      let query = supabase
-        .from('servers')
-        .select(
-          'id, guild_id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite',
-        );
+      let query = supabase.from('servers').select(
+        'id, guild_id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite, owner_id, owner_profile:profiles!servers_owner_id_fkey(display_name, discord_username)',
+      );
 
       if (sortBy === 'featured') {
         query = query.order('is_featured', { ascending: false }).order('member_count', { ascending: false });
@@ -70,7 +70,7 @@ const Servers = () => {
       const guildIds = [...new Set(data.map((s) => s.guild_id?.trim()).filter(Boolean))] as string[];
 
       if (guildIds.length === 0) {
-        setServers(data as ServerData[]);
+        setServers(data as unknown as ServerData[]);
         return;
       }
 
