@@ -2,7 +2,7 @@
  * ERLC Directory staff approve or reject server ownership claims.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
-import { getStaffActor, auditReasonAtLeast10, isSiteOwnerDiscordUsername } from '../_shared/staffActor.ts'
+import { getStaffActor, auditReasonAtLeast10 } from '../_shared/staffActor.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -145,16 +145,6 @@ Deno.serve(async (req) => {
   if (sErr || !server?.id) return json({ ok: false, error: 'Server not found.' }, 404)
   if (server.owner_id) {
     return json({ ok: false, error: 'Server was claimed while this request was open.' }, 409)
-  }
-
-  const { data: claimant, error: cErr } = await admin
-    .from('profiles')
-    .select('id, discord_username')
-    .eq('id', row.claimant_profile_id as string)
-    .maybeSingle()
-  if (cErr || !claimant?.id) return json({ ok: false, error: 'Claimant profile missing.' }, 400)
-  if (isSiteOwnerDiscordUsername(claimant.discord_username as string | null)) {
-    return json({ ok: false, error: 'Cannot assign site owner as server owner via claim.' }, 403)
   }
 
   const { error: srvErr } = await admin
