@@ -74,6 +74,8 @@ interface Profile {
   updated_at: string;
   /** Set when staff bans the account; client signs out if present. */
   banned_at?: string | null;
+  /** Set when the member deactivates their account; client signs out and profile is hidden from directory. */
+  deactivated_at?: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,6 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.error('This account has been suspended.');
         return;
       }
+      if (row.deactivated_at) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        toast.info('Your account is inactive. Contact support if you need help restoring access.');
+        return;
+      }
       setProfile(row);
       return;
     }
@@ -122,6 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await supabase.auth.signOut();
             setProfile(null);
             toast.error('This account has been suspended.');
+            return;
+          }
+          if (p.deactivated_at) {
+            await supabase.auth.signOut();
+            setProfile(null);
+            toast.info('Your account is inactive. Contact support if you need help restoring access.');
             return;
           }
           setProfile(p);
@@ -254,6 +268,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         setProfile(null);
         toast.error('This account has been suspended.');
+        return;
+      }
+      if (p.deactivated_at) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        toast.info('Your account is inactive. Contact support if you need help restoring access.');
         return;
       }
       setProfile(p);

@@ -138,7 +138,7 @@ const Index = () => {
 
     const fetchStats = async () => {
       const [profileCount, serverCount] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).is('deactivated_at', null),
         supabase.from('servers').select('id', { count: 'exact', head: true }),
       ]);
 

@@ -70,6 +70,7 @@ interface ProfileData {
   pro_badge_label?: string | null;
   show_pro_avatar_decor?: boolean;
   roblox_user_id?: string | null;
+  deactivated_at?: string | null;
 }
 
 interface Experience {
@@ -241,11 +242,25 @@ const Profile = () => {
           new Set([slug, slug.endsWith('.') ? slug : `${slug}.`, slug.replace(/\.$/u, '')]),
         ).filter(Boolean);
         for (const v of variants) {
-          const { data } = await supabase.from('profiles').select('*').ilike('discord_username', v).maybeSingle();
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .ilike('discord_username', v)
+            .is('deactivated_at', null)
+            .maybeSingle();
           if (data) {
             profileData = data as ProfileData;
             break;
           }
+        }
+      }
+    }
+
+    if (profileData) {
+      if (profileData.deactivated_at) {
+        const staffCanView = isStaff && meProfile?.id && meProfile.id !== profileData.id;
+        if (!staffCanView) {
+          profileData = null;
         }
       }
     }
@@ -260,7 +275,7 @@ const Profile = () => {
       if (expData) setExperiences(expData);
     }
     setLoading(false);
-  }, [profileSlug, meProfile?.id, meProfile?.discord_username, authLoading]);
+  }, [profileSlug, meProfile?.id, meProfile?.discord_username, authLoading, isStaff]);
 
   useEffect(() => {
     void fetchProfile();
@@ -452,6 +467,15 @@ const Profile = () => {
           />
         ) : (
           <>
+            {profile.deactivated_at && isStaff && !isOwner ? (
+              <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/95 flex gap-3 items-start">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                <p>
+                  This member deactivated their account. The profile is hidden from the public directory and username
+                  search.
+                </p>
+              </div>
+            ) : null}
             {/* HERO — Identity */}
             <Card className="card-elevated liquid-edge overflow-hidden mb-7 border-white/[0.09] shadow-xl shadow-black/20">
               <CardContent className="p-5 md:p-8">
