@@ -67,6 +67,25 @@ function safeEmbedSnippet(s: string, max: number): string {
     .slice(0, max)
 }
 
+/** Safe fragment for webhook `content` (Discord markdown); strips chars that break ** wrapping. */
+function safeContentChunk(s: string, max: number): string {
+  return safeEmbedSnippet(s, max)
+}
+
+function formatCount(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(Number(n))) return null
+  const v = Math.max(0, Math.floor(Number(n)))
+  try {
+    return v.toLocaleString('en-US')
+  } catch {
+    return String(v)
+  }
+}
+
+function isDiscordSnowflake(id: string): boolean {
+  return /^\d{17,22}$/.test(id.trim())
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
@@ -102,7 +121,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: meProf } = await admin
     .from('profiles')
-    .select('id, display_name, discord_username, discord_avatar, banner_url')
+    .select('id, display_name, discord_username, discord_avatar, discord_id')
     .eq('user_id', user.id)
     .maybeSingle()
   if (!meProf?.id) return json({ ok: false, error: 'Profile not found.' }, 400)
@@ -120,7 +139,7 @@ Deno.serve(async (req) => {
   const { data: server, error: sErr } = await admin
     .from('servers')
     .select(
-      'id, name, icon, banner, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer',
+      'id, name, icon, banner, description, owner_long_description, member_count, staff_count, is_verified, is_hiring, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer',
     )
     .eq('id', serverId)
     .maybeSingle()
@@ -140,6 +159,14 @@ Deno.serve(async (req) => {
   const snippetRaw = (review.content as string | null)?.trim() || ''
   const snippet = snippetRaw ? safeEmbedSnippet(snippetRaw, 350) : ''
 
+  const { data: ratingsRows } = await admin.from('reviews').select('rating').eq('server_id', serverId)
+  const ratingsList = (ratingsRows ?? []).map((row) => Number(row.rating)).filter((x) => Number.isFinite(x) && x >= 1 && x <= 5)
+  const reviewCount = ratingsList.length > 0 ? ratingsList.length : 1
+  const avgRating =
+    ratingsList.length > 0 ? ratingsList.reduce((a, b) => a + b, 0) / ratingsList.length : rating
+  const avgOneDecimal = Math.round(avgRating * 10) / 10
+  const avgDisplay = avgOneDecimal.toFixed(1)
+
   let aboutSuffix = ''
   const rid = review.reviewee_id as string | null | undefined
   if (rid && typeof rid === 'string' && UUID_RE.test(rid)) {
@@ -150,7 +177,7 @@ Deno.serve(async (req) => {
       .maybeSingle()
     const nm = (aboutProf?.display_name || aboutProf?.discord_username || '').trim()
     if (nm) {
-      aboutSuffix = `\n\nAbout: ${safeEmbedSnippet(nm, 80)}`
+      aboutSuffix = `\n\n• Review about **${safeEmbedSnippet(nm, 80)}**`
     }
   }
 
@@ -166,28 +193,49 @@ Deno.serve(async (req) => {
   const footerRaw = typeof server.owner_discord_embed_footer === 'string' ? server.owner_discord_embed_footer.trim() : ''
   const footerText = footerRaw ? footerRaw.slice(0, 200) : 'ERLC Directory'
 
-  const author: Record<string, string> = { name: who.slice(0, 256) }
-  const authorIcon = embedHttpsUrl(meProf.discord_avatar as string | null | undefined)
-  if (authorIcon) author.icon_url = authorIcon
-
   const serverBannerImg = embedHttpsUrl(typeof server.banner === 'string' ? server.banner : null)
   const serverIcon = embedHttpsUrl(typeof server.icon === 'string' ? server.icon : null)
 
-  const descriptionLines = [
-    `**${stars}**  (${rating}/5)`,
+  const longDesc =
+    typeof server.owner_long_description === 'string' ? server.owner_long_description.trim() : ''
+  const shortDesc = typeof server.description === 'string' ? server.description.trim() : ''
+  const introSource = longDesc || shortDesc
+  const intro = introSource
+    ? safeEmbedSnippet(introSource, 320)
+    : 'Staff directory listing on ERLC Directory — profiles, invites, and reviews.'
+
+  const memberStr = formatCount(server.member_count as number | null | undefined)
+  const staffStr = formatCount(server.staff_count as number | null | undefined)
+
+  const bulletLines: string[] = []
+  bulletLines.push(`• **${avgDisplay}/5** avg from **${reviewCount}** review${reviewCount === 1 ? '' : 's'}`)
+  bulletLines.push(`• This review: ${stars} (**${rating}/5**)`)
+  if (memberStr) bulletLines.push(`• **${memberStr}** Discord members (approx.)`)
+  if (staffStr) bulletLines.push(`• **${staffStr}** staff listed`)
+  if (server.is_verified) bulletLines.push('• **Verified** on ERLC Directory')
+  if (server.is_hiring) bulletLines.push('• **Hiring**')
+
+  const descriptionParts = [
+    intro,
     '',
+    bulletLines.join('\n'),
+    '',
+    '**Latest review**',
     snippet ? snippet : '_No written comment._',
     aboutSuffix,
   ]
-  const description = descriptionLines.join('\n').slice(0, 4096)
+  const description = descriptionParts.join('\n').slice(0, 4096)
+
+  const serverNameSafe = String(server.name).slice(0, 180)
+  const embedTitle = `${serverNameSafe} | ERLC Directory`.slice(0, 256)
 
   const embed: Record<string, unknown> = {
-    author,
-    title: `New review on ${String(server.name).slice(0, 200)}`,
+    author: { name: 'ERLC Directory' },
+    title: embedTitle,
     url: serverPageUrl,
     description,
     color: embedColor,
-    footer: { text: footerText },
+    footer: { text: footerText, icon_url: `${base}/favicon.png` },
   }
 
   if (serverIcon) embed.thumbnail = { url: serverIcon }
@@ -220,11 +268,28 @@ Deno.serve(async (req) => {
     },
   ]
 
+  const serverChunk = safeContentChunk(String(server.name), 120)
+  const discordId = typeof meProf.discord_id === 'string' ? meProf.discord_id.trim() : ''
+  let messageContent = ''
+  if (discordId && isDiscordSnowflake(discordId)) {
+    messageContent = `<@${discordId}> left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
+      0,
+      2000,
+    )
+  } else {
+    messageContent = `**${safeContentChunk(who, 80)}** left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
+      0,
+      2000,
+    )
+  }
+
   const whRes = await fetch(hook, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       username: 'ERLC Directory',
+      avatar_url: `${base}/favicon.png`,
+      content: messageContent,
       embeds: [embed],
       components,
     }),
