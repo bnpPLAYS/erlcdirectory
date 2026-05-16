@@ -89,7 +89,7 @@ export default function middleware(request: Request): Response | Promise<Respons
     const afterPrefix = path.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/embed.png`;
+      const imageUrl = `${url.origin}/embed.png?v=2`;
       const title = `Verify — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Sign in with Discord to confirm.`;
       return new Response(
@@ -112,7 +112,7 @@ export default function middleware(request: Request): Response | Promise<Respons
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const imageUrl = `${url.origin}/embed.png`;
+  const imageUrl = `${url.origin}/embed.png?v=2`;
 
   return new Response(
     ogDocument({
