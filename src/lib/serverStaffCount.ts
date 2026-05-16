@@ -2,6 +2,7 @@
 export type GuildProfileRow = {
   guild_id: string | null;
   profile_id: string | null;
+  is_verified?: boolean;
 };
 
 /**
@@ -11,6 +12,7 @@ export type GuildProfileRow = {
 export function distinctStaffCountByGuild(rows: GuildProfileRow[]): Map<string, number> {
   const byGuild = new Map<string, Set<string>>();
   for (const r of rows) {
+    if (r.is_verified === false) continue;
     const g = r.guild_id?.trim();
     const p = r.profile_id?.trim();
     if (!g || !p) continue;

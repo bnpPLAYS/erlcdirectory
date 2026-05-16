@@ -21,6 +21,9 @@ const ADMIN = 0x8n
 /** Manage Roles — same permission Discord uses for moderators who can assign roles without Administrator. */
 const MANAGE_ROLES = 1n << 28n
 
+/** Matches `PENDING_EXPERIENCE_ROLE` in src/lib/experienceConstants.ts */
+const PENDING_EXPERIENCE_ROLE = 'Pending verification'
+
 interface DiscordVerifierUser {
   id: string
   username?: string
@@ -637,6 +640,24 @@ Deno.serve(async (req) => {
           decided_at: decidedAt,
         })
         .eq('id', vr.id)
+
+      // Drop server linkage so they are not listed as staff or on public profile until re-verified.
+      if (vr.experience_id) {
+        await admin
+          .from('experiences')
+          .update({
+            guild_id: null,
+            role: PENDING_EXPERIENCE_ROLE,
+            is_verified: false,
+            verified_at: null,
+            verified_by_discord_id: null,
+            verified_by_discord_username: null,
+            verifier_stated_position: null,
+            verifier_review_text: null,
+            verifier_review_rating: null,
+          })
+          .eq('id', vr.experience_id)
+      }
 
       await notifyExperienceDecisionDm(admin, {
         profileId: vr.profile_id,

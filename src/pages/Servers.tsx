@@ -136,8 +136,9 @@ const Servers = () => {
       } else {
         const { data: expRows, error: expErr } = await supabase
           .from('experiences')
-          .select('guild_id, profile_id')
-          .in('guild_id', guildIds);
+          .select('guild_id, profile_id, is_verified')
+          .in('guild_id', guildIds)
+          .eq('is_verified', true);
 
         if (!expErr && expRows) counts = distinctStaffCountByGuild(expRows);
       }
@@ -187,7 +188,8 @@ const Servers = () => {
         const { data: expsRaw } = await supabase
           .from('experiences')
           .select('id, role, is_current, is_verified, profile_id, start_date')
-          .eq('guild_id', guildId);
+          .eq('guild_id', guildId)
+          .eq('is_verified', true);
         const exps = dedupeExperiencesOnePerProfile((expsRaw || []) as GuildExperienceRow[]);
         const profileIds = exps.map((e) => e.profile_id).filter(Boolean);
         let profilesMap = new Map<string, { id: string; discord_username: string | null; display_name: string | null }>();
