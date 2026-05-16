@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -20,6 +20,7 @@ import {
   Bell,
   Eye,
   ChevronDown,
+  ChevronUp,
   Globe,
   Gem,
   UserX,
@@ -57,7 +58,7 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
 import AddExperienceDialog from './AddExperienceDialog';
-import { isPendingPlaceholderRole, PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
+import { isPendingPlaceholderRole, PENDING_EXPERIENCE_ROLE, isExperienceAwaitingVerification } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
 import { publicErrorMessage } from '@/lib/clientErrorHandling';
@@ -92,7 +93,17 @@ import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
 import { profileEditorPath } from '@/lib/profilePath';
 import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
-import { sanitizeProfilePronouns, PROFILE_PRONOUN_OPTIONS } from '@/lib/profilePronouns';
+import {
+  DEFAULT_PROFILE_LINK_PREVIEW,
+  buildProfileOpenGraph,
+  normalizeProfileLinkPreviewConfig,
+  PRO_PREVIEW_DESC_LABELS,
+  PRO_PREVIEW_TITLE_LABELS,
+  type ProfileOgRow,
+  type ProPreviewDescBlock,
+  type ProPreviewImageMode,
+  type ProPreviewTitlePart,
+} from '@/lib/proLinkPreview';
 
 /** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
 const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
@@ -142,8 +153,12 @@ interface ProfileLike {
   dm_website_updates?: boolean | null;
   dm_experience_status_updates?: boolean | null;
   skills: string[];
+  is_verified?: boolean;
+  rating?: number | null;
+  review_count?: number | null;
   is_pro?: boolean;
   pro_badge_label?: string | null;
+  pro_link_preview_config?: Json | null;
   show_pro_avatar_decor?: boolean | null;
   roblox_user_id?: string | null;
   roblox_verified_at?: string | null;
@@ -334,6 +349,16 @@ const ProfileEditor = ({
     buildSocialDraft(profile.social_links),
   );
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
+  const [linkPreviewEnabled, setLinkPreviewEnabled] = useState(false);
+  const [linkPreviewTitleOrder, setLinkPreviewTitleOrder] = useState<ProPreviewTitlePart[]>(() => [
+    ...(DEFAULT_PROFILE_LINK_PREVIEW.title as ProPreviewTitlePart[]),
+  ]);
+  const [linkPreviewDescOrder, setLinkPreviewDescOrder] = useState<ProPreviewDescBlock[]>(() => [
+    ...(DEFAULT_PROFILE_LINK_PREVIEW.description as ProPreviewDescBlock[]),
+  ]);
+  const [linkPreviewImage, setLinkPreviewImage] = useState<ProPreviewImageMode>(
+    DEFAULT_PROFILE_LINK_PREVIEW.image as ProPreviewImageMode,
+  );
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
   const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
   const navigate = useNavigate();
@@ -354,6 +379,14 @@ const ProfileEditor = ({
   }, [profile.id, profile.is_pro, profile.show_pro_avatar_decor]);
 
   useEffect(() => {
+    const cfg = normalizeProfileLinkPreviewConfig(profile.pro_link_preview_config);
+    setLinkPreviewEnabled(cfg.enabled);
+    setLinkPreviewTitleOrder([...(cfg.title as ProPreviewTitlePart[])]);
+    setLinkPreviewDescOrder([...(cfg.description as ProPreviewDescBlock[])]);
+    setLinkPreviewImage(cfg.image as ProPreviewImageMode);
+  }, [profile.id, profile.pro_link_preview_config]);
+
+  useEffect(() => {
     if (!openAddExperienceOnMount) return;
     setAddOpen(true);
     onConsumedAddDeepLink?.();
@@ -370,6 +403,92 @@ const ProfileEditor = ({
   }, []);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const moveLinkPreviewTitle = (index: number, delta: number) => {
+    setLinkPreviewTitleOrder((arr) => {
+      const j = index + delta;
+      if (j < 0 || j >= arr.length) return arr;
+      const n = [...arr];
+      [n[index], n[j]] = [n[j]!, n[index]!];
+      return n;
+    });
+  };
+
+  const moveLinkPreviewDesc = (index: number, delta: number) => {
+    setLinkPreviewDescOrder((arr) => {
+      const j = index + delta;
+      if (j < 0 || j >= arr.length) return arr;
+      const n = [...arr];
+      [n[index], n[j]] = [n[j]!, n[index]!];
+      return n;
+    });
+  };
+
+  const discordOgPreview = useMemo(() => {
+    const topMini = (() => {
+      for (const e of exps) {
+        if (!isExperienceAwaitingVerification(e)) {
+          return {
+            role: e.role,
+            server_name: e.server_name,
+            is_verified: !!e.is_verified,
+            guild_id: e.guild_id ?? null,
+          };
+        }
+      }
+      return null;
+    })();
+
+    const row: ProfileOgRow = {
+      id: profile.id,
+      display_name: form.display_name.trim() || null,
+      discord_username: profile.discord_username ?? null,
+      bio: form.bio.trim() || null,
+      banner_url: form.banner_url.trim() || null,
+      discord_avatar: profile.discord_avatar ?? null,
+      is_verified: !!profile.is_verified,
+      is_pro: !!profile.is_pro,
+      rating: profile.rating ?? null,
+      review_count: profile.review_count ?? null,
+      skills,
+      location: form.location.trim() || null,
+      pronouns: form.pronouns.trim() || null,
+      pro_badge_label: proBadgeLabel.trim() || null,
+      pro_link_preview_config: {
+        enabled: linkPreviewEnabled,
+        title: linkPreviewTitleOrder,
+        description: linkPreviewDescOrder,
+        image: linkPreviewImage,
+      },
+    };
+
+    const useCustom = !!profile.is_pro && linkPreviewEnabled;
+    return buildProfileOpenGraph({
+      profile: row,
+      topExperience: topMini,
+      useProCustomization: useCustom,
+    });
+  }, [
+    profile.id,
+    profile.discord_username,
+    profile.discord_avatar,
+    profile.is_verified,
+    profile.is_pro,
+    profile.rating,
+    profile.review_count,
+    form.display_name,
+    form.bio,
+    form.banner_url,
+    form.location,
+    form.pronouns,
+    skills,
+    proBadgeLabel,
+    exps,
+    linkPreviewEnabled,
+    linkPreviewTitleOrder,
+    linkPreviewDescOrder,
+    linkPreviewImage,
+  ]);
 
   const applyBannerFromFile = async (file: File | undefined | null) => {
     if (!file) return;
@@ -560,6 +679,12 @@ const ProfileEditor = ({
           ? {
               pro_badge_label: badgeF.text.slice(0, 28) || null,
               show_pro_avatar_decor: showProAvatarDecor,
+              pro_link_preview_config: {
+                enabled: linkPreviewEnabled,
+                title: linkPreviewTitleOrder,
+                description: linkPreviewDescOrder,
+                image: linkPreviewImage,
+              },
             }
           : {}),
       };
@@ -605,8 +730,8 @@ const ProfileEditor = ({
       if (filterHits) toast.info('Some wording was adjusted to meet community guidelines.');
       toast.success('Profile saved');
       onSaved();
-    } catch (err: any) {
-      toast.error(err?.message || 'Save failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -1013,6 +1138,7 @@ const ProfileEditor = ({
                     ['editor-customize-pro', 'Pro'],
                     ['editor-customize-preview', 'Preview'],
                     ['editor-customize-theme', 'Theme'],
+                    ['editor-customize-link-preview', 'Link preview'],
                     ['editor-customize-banner', 'Banner'],
                   ] as const
                 )
@@ -1050,7 +1176,7 @@ const ProfileEditor = ({
                   'Higher placement in the Member Directory after staff-featured profiles',
                   'Pro badge with optional short custom tagline',
                   'Optional animated ring around your avatar (toggle below — off by default)',
-                  'Supports moderation tooling and hosting for the directory',
+                  'Customize how your profile looks when pasted in Discord — reorder fields and pick banner vs picture',
                 ].map((t) => (
                   <li
                     key={t}
@@ -1305,6 +1431,165 @@ const ProfileEditor = ({
                 </div>
               </Field>
             </div>
+          </EditorSection>
+
+          <EditorSection
+            sectionId="editor-customize-link-preview"
+            title="Discord link preview"
+            description="How your profile appears when someone shares your URL in Discord or other apps that read Open Graph tags."
+            icon={Sparkles}
+          >
+            {profile.is_pro ? (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Large preview image</p>
+                  <Select
+                    value={linkPreviewImage}
+                    onValueChange={(v) => setLinkPreviewImage(v as ProPreviewImageMode)}
+                  >
+                    <SelectTrigger className={cn(editorSelect, 'max-w-md')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto — banner if set, otherwise profile picture</SelectItem>
+                      <SelectItem value="banner">Banner only</SelectItem>
+                      <SelectItem value="avatar">Profile picture only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Custom layout</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Reorder title segments and description blocks. Turn off to use the default directory preview text.
+                    </p>
+                  </div>
+                  <Switch checked={linkPreviewEnabled} onCheckedChange={(v) => setLinkPreviewEnabled(v === true)} />
+                </div>
+
+                {linkPreviewEnabled ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Title order</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Joined with middle dots · Title truncates on very long combinations.
+                      </p>
+                      <ul className="space-y-1.5 pt-1">
+                        {linkPreviewTitleOrder.map((key, i) => (
+                          <li
+                            key={`${key}-${i}`}
+                            className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5"
+                          >
+                            <span className="flex-1 text-sm truncate">{PRO_PREVIEW_TITLE_LABELS[key]}</span>
+                            <div className="flex shrink-0 gap-0.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={i === 0}
+                                aria-label="Move up"
+                                onClick={() => moveLinkPreviewTitle(i, -1)}
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={i === linkPreviewTitleOrder.length - 1}
+                                aria-label="Move down"
+                                onClick={() => moveLinkPreviewTitle(i, 1)}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description blocks</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Each block becomes its own paragraph when data is available.
+                      </p>
+                      <ul className="space-y-1.5 pt-1">
+                        {linkPreviewDescOrder.map((key, i) => (
+                          <li
+                            key={`${key}-${i}`}
+                            className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5"
+                          >
+                            <span className="flex-1 text-sm truncate">{PRO_PREVIEW_DESC_LABELS[key]}</span>
+                            <div className="flex shrink-0 gap-0.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={i === 0}
+                                aria-label="Move up"
+                                onClick={() => moveLinkPreviewDesc(i, -1)}
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={i === linkPreviewDescOrder.length - 1}
+                                aria-label="Move down"
+                                onClick={() => moveLinkPreviewDesc(i, 1)}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-xl border border-white/10 bg-zinc-950/80 p-4 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Approximate preview</p>
+                  <p className="text-sm font-semibold text-foreground leading-snug">{discordOgPreview.title}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{discordOgPreview.description}</p>
+                  <p className="text-[11px] text-muted-foreground/70 pt-1">
+                    Discord may cache previews; image follows “{linkPreviewImage}”. Save profile to publish changes.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl border-white/15"
+                  onClick={() => {
+                    const d = DEFAULT_PROFILE_LINK_PREVIEW;
+                    setLinkPreviewEnabled(false);
+                    setLinkPreviewTitleOrder([...(d.title as ProPreviewTitlePart[])]);
+                    setLinkPreviewDescOrder([...(d.description as ProPreviewDescBlock[])]);
+                    setLinkPreviewImage(d.image as ProPreviewImageMode);
+                  }}
+                >
+                  Reset link preview defaults
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.04] p-4">
+                <p className="text-sm text-foreground font-medium mb-1">Pro feature</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  Upgrade to choose banner vs avatar for the large embed image and reorder what appears in the title and
+                  description when your profile link is shared.
+                </p>
+                <Button asChild size="sm" variant="secondary" className="rounded-xl">
+                  <Link to="/pro">View Pro</Link>
+                </Button>
+              </div>
+            )}
           </EditorSection>
 
           <EditorSection
