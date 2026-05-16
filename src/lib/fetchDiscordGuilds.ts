@@ -32,9 +32,8 @@ function normalizeGuildList(raw: unknown): DiscordGuildListItem[] {
 }
 
 /**
- * Loads the signed-in user's Discord guilds. Tries Supabase Edge Function first, then
- * same-origin `/api/discord-guilds` (Vercel) with the Discord OAuth access token so the
- * app works when Edge Functions are not deployed.
+ * Loads the signed-in user's Discord guilds via Supabase Edge Function (JWT), or same-origin
+ * `/api/discord-guilds` with the session access token when the Edge Function is unavailable.
  */
 export async function fetchDiscordGuilds(): Promise<DiscordGuildListItem[]> {
   const {
@@ -56,19 +55,11 @@ export async function fetchDiscordGuilds(): Promise<DiscordGuildListItem[]> {
     return normalizeGuildList(edgeGuilds);
   }
 
-  let discordToken = session.provider_token ?? null;
-  if (!discordToken) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('discord_access_token')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-    discordToken = profile?.discord_access_token ?? null;
-  }
+  const discordToken = session.provider_token ?? null;
 
   if (!discordToken) {
     throw new Error(
-      'No Discord access token. Sign out and sign in with Discord again, or deploy the discord-guilds function on Supabase.',
+      'No Discord access token in your session. Sign out and sign in with Discord again, or deploy the discord-guilds function on Supabase.',
     );
   }
 

@@ -83,6 +83,30 @@ export type Database = {
           },
         ]
       }
+      discord_oauth_credentials: {
+        Row: {
+          access_token: string | null
+          expires_at: string | null
+          refresh_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          expires_at?: string | null
+          refresh_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          expires_at?: string | null
+          refresh_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       experience_verification_requests: {
         Row: {
           approver_discord_id: string | null
@@ -536,11 +560,8 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string
-          discord_access_token: string | null
           discord_avatar: string | null
           discord_id: string | null
-          discord_refresh_token: string | null
-          discord_token_expires_at: string | null
           discord_username: string | null
           dm_experience_status_updates: boolean
           dm_website_updates: boolean
@@ -575,11 +596,8 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string
-          discord_access_token?: string | null
           discord_avatar?: string | null
           discord_id?: string | null
-          discord_refresh_token?: string | null
-          discord_token_expires_at?: string | null
           discord_username?: string | null
           dm_experience_status_updates?: boolean | null
           dm_website_updates?: boolean | null
@@ -614,11 +632,8 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string
-          discord_access_token?: string | null
           discord_avatar?: string | null
           discord_id?: string | null
-          discord_refresh_token?: string | null
-          discord_token_expires_at?: string | null
           discord_username?: string | null
           dm_experience_status_updates?: boolean | null
           dm_website_updates?: boolean | null
@@ -735,6 +750,8 @@ export type Database = {
           owner_show_staff_section: boolean
           owner_show_reviews_section: boolean
           owner_hero_video_url: string | null
+          owner_discord_embed_color: number | null
+          owner_discord_embed_footer: string | null
         }
         Insert: {
           banner?: string | null
@@ -765,6 +782,8 @@ export type Database = {
           owner_show_staff_section?: boolean
           owner_show_reviews_section?: boolean
           owner_hero_video_url?: string | null
+          owner_discord_embed_color?: number | null
+          owner_discord_embed_footer?: string | null
         }
         Update: {
           banner?: string | null
@@ -795,6 +814,8 @@ export type Database = {
           owner_show_staff_section?: boolean
           owner_show_reviews_section?: boolean
           owner_hero_video_url?: string | null
+          owner_discord_embed_color?: number | null
+          owner_discord_embed_footer?: string | null
         }
         Relationships: [
           {
@@ -944,6 +965,20 @@ export type Database = {
           discord_link: string
           message: string | null
           status: string
+          created_at: string
+        }[]
+      }
+      staff_admin_list_profiles: {
+        Args: { p_limit?: number }
+        Returns: {
+          id: string
+          user_id: string
+          display_name: string | null
+          discord_username: string | null
+          discord_avatar: string | null
+          is_verified: boolean | null
+          is_featured: boolean | null
+          is_pro: boolean
           created_at: string
         }[]
       }

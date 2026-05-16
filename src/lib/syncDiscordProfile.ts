@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
+import { invokeSyncDiscordTokens } from '@/lib/callSyncDiscordTokens';
 import { discordDefaultAvatarCdnUrl } from '@/lib/discordDefaultAvatar';
 
 /** Discord CDN avatar URL from user id + avatar hash (OAuth sometimes omits full `avatar_url` in JWT). */
@@ -65,8 +66,8 @@ export function getDiscordSessionDisplay(user: User | null | undefined): Discord
 }
 
 /**
- * Persist Discord identity + tokens on `profiles` after Supabase OAuth (discord-guilds reads tokens from here).
- * Uses `session.user` only — avoids an extra `getUser()` round trip on every sync.
+ * Persist Discord identity on `profiles` after Supabase OAuth. OAuth tokens are stored in
+ * `discord_oauth_credentials` via the sync-discord-tokens Edge Function (not readable from PostgREST).
  */
 export async function syncDiscordProfileFromSession(session: Session): Promise<{ error: Error | null }> {
   const user = session.user;
@@ -123,12 +124,20 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     updated_at: new Date().toISOString(),
   };
 
-  if (session.provider_token) {
-    patch.discord_access_token = session.provider_token;
-  }
-  if (session.provider_refresh_token) {
-    patch.discord_refresh_token = session.provider_refresh_token;
-  }
+  const persistTokens = async () => {
+    const body: { access_token?: string; refresh_token?: string; expires_in?: number } = {};
+    if (session.provider_token) body.access_token = session.provider_token;
+    if (session.provider_refresh_token) body.refresh_token = session.provider_refresh_token;
+    const expIn = (session as { expires_in?: number }).expires_in;
+    if (typeof expIn === 'number' && Number.isFinite(expIn) && expIn > 0) {
+      body.expires_in = expIn;
+    }
+    if (!body.access_token && !body.refresh_token) return;
+    const r = await invokeSyncDiscordTokens(body);
+    if (!r.ok && r.error) {
+      console.warn('syncDiscordProfileFromSession: token sync', r.error);
+    }
+  };
 
   const { data: existing } = await supabase
     .from('profiles')
@@ -140,17 +149,21 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     // Never overwrite `discord_avatar` from the Supabase JWT on routine sync — after a Discord-side
     // avatar change, `user_metadata.avatar_url` / identity_data often stays stale for a long time.
     // Fresh URLs come from `discord-profile-media` (@me) or native discord-oauth; this patch only
-    // updates tokens + identity fields.
+    // updates identity fields (tokens go to `discord_oauth_credentials` via persistTokens).
     const { discord_avatar: _omitAvatar, ...patchSansAvatar } = patch;
     const { error } = await supabase.from('profiles').update(patchSansAvatar).eq('user_id', user.id);
-    return { error: error ? new Error(error.message) : null };
+    if (error) return { error: new Error(error.message) };
+    await persistTokens();
+    return { error: null };
   }
 
   const { error } = await supabase.from('profiles').insert({
     user_id: user.id,
     ...patch,
   });
-  return { error: error ? new Error(error.message) : null };
+  if (error) return { error: new Error(error.message) };
+  await persistTokens();
+  return { error: null };
 }
 
 /**

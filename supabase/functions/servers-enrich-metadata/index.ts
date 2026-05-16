@@ -3,6 +3,7 @@ import {
   discordIconCdnUrl,
   enrichDiscordGuildForDirectory,
 } from '../_shared/discordGuildEnrichment.ts'
+import { loadDiscordOAuthCredentials, upsertDiscordOAuthCredentials } from '../_shared/discordOAuthCredentials.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,24 +48,17 @@ async function callerDiscordAccessToken(
   admin: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<string | null> {
-  const { data: row } = await admin
-    .from('profiles')
-    .select('discord_access_token, discord_refresh_token')
-    .eq('user_id', userId)
-    .maybeSingle()
-  let access = row?.discord_access_token?.trim() ?? ''
-  const refresh = row?.discord_refresh_token?.trim() ?? ''
+  const creds = await loadDiscordOAuthCredentials(admin, userId)
+  let access = creds?.access_token?.trim() ?? ''
+  const refresh = creds?.refresh_token?.trim() ?? ''
   if (!access && refresh) {
     const r = await refreshDiscordAccessToken(refresh)
     if (r?.access_token) {
       access = r.access_token
-      await admin
-        .from('profiles')
-        .update({
-          discord_access_token: access,
-          discord_refresh_token: r.refresh_token ?? refresh,
-        })
-        .eq('user_id', userId)
+      await upsertDiscordOAuthCredentials(admin, userId, {
+        access_token: access,
+        refresh_token: r.refresh_token ?? refresh,
+      })
     }
   }
   return access || null

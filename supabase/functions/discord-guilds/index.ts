@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { loadDiscordOAuthCredentials, upsertDiscordOAuthCredentials } from '../_shared/discordOAuthCredentials.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,21 +37,17 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: 'Not signed in.' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey)
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('id, discord_access_token, discord_refresh_token, discord_token_expires_at')
-      .eq('user_id', userId)
-      .maybeSingle()
+    const creds = await loadDiscordOAuthCredentials(admin, userId)
 
-    if (!profile?.discord_access_token) return json({ error: 'No Discord account linked.' }, 400)
+    if (!creds?.access_token?.trim()) return json({ error: 'No Discord account linked.' }, 400)
 
-    let accessToken = profile.discord_access_token as string
+    let accessToken = creds.access_token.trim()
+    const refreshToken = creds.refresh_token?.trim() ?? ''
 
-    // Refresh if expired
     if (
-      profile.discord_token_expires_at &&
-      new Date(profile.discord_token_expires_at).getTime() < Date.now() + 30_000 &&
-      profile.discord_refresh_token
+      creds.expires_at &&
+      new Date(creds.expires_at).getTime() < Date.now() + 30_000 &&
+      refreshToken
     ) {
       const refreshRes = await fetch('https://discord.com/api/oauth2/token', {
         method: 'POST',
@@ -59,22 +56,20 @@ Deno.serve(async (req) => {
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'refresh_token',
-          refresh_token: profile.discord_refresh_token,
+          refresh_token: refreshToken,
         }),
       })
       const refreshed = await refreshRes.json()
       if (refreshRes.ok && refreshed.access_token) {
         accessToken = refreshed.access_token
-        await admin
-          .from('profiles')
-          .update({
-            discord_access_token: refreshed.access_token,
-            discord_refresh_token: refreshed.refresh_token ?? profile.discord_refresh_token,
-            discord_token_expires_at: new Date(
-              Date.now() + Number(refreshed.expires_in ?? 0) * 1000
-            ).toISOString(),
-          })
-          .eq('id', profile.id)
+        const expireIso = new Date(
+          Date.now() + Number(refreshed.expires_in ?? 0) * 1000,
+        ).toISOString()
+        await upsertDiscordOAuthCredentials(admin, userId, {
+          access_token: refreshed.access_token,
+          refresh_token: refreshed.refresh_token ?? refreshToken,
+          expires_at: expireIso,
+        })
       }
     }
 
@@ -89,7 +84,11 @@ Deno.serve(async (req) => {
 
     const out = (guilds as any[]).map((g) => {
       const perms = (() => {
-        try { return BigInt(g.permissions ?? '0') } catch { return 0n }
+        try {
+          return BigInt(g.permissions ?? '0')
+        } catch {
+          return 0n
+        }
       })()
       return {
         id: g.id,

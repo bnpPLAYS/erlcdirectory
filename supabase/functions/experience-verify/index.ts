@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import { loadDiscordOAuthCredentials, upsertDiscordOAuthCredentials } from '../_shared/discordOAuthCredentials.ts'
 import { sendDiscordUserDm } from '../_shared/discordDm.ts'
 import { discordIconCdnUrl, enrichDiscordGuildForDirectory } from '../_shared/discordGuildEnrichment.ts'
 import { fetchMemberDiscordRolesForGuild } from '../_shared/discordMemberRoles.ts'
@@ -113,30 +114,29 @@ async function tryDiscordViaSupabaseSession(
 
   const { data: row } = await admin
     .from('profiles')
-    .select('id, discord_id, discord_access_token, discord_refresh_token, discord_token_expires_at')
+    .select('id, discord_id')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!row?.id) return null
-  if (!row.discord_refresh_token && !row.discord_access_token) return null
 
-  let accessToken = (row.discord_access_token ?? '').trim()
-  const expMs = row.discord_token_expires_at ? new Date(row.discord_token_expires_at).getTime() : 0
+  const creds = await loadDiscordOAuthCredentials(admin, user.id)
+  if (!creds?.refresh_token?.trim() && !creds?.access_token?.trim()) return null
+
+  let accessToken = (creds.access_token ?? '').trim()
+  const expMs = creds.expires_at ? new Date(creds.expires_at).getTime() : 0
   const stale = !accessToken || Date.now() > expMs - 90_000
 
-  if (stale && row.discord_refresh_token) {
-    const refreshed = await refreshDiscordAccessToken(row.discord_refresh_token, clientId, clientSecret)
+  if (stale && creds.refresh_token) {
+    const refreshed = await refreshDiscordAccessToken(creds.refresh_token, clientId, clientSecret)
     if (!refreshed?.access_token) return null
     accessToken = refreshed.access_token
     const expireIso = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-    await admin
-      .from('profiles')
-      .update({
-        discord_access_token: refreshed.access_token,
-        discord_refresh_token: refreshed.refresh_token ?? row.discord_refresh_token,
-        discord_token_expires_at: expireIso,
-      })
-      .eq('id', row.id)
+    await upsertDiscordOAuthCredentials(admin, user.id, {
+      access_token: refreshed.access_token,
+      refresh_token: refreshed.refresh_token ?? creds.refresh_token,
+      expires_at: expireIso,
+    })
   }
 
   if (!accessToken) return null

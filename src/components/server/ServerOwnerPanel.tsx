@@ -36,6 +36,20 @@ import { extractYouTubeId } from '@/lib/youtubeEmbed';
 const PRESETS_FREE = ['zinc', 'slate', 'neutral'] as const;
 const PRESETS_PRO = ['rose', 'cyan', 'amber', 'violet'] as const;
 const MAX_DESC = 8000;
+const MAX_EMBED_FOOTER = 200;
+const DEFAULT_REVIEW_EMBED_HEX = '#5865f2';
+
+function discordEmbedIntFromHex(hex: string): number | null {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  return parseInt(m[1], 16);
+}
+
+function hexFromDiscordEmbedInt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return DEFAULT_REVIEW_EMBED_HEX;
+  const c = Math.max(0, Math.min(0xffffff, Math.floor(n)));
+  return `#${c.toString(16).padStart(6, '0')}`;
+}
 
 function parseJsonStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -68,6 +82,8 @@ export type ServerOwnerPanelServer = {
   owner_theme_preset: string | null;
   owner_gallery_urls: unknown;
   owner_review_webhook_url: string | null;
+  owner_discord_embed_color: number | null;
+  owner_discord_embed_footer: string | null;
   owner_hidden_staff_profile_ids: unknown;
   owner_show_staff_section: boolean | null;
   owner_show_reviews_section: boolean | null;
@@ -92,6 +108,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
   const [preset, setPreset] = useState(server.owner_theme_preset || 'zinc');
   const [galleryUrls, setGalleryUrls] = useState<string[]>(() => parseJsonStringArray(server.owner_gallery_urls));
   const [webhook, setWebhook] = useState(server.owner_review_webhook_url ?? '');
+  const [embedColorHex, setEmbedColorHex] = useState(() => hexFromDiscordEmbedInt(server.owner_discord_embed_color));
+  const [embedFooter, setEmbedFooter] = useState(server.owner_discord_embed_footer ?? '');
   const [invite, setInvite] = useState(server.discord_invite ?? '');
   const [showStaff, setShowStaff] = useState(server.owner_show_staff_section !== false);
   const [showReviews, setShowReviews] = useState(server.owner_show_reviews_section !== false);
@@ -106,6 +124,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
     setPreset(server.owner_theme_preset || 'zinc');
     setGalleryUrls(parseJsonStringArray(server.owner_gallery_urls));
     setWebhook(server.owner_review_webhook_url ?? '');
+    setEmbedColorHex(hexFromDiscordEmbedInt(server.owner_discord_embed_color));
+    setEmbedFooter(server.owner_discord_embed_footer ?? '');
     setInvite(server.discord_invite ?? '');
     setShowStaff(server.owner_show_staff_section !== false);
     setShowReviews(server.owner_show_reviews_section !== false);
@@ -190,6 +210,12 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
       toast.error('Webhook must be a https://discord.com/api/webhooks/… URL.');
       return;
     }
+    const embedInt = discordEmbedIntFromHex(embedColorHex.trim() || DEFAULT_REVIEW_EMBED_HEX);
+    if (embedInt == null) {
+      toast.error('Review embed color must be a #RRGGBB hex value.');
+      return;
+    }
+    const foot = embedFooter.trim().slice(0, MAX_EMBED_FOOTER);
     const inv = invite.trim();
     if (inv && !discordInviteLooksValid(inv)) {
       toast.error('Invite must look like a real Discord invite link or code.');
@@ -223,6 +249,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
       owner_theme_preset: safePreset,
       owner_gallery_urls: galleryUrls,
       owner_review_webhook_url: wh || null,
+      owner_discord_embed_color: embedInt,
+      owner_discord_embed_footer: foot || null,
       owner_hidden_staff_profile_ids: [...hiddenIds],
       owner_show_staff_section: showStaff,
       owner_show_reviews_section: showReviews,
@@ -422,6 +450,46 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch }: Pro
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 When someone posts a new review, we send a short embed with a link back to this server page. Leave empty to disable.
               </p>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-white/10 p-3">
+              <p className="text-xs font-medium text-foreground">Review Discord embed</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Customize the embed color and footer on the notification sent to your webhook (Discord limit {MAX_EMBED_FOOTER}{' '}
+                chars on footer).
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Embed color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={/^#[0-9A-Fa-f]{6}$/.test(embedColorHex) ? embedColorHex : DEFAULT_REVIEW_EMBED_HEX}
+                      onChange={(e) => setEmbedColorHex(e.target.value)}
+                      className="h-9 w-12 rounded border border-white/10 bg-transparent cursor-pointer"
+                      aria-label="Discord review embed color"
+                    />
+                    <Input
+                      value={embedColorHex}
+                      onChange={(e) => setEmbedColorHex(e.target.value)}
+                      placeholder={DEFAULT_REVIEW_EMBED_HEX}
+                      className="bg-background/60 border-white/10 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Embed footer</Label>
+                  <Input
+                    value={embedFooter}
+                    onChange={(e) => setEmbedFooter(e.target.value.slice(0, MAX_EMBED_FOOTER))}
+                    placeholder="e.g. Your server name · reviews"
+                    className="bg-background/60 border-white/10 text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {embedFooter.length} / {MAX_EMBED_FOOTER}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {ownerIsPro ? (

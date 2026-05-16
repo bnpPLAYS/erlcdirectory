@@ -23,7 +23,8 @@
     "deploy:function:staff-moderation-action": "supabase functions deploy staff-moderation-action",
     "deploy:function:staff-directory-action": "supabase functions deploy staff-directory-action",
     "deploy:function:submit-server-claim": "supabase functions deploy submit-server-claim",
-    "deploy:function:staff-server-claim-action": "supabase functions deploy staff-server-claim-action"
+    "deploy:function:staff-server-claim-action": "supabase functions deploy staff-server-claim-action",
+    "deploy:function:sync-discord-tokens": "supabase functions deploy sync-discord-tokens"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
