@@ -85,6 +85,17 @@ function featuredFirstCmp(a: Profile, b: Profile): number {
   return af ? -1 : 1;
 }
 
+/**
+ * Members with at least one directory-visible experience (shown on cards) sort above profiles
+ * with no registered roles — avoids empty profiles dominating options like “Newest”.
+ */
+function listedExperienceFirstCmp(a: Profile, b: Profile): number {
+  const ac = (a.experiences?.length ?? 0) > 0;
+  const bc = (b.experiences?.length ?? 0) > 0;
+  if (ac === bc) return 0;
+  return ac ? -1 : 1;
+}
+
 /** How many Pro profiles get a random “spotlight” row directly under featured members. */
 const DIRECTORY_PRO_SPOTLIGHT_COUNT = 2;
 
@@ -123,6 +134,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const x = listedExperienceFirstCmp(a, b);
+        if (x !== 0) return x;
         const d = createdTime(b.created_at) - createdTime(a.created_at);
         if (d !== 0) return d;
         return idCmp(a, b);
@@ -131,6 +144,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const x = listedExperienceFirstCmp(a, b);
+        if (x !== 0) return x;
         const rd = finiteNum(b.rating) - finiteNum(a.rating);
         if (rd !== 0) return rd;
         const rc = finiteNum(b.review_count) - finiteNum(a.review_count);
@@ -141,6 +156,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const x = listedExperienceFirstCmp(a, b);
+        if (x !== 0) return x;
         const m = finiteNum(b.total_members) - finiteNum(a.total_members);
         if (m !== 0) return m;
         return idCmp(a, b);
@@ -149,6 +166,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const x = listedExperienceFirstCmp(a, b);
+        if (x !== 0) return x;
         const e =
           finiteNum(b.verified_experience_count) - finiteNum(a.verified_experience_count);
         if (e !== 0) return e;
@@ -158,6 +177,8 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
       return copy.sort((a, b) => {
         const f = featuredFirstCmp(a, b);
         if (f !== 0) return f;
+        const x = listedExperienceFirstCmp(a, b);
+        if (x !== 0) return x;
         const c = displaySortKey(a).localeCompare(displaySortKey(b), undefined, {
           sensitivity: 'base',
         });
@@ -215,7 +236,7 @@ const Browse = () => {
     });
 
     const enriched: Profile[] = data.map((p) => {
-      let userExps = (exps || []).filter((e) => e.profile_id === p.id);
+      const userExps = (exps || []).filter((e) => e.profile_id === p.id);
       userExps.sort((a, b) => {
         const d = createdTime(b.start_date) - createdTime(a.start_date);
         return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
