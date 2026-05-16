@@ -33,6 +33,40 @@ function siteBase(): string {
   return (Deno.env.get('SITE_PUBLIC_ORIGIN') || 'https://www.erlc.directory').trim().replace(/\/$/, '')
 }
 
+/** Discord Nitro / animated assets use `a_` hashes and must be requested as `.gif`. */
+function fixDiscordAnimatedAssetUrlString(url: string): string {
+  try {
+    const u = new URL(url)
+    const h = u.hostname.toLowerCase()
+    if (h !== 'cdn.discordapp.com' && h !== 'cdn.discord.com') return url
+    const m = /^\/(avatars|icons|banners)\/(\d+)\/([^/.]+)\.(png|webp|jpe?g)$/i.exec(u.pathname)
+    if (!m) return url
+    const hash = m[3]
+    if (!hash.startsWith('a_')) return url
+    const ext = m[4].toLowerCase()
+    if (ext === 'gif' || ext === 'webm') return url
+    u.pathname = `/${m[1]}/${m[2]}/${hash}.gif`
+    return u.toString()
+  } catch {
+    return url
+  }
+}
+
+function embedHttpsUrl(raw: string | null | undefined): string | null {
+  if (raw == null || typeof raw !== 'string') return null
+  const t = raw.trim()
+  if (!t.startsWith('https://') || t.length > 2048) return null
+  return fixDiscordAnimatedAssetUrlString(t)
+}
+
+function safeEmbedSnippet(s: string, max: number): string {
+  return s
+    .replace(/[\n\r]+/g, ' ')
+    .replace(/[*_`]/g, '')
+    .trim()
+    .slice(0, max)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
@@ -66,12 +100,16 @@ Deno.serve(async (req) => {
   if (userErr || !user) return json({ ok: false, error: 'Invalid session.' }, 401)
 
   const admin = createClient(supabaseUrl, serviceKey)
-  const { data: meProf } = await admin.from('profiles').select('id, display_name, discord_username').eq('user_id', user.id).maybeSingle()
+  const { data: meProf } = await admin
+    .from('profiles')
+    .select('id, display_name, discord_username, discord_avatar, banner_url')
+    .eq('user_id', user.id)
+    .maybeSingle()
   if (!meProf?.id) return json({ ok: false, error: 'Profile not found.' }, 400)
 
   const { data: review, error: rErr } = await admin
     .from('reviews')
-    .select('id, server_id, reviewer_id, rating, content, created_at')
+    .select('id, server_id, reviewer_id, reviewee_id, rating, content, created_at')
     .eq('id', reviewId)
     .maybeSingle()
 
@@ -81,7 +119,7 @@ Deno.serve(async (req) => {
 
   const { data: server, error: sErr } = await admin
     .from('servers')
-    .select('id, name, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer')
+    .select('id, name, icon, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer')
     .eq('id', serverId)
     .maybeSingle()
 
@@ -92,11 +130,27 @@ Deno.serve(async (req) => {
   if (!discordWebhookOk(hook)) return json({ ok: false, error: 'Server webhook URL is invalid.' }, 400)
 
   const base = siteBase()
-  const serverUrl = `${base}/servers/${serverId}`
+  const serverPageUrl = `${base}/server/${serverId}`
+  const reviewsUrl = `${serverPageUrl}#reviews`
   const rating = Math.min(5, Math.max(1, Math.round(Number(review.rating) || 1)))
   const stars = `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`
   const who = meProf.display_name || meProf.discord_username || 'Someone'
-  const snippet = (review.content as string | null)?.trim()?.slice(0, 350) || '(no text)'
+  const snippetRaw = (review.content as string | null)?.trim() || ''
+  const snippet = snippetRaw ? safeEmbedSnippet(snippetRaw, 350) : ''
+
+  let aboutSuffix = ''
+  const rid = review.reviewee_id as string | null | undefined
+  if (rid && typeof rid === 'string' && UUID_RE.test(rid)) {
+    const { data: aboutProf } = await admin
+      .from('profiles')
+      .select('display_name, discord_username')
+      .eq('id', rid)
+      .maybeSingle()
+    const nm = (aboutProf?.display_name || aboutProf?.discord_username || '').trim()
+    if (nm) {
+      aboutSuffix = `\n\nAbout: ${safeEmbedSnippet(nm, 80)}`
+    }
+  }
 
   const rawColor = server.owner_discord_embed_color
   const embedColor =
@@ -110,13 +164,59 @@ Deno.serve(async (req) => {
   const footerRaw = typeof server.owner_discord_embed_footer === 'string' ? server.owner_discord_embed_footer.trim() : ''
   const footerText = footerRaw ? footerRaw.slice(0, 200) : 'ERLC Directory'
 
-  const embed = {
-    title: `New review — ${server.name}`,
-    url: serverUrl,
-    description: `**${who}** left ${stars}\n\n${snippet}`,
+  const author: Record<string, string> = { name: who.slice(0, 256) }
+  const authorIcon = embedHttpsUrl(meProf.discord_avatar as string | null | undefined)
+  if (authorIcon) author.icon_url = authorIcon
+
+  const bannerImg = embedHttpsUrl(meProf.banner_url as string | null | undefined)
+  const serverIcon = embedHttpsUrl(typeof server.icon === 'string' ? server.icon : null)
+
+  const descriptionLines = [
+    `**${stars}**  (${rating}/5)`,
+    '',
+    snippet ? snippet : '_No written comment._',
+    aboutSuffix,
+  ]
+  const description = descriptionLines.join('\n').slice(0, 4096)
+
+  const embed: Record<string, unknown> = {
+    author,
+    title: `New review on ${String(server.name).slice(0, 200)}`,
+    url: serverPageUrl,
+    description,
     color: embedColor,
     footer: { text: footerText },
   }
+
+  if (serverIcon) embed.thumbnail = { url: serverIcon }
+  if (bannerImg) embed.image = { url: bannerImg }
+
+  try {
+    const d = new Date(review.created_at as string)
+    if (!Number.isNaN(d.getTime())) embed.timestamp = d.toISOString()
+  } catch {
+    /* omit timestamp */
+  }
+
+  const components = [
+    {
+      type: 1,
+      components: [
+        {
+          type: 2,
+          style: 5,
+          label: 'View server page',
+          url: serverPageUrl,
+        },
+        {
+          type: 2,
+          style: 5,
+          label: 'Write a review',
+          url: reviewsUrl,
+        },
+      ],
+    },
+  ]
 
   const whRes = await fetch(hook, {
     method: 'POST',
@@ -124,6 +224,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       username: 'ERLC Directory',
       embeds: [embed],
+      components,
     }),
   })
 

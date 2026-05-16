@@ -709,7 +709,7 @@ const Profile = () => {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="reviews">
+                  <TabsContent value="reviews" id="reviews" className="scroll-mt-24">
                     <ReviewsSection profileId={profile.id} staffTools={isStaff && !isOwner} />
                   </TabsContent>
                 </Tabs>

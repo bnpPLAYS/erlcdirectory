@@ -655,7 +655,7 @@ const ServerDetail = () => {
             )}
           </div>
 
-          <div>
+          <div id="reviews" className="scroll-mt-28">
             {showReviewsBlock ? (
               <ReviewsSection
                 serverId={server.id}
