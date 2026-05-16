@@ -119,7 +119,9 @@ Deno.serve(async (req) => {
 
   const { data: server, error: sErr } = await admin
     .from('servers')
-    .select('id, name, icon, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer')
+    .select(
+      'id, name, icon, banner, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer',
+    )
     .eq('id', serverId)
     .maybeSingle()
 
@@ -168,7 +170,7 @@ Deno.serve(async (req) => {
   const authorIcon = embedHttpsUrl(meProf.discord_avatar as string | null | undefined)
   if (authorIcon) author.icon_url = authorIcon
 
-  const bannerImg = embedHttpsUrl(meProf.banner_url as string | null | undefined)
+  const serverBannerImg = embedHttpsUrl(typeof server.banner === 'string' ? server.banner : null)
   const serverIcon = embedHttpsUrl(typeof server.icon === 'string' ? server.icon : null)
 
   const descriptionLines = [
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
   }
 
   if (serverIcon) embed.thumbnail = { url: serverIcon }
-  if (bannerImg) embed.image = { url: bannerImg }
+  if (serverBannerImg) embed.image = { url: serverBannerImg }
 
   try {
     const d = new Date(review.created_at as string)
@@ -205,7 +207,7 @@ Deno.serve(async (req) => {
         {
           type: 2,
           style: 5,
-          label: 'View server page',
+          label: 'View server',
           url: serverPageUrl,
         },
         {

@@ -186,7 +186,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   if (method === 'GET' || method === 'HEAD') {
     const webReq = await incomingToRequest(req, baseOrigin);
-    const og = getCrawlerOgResponse(webReq);
+    const og = await getCrawlerOgResponse(webReq);
     if (og) {
       await sendWebResponse(res, og);
       return;

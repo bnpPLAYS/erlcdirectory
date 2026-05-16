@@ -1,5 +1,12 @@
 /** Minimal Open Graph HTML for Discord and other crawlers (no JavaScript). */
 
+import {
+  fetchPublicServerOgRow,
+  httpsOgImageUrl,
+  parseServerPageId,
+  truncateOgDescription,
+} from './ogServerPreview.ts';
+
 const EMBED_UA =
   /Discordbot|Twitterbot|facebookexternalhit|Facebot|Slackbot|LinkedInBot|Embedly|Pinterest|vkShare|TelegramBot|WhatsApp|SkypeUriPreview|Slack-ImgProxy/i;
 
@@ -25,6 +32,8 @@ function ogDocument(opts: {
   description: string;
   canonicalUrl: string;
   imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
   siteName: string;
   themeColor: string;
   bodyHtml: string;
@@ -35,6 +44,8 @@ function ogDocument(opts: {
   const escImg = escapeHtml(opts.imageUrl);
   const escSite = escapeHtml(opts.siteName);
   const escTheme = escapeHtml(opts.themeColor);
+  const w = opts.imageWidth ?? 1200;
+  const h = opts.imageHeight ?? 630;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,8 +60,8 @@ function ogDocument(opts: {
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="${escSite}" />
 <meta property="og:image" content="${escImg}" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
+<meta property="og:image:width" content="${String(w)}" />
+<meta property="og:image:height" content="${String(h)}" />
 <meta property="og:image:alt" content="${escTitle}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escTitle}" />
@@ -79,13 +90,30 @@ const ogHtmlHeaders = {
   'Cache-Control': 'public, max-age=300, s-maxage=600',
 };
 
+function supabaseEnv(): { url: string; anonKey: string } | null {
+  const ref = process.env.VITE_SUPABASE_PROJECT_ID?.trim();
+  const supabaseUrl = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    (ref ? `https://${ref}.supabase.co` : '')
+  )
+    .trim()
+    .replace(/\/$/, '');
+  const anonKey =
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    '';
+  if (!supabaseUrl || !anonKey) return null;
+  return { url: supabaseUrl, anonKey };
+}
+
 export function shouldSkipOgForPath(pathname: string): boolean {
   if (pathname.startsWith('/api/')) return true;
   return SKIP_OG_PATH.test(pathname);
 }
 
 /** Returns HTML for embed crawlers, or null to serve the SPA / static file instead. */
-export function getCrawlerOgResponse(request: Request): Response | null {
+export async function getCrawlerOgResponse(request: Request): Promise<Response | null> {
   if (request.method !== 'GET') return null;
 
   const url = new URL(request.url);
@@ -109,6 +137,8 @@ export function getCrawlerOgResponse(request: Request): Response | null {
           description,
           canonicalUrl,
           imageUrl,
+          imageWidth: 1200,
+          imageHeight: 630,
           siteName: SITE_NAME,
           themeColor: THEME_COLOR,
           bodyHtml: verifyEmbedBody(canonicalUrl),
@@ -122,14 +152,44 @@ export function getCrawlerOgResponse(request: Request): Response | null {
   if (!isEmbed) return null;
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const imageUrl = `${url.origin}/embed.png`;
+  const fallbackImage = `${url.origin}/embed.png`;
+
+  const serverId = parseServerPageId(pathname);
+  const sb = serverId ? supabaseEnv() : null;
+  if (serverId && sb) {
+    const row = await fetchPublicServerOgRow(sb.url, sb.anonKey, serverId);
+    if (row) {
+      const bannerOg = httpsOgImageUrl(row.banner);
+      const imageUrl = bannerOg ?? fallbackImage;
+      const descFromServer = truncateOgDescription(row.description, 280);
+      const description =
+        descFromServer ||
+        `${SITE_DESCRIPTION} Open this server’s listing on ERLC.Directory.`;
+      return new Response(
+        ogDocument({
+          title: `${row.name.slice(0, 200)} — ${SITE_NAME}`,
+          description,
+          canonicalUrl,
+          imageUrl,
+          imageWidth: bannerOg ? 960 : 1200,
+          imageHeight: bannerOg ? 540 : 630,
+          siteName: SITE_NAME,
+          themeColor: THEME_COLOR,
+          bodyHtml: siteEmbedBody(canonicalUrl),
+        }),
+        { status: 200, headers: ogHtmlHeaders },
+      );
+    }
+  }
 
   return new Response(
     ogDocument({
       title: SITE_TITLE,
       description: SITE_DESCRIPTION,
       canonicalUrl,
-      imageUrl,
+      imageUrl: fallbackImage,
+      imageWidth: 1200,
+      imageHeight: 630,
       siteName: SITE_NAME,
       themeColor: THEME_COLOR,
       bodyHtml: siteEmbedBody(canonicalUrl),
