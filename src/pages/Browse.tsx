@@ -187,6 +187,7 @@ const Browse = () => {
       .select(
         'id, discord_username, display_name, discord_avatar, bio, is_verified, is_featured, is_pro, pro_badge_label, show_pro_avatar_decor, rating, review_count, skills, created_at',
       )
+      .is('deactivated_at', null)
       .limit(150);
 
     if (error || !data) {

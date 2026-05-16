@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   Plus,
@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Globe,
   Gem,
+  UserX,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -39,9 +40,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import VerifyExperienceDialog from './VerifyExperienceDialog';
@@ -324,6 +334,10 @@ const ProfileEditor = ({
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
   const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const [deactivateDlgOpen, setDeactivateDlgOpen] = useState(false);
+  const [deactivateBusy, setDeactivateBusy] = useState(false);
 
   useEffect(() => {
     setSocialDraft(buildSocialDraft(profile.social_links));
@@ -432,6 +446,23 @@ const ProfileEditor = ({
       window.location.assign(r.url);
     } finally {
       setRobloxOAuthBusy(false);
+    }
+  };
+
+  const handleDeactivateAccount = async () => {
+    setDeactivateBusy(true);
+    try {
+      const { error } = await supabase.rpc('deactivate_own_account');
+      if (error) {
+        toast.error(error.message || 'Could not deactivate your account.');
+        return;
+      }
+      toast.success('Your account has been deactivated.');
+      setDeactivateDlgOpen(false);
+      await signOut();
+      navigate('/');
+    } finally {
+      setDeactivateBusy(false);
     }
   };
 
@@ -944,6 +975,27 @@ const ProfileEditor = ({
               </div>
             </EditorSection>
           ) : null}
+
+          <EditorSection
+            title="Deactivate account"
+            description="Hide your profile from the member directory and sign out. You can ask support to restore access if this was a mistake."
+            icon={UserX}
+          >
+            <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 space-y-3">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your Discord sign-in will stop working for this site until the account is re-enabled. Messages and past
+                activity may remain visible to people you already interacted with.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-xl"
+                onClick={() => setDeactivateDlgOpen(true)}
+              >
+                Deactivate my account
+              </Button>
+            </div>
+          </EditorSection>
         </TabsContent>
 
         {/* CUSTOMIZE */}
@@ -1621,6 +1673,30 @@ const ProfileEditor = ({
           });
         }}
       />
+
+      <Dialog open={deactivateDlgOpen} onOpenChange={setDeactivateDlgOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Deactivate your account?</DialogTitle>
+            <DialogDescription className="text-left space-y-2 pt-1">
+              <span className="block">
+                This hides your profile from the directory and username search. You will be signed out immediately.
+              </span>
+              <span className="block text-muted-foreground">
+                To use the site again later, contact support — self-reactivation is not available in the app yet.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setDeactivateDlgOpen(false)} disabled={deactivateBusy}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={deactivateBusy} onClick={() => void handleDeactivateAccount()}>
+              {deactivateBusy ? 'Working…' : 'Yes, deactivate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
