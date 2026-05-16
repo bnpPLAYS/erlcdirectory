@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Star, MessageSquareText, Server as ServerIcon, X, Flag } from 'lucide-react';
+import { Star, MessageSquareText, Server as ServerIcon, X, Flag, ExternalLink, PenLine } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,12 +20,14 @@ import {
 } from '@/components/ui/select';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { notifyServerReview } from '@/lib/callServerOwnerApi';
+import { normalizeDiscordCdnMediaUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 
 type ProfileChip = {
   id: string;
   display_name: string | null;
   discord_avatar: string | null;
   discord_username: string | null;
+  banner_url: string | null;
 };
 
 interface ReviewRow {
@@ -151,12 +153,12 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
       const [{ data: reviewers }, { data: reviewees }, serversRes] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, display_name, discord_avatar, discord_username')
+          .select('id, display_name, discord_avatar, discord_username, banner_url')
           .in('id', reviewerIds),
         revieweeIds.length
           ? supabase
               .from('profiles')
-              .select('id, display_name, discord_avatar, discord_username')
+              .select('id, display_name, discord_avatar, discord_username, banner_url')
               .in('id', revieweeIds)
           : Promise.resolve({ data: [] as ProfileChip[] }),
         serverIds.length
@@ -390,98 +392,148 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
           </p>
         ) : (
           <div className="space-y-2.5">
-            {reviews.map((r) => (
-              <div key={r.id} className="glass rounded-xl p-3.5">
-                <div className="flex items-start gap-3">
-                  <Link
-                    to={r.reviewer ? profilePath(r.reviewer) : '/browse'}
-                  >
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={r.reviewer?.discord_avatar || undefined} />
-                      <AvatarFallback className="text-xs bg-secondary">
-                        {r.reviewer?.display_name?.[0] || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+            {reviews.map((r) => {
+              const bannerSrc = normalizeDiscordCdnMediaUrl(r.reviewer?.banner_url) ?? r.reviewer?.banner_url ?? undefined;
+              const reviewServerId = serverId || r.server?.id || null;
+              return (
+                <div
+                  key={r.id}
+                  className="glass overflow-hidden rounded-xl border border-white/[0.06] shadow-sm"
+                >
+                  <div className="relative h-[76px] w-full overflow-hidden bg-muted/25">
+                    {bannerSrc ? (
+                      <img
+                        src={bannerSrc}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy={avatarReferrerPolicy(bannerSrc)}
+                      />
+                    ) : (
+                      <div
+                        className="h-full w-full bg-gradient-to-br from-primary/15 via-muted/30 to-muted/5"
+                        aria-hidden
+                      />
+                    )}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card from-[35%] via-card/40 to-transparent" />
+                  </div>
+                  <div className="relative px-3.5 pb-3.5 pt-0">
+                    <div className="flex items-start gap-3 -mt-6">
                       <Link
                         to={r.reviewer ? profilePath(r.reviewer) : '/browse'}
-                        className="text-sm font-semibold hover:underline truncate"
+                        className="shrink-0 rounded-full ring-2 ring-card ring-offset-0"
                       >
-                        {r.reviewer?.display_name || 'Member'}
+                        <Avatar className="h-11 w-11 border-2 border-card shadow-md">
+                          <AvatarImage src={r.reviewer?.discord_avatar || undefined} />
+                          <AvatarFallback className="text-sm bg-secondary">
+                            {r.reviewer?.display_name?.[0] || '?'}
+                          </AvatarFallback>
+                        </Avatar>
                       </Link>
-                      <Stars value={r.rating} size={12} />
-                      {r.server && profileId && (
-                        <Link
-                          to={`/server/${r.server.id}`}
-                          className="text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10"
-                        >
-                          {r.server.icon ? (
-                            <img src={r.server.icon} alt="" className="h-3 w-3 rounded-sm" />
-                          ) : (
-                            <ServerIcon className="h-3 w-3" />
+                      <div className="min-w-0 flex-1 pt-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={r.reviewer ? profilePath(r.reviewer) : '/browse'}
+                            className="truncate text-sm font-semibold hover:underline"
+                          >
+                            {r.reviewer?.display_name || 'Member'}
+                          </Link>
+                          <Stars value={r.rating} size={12} />
+                          {r.server && profileId && (
+                            <Link
+                              to={`/server/${r.server.id}`}
+                              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] bg-white/5 hover:bg-white/10"
+                            >
+                              {r.server.icon ? (
+                                <img src={r.server.icon} alt="" className="h-3 w-3 rounded-sm" />
+                              ) : (
+                                <ServerIcon className="h-3 w-3" />
+                              )}
+                              {r.server.name}
+                            </Link>
                           )}
-                          {r.server.name}
-                        </Link>
-                      )}
-                    </div>
-                    {serverId && r.reviewee && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
-                        <span className="text-muted-foreground/70 shrink-0">Review for</span>
-                        <Link
-                          to={profilePath(r.reviewee)}
-                          className="inline-flex items-center gap-1.5 min-w-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 hover:bg-white/10"
-                        >
-                          <Avatar className="h-4 w-4">
-                            <AvatarImage src={r.reviewee.discord_avatar || undefined} />
-                            <AvatarFallback className="text-[9px] bg-secondary">
-                              {r.reviewee.display_name?.[0] || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium text-foreground/90 truncate">
-                            {r.reviewee.display_name || r.reviewee.discord_username || 'Member'}
-                          </span>
-                        </Link>
-                      </div>
-                    )}
-                    {r.content && (
-                      <p className="text-sm text-muted-foreground/90 mt-1 whitespace-pre-wrap">{r.content}</p>
-                    )}
-                    <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-white/[0.06]">
-                      <p className="text-[11px] text-muted-foreground/60">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        {me && r.reviewer_id !== me.id && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
-                            onClick={() => setReportReviewId(r.id)}
-                          >
-                            <Flag className="h-3 w-3" />
-                            Report
-                          </Button>
+                        </div>
+                        {serverId && r.reviewee && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <span className="shrink-0 text-muted-foreground/70">Review for</span>
+                            <Link
+                              to={profilePath(r.reviewee)}
+                              className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-white/[0.06] px-1.5 py-0.5 hover:bg-white/10"
+                            >
+                              <Avatar className="h-4 w-4">
+                                <AvatarImage src={r.reviewee.discord_avatar || undefined} />
+                                <AvatarFallback className="bg-secondary text-[9px]">
+                                  {r.reviewee.display_name?.[0] || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate font-medium text-foreground/90">
+                                {r.reviewee.display_name || r.reviewee.discord_username || 'Member'}
+                              </span>
+                            </Link>
+                          </div>
                         )}
-                        {staffTools && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
-                            onClick={() => void staffRemoveReview(r.id)}
-                          >
-                            Remove
-                          </Button>
+                        {r.content && (
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground/90">
+                            {r.content}
+                          </p>
                         )}
+                        {reviewServerId ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1.5 border-white/12 bg-background/60 text-xs"
+                            >
+                              <Link to={`/server/${reviewServerId}`}>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Server page
+                              </Link>
+                            </Button>
+                            <Button asChild variant="secondary" size="sm" className="h-8 gap-1.5 text-xs">
+                              <Link to={`/server/${reviewServerId}#reviews`}>
+                                <PenLine className="h-3.5 w-3.5" />
+                                Write a review
+                              </Link>
+                            </Button>
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5">
+                          <p className="text-[11px] text-muted-foreground/60">
+                            {new Date(r.created_at).toLocaleDateString()}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {me && r.reviewer_id !== me.id && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                                onClick={() => setReportReviewId(r.id)}
+                              >
+                                <Flag className="h-3 w-3" />
+                                Report
+                              </Button>
+                            )}
+                            {staffTools && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
+                                onClick={() => void staffRemoveReview(r.id)}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <SubmitReportDialog

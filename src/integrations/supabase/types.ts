@@ -557,6 +557,7 @@ export type Database = {
           accent_color: string | null
           availability: string | null
           banned_at: string | null
+          deactivated_at: string | null
           banner_url: string | null
           bio: string | null
           created_at: string
@@ -593,6 +594,7 @@ export type Database = {
           accent_color?: string | null
           availability?: string | null
           banned_at?: string | null
+          deactivated_at?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
@@ -629,6 +631,7 @@ export type Database = {
           accent_color?: string | null
           availability?: string | null
           banned_at?: string | null
+          deactivated_at?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
@@ -947,6 +950,7 @@ export type Database = {
       }
       is_site_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      deactivate_own_account: { Args: Record<PropertyKey, never>; Returns: undefined }
       discord_invite_looks_valid: { Args: { p_invite: string }; Returns: boolean }
       verified_staff_set_server_discord_invite: {
         Args: { p_server_id: string; p_invite: string }

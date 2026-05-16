@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +27,12 @@ import logo from '@/assets/logo.png';
 import { pageHeroEnter } from '@/lib/pageHero';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { distinctStaffCountByGuild } from '@/lib/serverStaffCount';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  ServerOwnerPanel,
+  type ServerOwnerPanelCoworker,
+  type ServerOwnerPanelServer,
+} from '@/components/server/ServerOwnerPanel';
 
 interface ServerData {
   id: string;
@@ -37,13 +52,46 @@ interface ServerData {
   owner_profile?: { display_name: string | null; discord_username: string | null } | null;
 }
 
+interface GuildExperienceRow {
+  id: string;
+  role: string;
+  is_current: boolean;
+  is_verified: boolean;
+  profile_id: string;
+  start_date: string;
+}
+
+function dedupeExperiencesOnePerProfile(exps: GuildExperienceRow[]): GuildExperienceRow[] {
+  const sorted = [...exps].sort((a, b) => {
+    if (a.is_verified !== b.is_verified) return (b.is_verified ? 1 : 0) - (a.is_verified ? 1 : 0);
+    if (a.is_current !== b.is_current) return (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0);
+    return new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime();
+  });
+  const seen = new Set<string>();
+  const out: GuildExperienceRow[] = [];
+  for (const e of sorted) {
+    if (!e.profile_id || seen.has(e.profile_id)) continue;
+    seen.add(e.profile_id);
+    out.push(e);
+  }
+  return out;
+}
+
 const Servers = () => {
+  const { profile: meProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [servers, setServers] = useState<ServerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('featured');
   const [filterHiring, setFilterHiring] = useState(false);
   const enrichOnceRef = useRef(false);
+
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelServer, setPanelServer] = useState<ServerOwnerPanelServer | null>(null);
+  const [panelOwnerIsPro, setPanelOwnerIsPro] = useState(false);
+  const [panelCoworkers, setPanelCoworkers] = useState<ServerOwnerPanelCoworker[]>([]);
 
   const fetchServers = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = !!opts?.silent;
@@ -105,6 +153,91 @@ const Servers = () => {
       if (!silent) setLoading(false);
     }
   }, [sortBy]);
+
+  const loadCustomizePanel = useCallback(
+    async (serverId: string) => {
+      if (!meProfile?.id) return;
+      setPanelLoading(true);
+      setPanelServer(null);
+      setPanelCoworkers([]);
+      try {
+        const { data: s, error: sErr } = await supabase.from('servers').select('*').eq('id', serverId).maybeSingle();
+        if (sErr || !s) {
+          toast.error(sErr?.message || 'Server not found.');
+          setCustomizeOpen(false);
+          return;
+        }
+        if (s.owner_id !== meProfile.id) {
+          toast.error('You can only customize servers you own.');
+          setCustomizeOpen(false);
+          return;
+        }
+        setPanelServer(s as ServerOwnerPanelServer);
+
+        const { data: op } = await supabase.from('profiles').select('is_pro').eq('id', s.owner_id).maybeSingle();
+        setPanelOwnerIsPro(!!op?.is_pro);
+
+        const guildId = typeof s.guild_id === 'string' ? s.guild_id.trim() : '';
+        if (!guildId) {
+          setPanelCoworkers([]);
+          return;
+        }
+
+        const { data: expsRaw } = await supabase
+          .from('experiences')
+          .select('id, role, is_current, is_verified, profile_id, start_date')
+          .eq('guild_id', guildId);
+        const exps = dedupeExperiencesOnePerProfile((expsRaw || []) as GuildExperienceRow[]);
+        const profileIds = exps.map((e) => e.profile_id).filter(Boolean);
+        let profilesMap = new Map<string, { id: string; discord_username: string | null; display_name: string | null }>();
+        if (profileIds.length) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, discord_username, display_name')
+            .in('id', profileIds);
+          profilesMap = new Map((profiles || []).map((p) => [p.id, p]));
+        }
+        const coworkers: ServerOwnerPanelCoworker[] = exps
+          .map((e) => {
+            const p = profilesMap.get(e.profile_id);
+            if (!p?.id) return null;
+            return {
+              profileId: p.id,
+              label: p.display_name || p.discord_username || 'Member',
+              isVerified: !!e.is_verified,
+            };
+          })
+          .filter((x): x is ServerOwnerPanelCoworker => x !== null);
+        setPanelCoworkers(coworkers);
+      } finally {
+        setPanelLoading(false);
+      }
+    },
+    [meProfile?.id],
+  );
+
+  const openCustomize = useCallback(
+    (serverId: string) => {
+      setCustomizeOpen(true);
+      void loadCustomizePanel(serverId);
+    },
+    [loadCustomizePanel],
+  );
+
+  useEffect(() => {
+    const id = searchParams.get('customize');
+    if (!id || !meProfile?.id) return;
+    setCustomizeOpen(true);
+    void loadCustomizePanel(id);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('customize');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, meProfile?.id, loadCustomizePanel, setSearchParams]);
 
   useEffect(() => {
     void fetchServers();
@@ -223,7 +356,12 @@ const Servers = () => {
           ) : filteredServers.length > 0 ? (
             <div className="stagger-enter grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredServers.map((server) => (
-                <ServerCard key={server.id} server={server} />
+                <ServerCard
+                  key={server.id}
+                  server={server}
+                  currentProfileId={meProfile?.id ?? null}
+                  onCustomize={openCustomize}
+                />
               ))}
             </div>
           ) : (
@@ -247,6 +385,55 @@ const Servers = () => {
           )}
         </div>
       </section>
+
+      <Sheet
+        open={customizeOpen}
+        onOpenChange={(open) => {
+          setCustomizeOpen(open);
+          if (!open) {
+            setPanelServer(null);
+            setPanelCoworkers([]);
+            setPanelOwnerIsPro(false);
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-white/10 bg-background p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
+        >
+          <SheetHeader className="shrink-0 space-y-1 border-b border-white/10 px-6 py-5 pr-12 text-left">
+            <SheetTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-muted/50">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              </span>
+              Customize server
+            </SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">
+              {panelServer?.name ? `Editing “${panelServer.name}”.` : 'Invite, page copy, theme, gallery, and review notifications.'}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+            {panelLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="text-sm">Loading settings…</span>
+              </div>
+            ) : panelServer ? (
+              <ServerOwnerPanel
+                server={panelServer}
+                ownerIsPro={panelOwnerIsPro}
+                coworkers={panelCoworkers}
+                onPatch={(patch) => {
+                  setPanelServer((prev) => (prev ? { ...prev, ...patch } : prev));
+                  void fetchServers({ silent: true });
+                }}
+              />
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground">Could not load this server.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <SiteFooter />
     </div>
