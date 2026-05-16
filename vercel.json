@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/share-verify-preview.png",
-      "destination": "/embed.png"
+      "destination": "/og-image.png"
     },
     {
       "source": "/((?!api/).*)",

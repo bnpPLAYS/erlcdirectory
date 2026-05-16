@@ -146,18 +146,23 @@ export function buildProfileOpenGraph(args: {
   };
 }
 
-/** Large image: banner if present, else avatar, else fallback (same for all members). */
+/** Large image: banner if present, else avatar, else fallback (site default OG asset). */
 export function pickProfileOgImageUrl(args: {
   bannerHttps: string | null;
   avatarHttps: string | null;
   fallbackUrl: string;
+  /** Declared width when `fallbackUrl` is chosen (matches og:image meta). */
+  fallbackWidth?: number;
+  fallbackHeight?: number;
 }): { url: string; width: number; height: number } {
+  const fbW = args.fallbackWidth ?? 1156;
+  const fbH = args.fallbackHeight ?? 810;
   const banner = args.bannerHttps;
   const avatar = args.avatarHttps;
   const chosen = banner || avatar || args.fallbackUrl;
 
-  let w = 1200;
-  let h = 630;
+  let w = fbW;
+  let h = fbH;
 
   if (chosen === avatar && avatar) {
     w = 512;
