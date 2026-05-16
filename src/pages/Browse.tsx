@@ -47,6 +47,8 @@ interface Profile {
   /** Verified experience rows (for search & sorting). */
   experience_search_meta?: Array<{ role: string; server_name: string }>;
   verified_experience_count?: number;
+  /** Most recent directory-visible experience row added (for Newest sort). */
+  latest_experience_at?: string;
 }
 
 const SORT_OPTIONS: { id: SortMode; label: string }[] = [
@@ -66,6 +68,10 @@ function createdTime(iso: string | undefined): number {
   if (!iso) return 0;
   const t = new Date(iso).getTime();
   return Number.isFinite(t) ? t : 0;
+}
+
+function latestExperienceTime(p: Profile): number {
+  return createdTime(p.latest_experience_at);
 }
 
 /** Tie-break so sort never returns NaN (which makes Array.prototype.sort a no-op in practice). */
@@ -136,8 +142,10 @@ function sortProfiles(list: Profile[], mode: SortMode): Profile[] {
         if (f !== 0) return f;
         const x = listedExperienceFirstCmp(a, b);
         if (x !== 0) return x;
-        const d = createdTime(b.created_at) - createdTime(a.created_at);
+        const d = latestExperienceTime(b) - latestExperienceTime(a);
         if (d !== 0) return d;
+        const profileNew = createdTime(b.created_at) - createdTime(a.created_at);
+        if (profileNew !== 0) return profileNew;
         return idCmp(a, b);
       });
     case 'top_rated':
@@ -221,7 +229,7 @@ const Browse = () => {
     const { data: exps } = await supabase
       .from('experiences')
       .select(
-        'id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date, show_on_directory_card',
+        'id, profile_id, role, server_name, server_icon, is_verified, guild_id, start_date, created_at, show_on_directory_card',
       )
       .in('profile_id', ids);
 
@@ -245,6 +253,12 @@ const Browse = () => {
       const dirExps = userExps.filter(
         (e) => e.show_on_directory_card !== false && !isExperienceAwaitingVerification(e),
       );
+      const latestExperienceAt = dirExps.reduce<string | undefined>((latest, e) => {
+        const at = typeof e.created_at === 'string' ? e.created_at : '';
+        if (!at) return latest;
+        if (!latest || createdTime(at) > createdTime(latest)) return at;
+        return latest;
+      }, undefined);
       const verifiedExps = userExps.filter((e) => e.is_verified === true);
 
       const total = verifiedExps.reduce(
@@ -278,6 +292,7 @@ const Browse = () => {
         })),
         verified_experience_count: verifiedExps.length,
         total_members: total,
+        latest_experience_at: latestExperienceAt,
       };
     });
 
