@@ -24,7 +24,7 @@ import Navbar from '@/components/layout/Navbar';
 import RatingStars from '@/components/ui/rating-stars';
 import SkillBadge from '@/components/ui/skill-badge';
 import ExperienceCard from '@/components/profile/ExperienceCard';
-import ProfileEditor from '@/components/profile/ProfileEditor';
+import ProfileEditor, { type ProfileLike } from '@/components/profile/ProfileEditor';
 import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
@@ -112,7 +112,6 @@ const Profile = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [profileWarnings, setProfileWarnings] = useState<
     { id: string; body: string; created_at: string; issued_by_profile_id: string }[]
@@ -125,7 +124,6 @@ const Profile = () => {
     setProfile(null);
     setExperiences([]);
     setLoading(true);
-    setEditMode(false);
     setProfileWarnings([]);
     setWarningIssuerLabels({});
     setBannerLoadFailed(false);
@@ -136,6 +134,8 @@ const Profile = () => {
   }, [profile?.banner_url]);
 
   const isOwner = !!(meProfile && profile && meProfile.id === profile.id);
+  /** Opening the editor is tied to `?edit=1` so refresh and canonical slug redirects keep you in edit mode. */
+  const editorOpen = isOwner && searchParams.get('edit') === '1';
   const discordProfileHref = discordUserProfileUrl(profile?.discord_id);
   /** When viewing your own profile, prefer `useAuth().profile.discord_avatar` so the hero matches the navbar after Discord sync (page fetch can be stale until slug/deps change). */
   const heroDiscordAvatar =
@@ -324,12 +324,6 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    if (isOwner && searchParams.get('edit') === '1') {
-      setEditMode(true);
-    }
-  }, [isOwner, searchParams]);
-
-  useEffect(() => {
     if (searchParams.get('roblox_linked') !== '1') return;
     void fetchProfile();
     const next = new URLSearchParams(searchParams);
@@ -425,17 +419,25 @@ const Profile = () => {
                 </Button>
               </>
             )}
-            {isOwner && !editMode && (
-              <Button size="sm" onClick={() => setEditMode(true)} className="gap-2">
+            {isOwner && !editorOpen && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('edit', '1');
+                  setSearchParams(next, { replace: true });
+                }}
+                className="gap-2"
+              >
                 <Pencil className="h-4 w-4" /> Edit profile
               </Button>
             )}
           </div>
         </div>
 
-        {editMode && isOwner ? (
+        {editorOpen && isOwner ? (
           <ProfileEditor
-            profile={profile as any}
+            profile={profile as ProfileLike}
             experiences={experiences}
             initialTab={searchParams.get('tab') ?? undefined}
             openAddExperienceOnMount={searchParams.get('add') === '1'}
@@ -447,7 +449,6 @@ const Profile = () => {
               }
             }}
             onSaved={() => {
-              setEditMode(false);
               const next = new URLSearchParams(searchParams);
               next.delete('edit');
               next.delete('tab');
@@ -456,7 +457,6 @@ const Profile = () => {
               fetchProfile();
             }}
             onCancel={() => {
-              setEditMode(false);
               const next = new URLSearchParams(searchParams);
               next.delete('edit');
               next.delete('tab');
