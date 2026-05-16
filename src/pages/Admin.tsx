@@ -25,6 +25,7 @@ import {
   canaryStaffStop,
 } from '@/lib/callCanarySession';
 import { staffDecideServerClaim } from '@/lib/callServerClaim';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type ServerClaimRpcRow = {
   id: string;
@@ -123,7 +124,7 @@ const Admin = () => {
     setAuditLoading(false);
     if (error) {
       setAuditLogs([]);
-      toast({ title: error.message, variant: 'destructive' });
+      toast({ title: publicErrorMessage('Could not load audit logs.', error), variant: 'destructive' });
       return;
     }
     setAuditLogs(data || []);
@@ -295,7 +296,7 @@ const Admin = () => {
     if (rpcUnavailable) {
       ({ error } = await supabase.from('profiles').update({ is_verified: !p.is_verified }).eq('id', p.id));
     }
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_verified: !p.is_verified } : x)));
   };
   const toggleProOwner = async (p: any) => {
@@ -307,7 +308,7 @@ const Admin = () => {
         pro_verified_at: next ? new Date().toISOString() : null,
       })
       .eq('id', p.id);
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_pro: next } : x)));
     toast({ title: next ? 'Pro granted' : 'Pro removed' });
   };
@@ -326,7 +327,7 @@ const Admin = () => {
     if (rpcUnavailable) {
       ({ error } = await supabase.from('profiles').update({ is_featured: !p.is_featured }).eq('id', p.id));
     }
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setProfiles((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_featured: !p.is_featured } : x)));
   };
 
@@ -335,25 +336,25 @@ const Admin = () => {
       p_server_id: s.id,
       p_is_verified: !s.is_verified,
     });
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setServers((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_verified: !s.is_verified } : x)));
   };
   const removeProfile = async (p: any) => {
     if (!confirm(`Delete account ${p.display_name}? This cannot be undone.`)) return;
     const { error } = await supabase.from('profiles').delete().eq('id', p.id);
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setProfiles((prev) => prev.filter((x) => x.id !== p.id));
   };
   const removeServer = async (s: any) => {
     if (!confirm(`Delete server ${s.name}?`)) return;
     const { error } = await supabase.from('servers').delete().eq('id', s.id);
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setServers((prev) => prev.filter((x) => x.id !== s.id));
   };
   const removePost = async (p: any) => {
     if (!confirm(`Delete opening "${p.title}"?`)) return;
     const { error } = await supabase.from('posts').delete().eq('id', p.id);
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
   };
 
@@ -372,7 +373,7 @@ const Admin = () => {
     if (rpcUnavailable) {
       ({ error } = await supabase.from('posts').update({ status }).eq('id', p.id));
     }
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     setPosts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status } : x)));
     toast({ title: status === 'approved' ? 'Post approved' : status === 'rejected' ? 'Post rejected' : 'Updated' });
   };
@@ -395,7 +396,7 @@ const Admin = () => {
       refresh();
       return;
     }
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     toast({ title: `${target.display_name || target.discord_username || 'Member'} is now staff` });
     setNewStaffQuery('');
     refresh();
@@ -407,7 +408,7 @@ const Admin = () => {
     setBroadcasting(true);
     const { data, error } = await supabase.functions.invoke('website-dm-broadcast', { body: { message: msg } });
     setBroadcasting(false);
-    if (error) return toast({ title: error.message || 'DM blast failed', variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('DM blast failed', error), variant: 'destructive' });
     toast({
       title: `Delivered to ${(data as { sent?: number })?.sent ?? 0} of ${(data as { attempted?: number })?.attempted ?? 0} subscribers`,
     });
@@ -433,7 +434,7 @@ const Admin = () => {
       refresh();
       return;
     }
-    if (error) return toast({ title: error.message, variant: 'destructive' });
+    if (error) return toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
     refresh();
   };
 
@@ -451,7 +452,7 @@ const Admin = () => {
       })
       .eq('id', row.id);
     if (error) {
-      toast({ title: error.message, variant: 'destructive' });
+      toast({ title: publicErrorMessage('Request failed', error), variant: 'destructive' });
       return false;
     }
     toast({ title: status === 'resolved' ? 'Marked handled' : 'Dismissed' });

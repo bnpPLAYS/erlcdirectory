@@ -32,6 +32,7 @@ import { uploadServerGalleryImage } from '@/lib/callServerOwnerApi';
 import { discordInviteLooksValid } from '@/lib/discordInvite';
 import { extractYouTubeId } from '@/lib/youtubeEmbed';
 import { cn } from '@/lib/utils';
+import { devWarn, publicErrorMessage } from '@/lib/clientErrorHandling';
 
 const PRESETS_FREE = ['zinc', 'slate', 'neutral'] as const;
 const PRESETS_PRO = ['rose', 'cyan', 'amber', 'violet'] as const;
@@ -209,7 +210,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
     setGalleryUrls(next);
     const { error } = await supabase.from('servers').update({ owner_gallery_urls: next }).eq('id', server.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('Could not update gallery.', error));
+      devWarn('[ServerOwnerPanel] persistGalleryUrls', error);
       setGalleryUrls(prev);
       return false;
     }
@@ -246,7 +248,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
     try {
       const { error } = await supabase.from('servers').update(patch).eq('id', server.id);
       if (error) {
-        toast.error(error.message);
+        toast.error(publicErrorMessage('Could not save.', error));
+        devWarn('[ServerOwnerPanel] persist', error);
         return;
       }
       onPatch(patch as Partial<ServerOwnerPanelServer>);

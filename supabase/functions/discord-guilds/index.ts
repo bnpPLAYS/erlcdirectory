@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     })
 
     return json({ guilds: out })
-  } catch (error) {
-    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500)
+  } catch {
+    return json({ error: 'Could not load Discord servers.' }, 500)
   }
 })

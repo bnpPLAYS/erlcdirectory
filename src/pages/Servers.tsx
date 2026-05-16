@@ -28,6 +28,7 @@ import { pageHeroEnter } from '@/lib/pageHero';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { distinctStaffCountByGuild } from '@/lib/serverStaffCount';
 import { useAuth } from '@/hooks/useAuth';
+import { devWarn } from '@/lib/clientErrorHandling';
 import {
   ServerOwnerPanel,
   type ServerOwnerPanelCoworker,
@@ -252,7 +253,7 @@ const Servers = () => {
         body: { mode: 'missing' },
       });
       if (error) {
-        console.warn('[servers] servers-enrich-metadata failed:', error.message, data);
+        devWarn('[servers] servers-enrich-metadata failed:', error.message, data);
         enrichOnceRef.current = false;
         return;
       }
@@ -262,7 +263,7 @@ const Servers = () => {
         Array.isArray((data as { errors?: unknown }).errors) &&
         ((data as { errors: string[] }).errors?.length ?? 0) > 0
       ) {
-        console.warn('[servers] servers-enrich-metadata partial errors:', (data as { errors: string[] }).errors);
+        devWarn('[servers] servers-enrich-metadata partial errors:', (data as { errors: string[] }).errors);
       }
       await fetchServers({ silent: true });
     })();

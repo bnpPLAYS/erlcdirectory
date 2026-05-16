@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
           updated_at: now,
         })
         .eq('id', 1)
-      if (upErr) return json({ ok: false, error: upErr.message }, 500)
+      if (upErr) return json({ ok: false, error: 'Could not start canary session.' }, 500)
       return json({
         ok: true,
         test_code: plainCode,
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
           updated_at: now,
         })
         .eq('id', 1)
-      if (upErr) return json({ ok: false, error: upErr.message }, 500)
+      if (upErr) return json({ ok: false, error: 'Could not stop canary session.' }, 500)
       return json({ ok: true })
     }
   }

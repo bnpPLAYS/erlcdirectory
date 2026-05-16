@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { filterPlaintext } from '@/lib/chatFilter';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
   const { profile } = useAuth();
@@ -64,7 +65,7 @@ const CreateServerDialog = ({ onCreated }: { onCreated?: () => void }) => {
     });
     setSubmitting(false);
     if (error) {
-      toast({ title: 'Could not create server', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not create server', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     toast({ title: 'Server listed!' });

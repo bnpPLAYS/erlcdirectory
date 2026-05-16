@@ -179,12 +179,12 @@ Deno.serve(async (req) => {
 
       const { error: upErr } = await admin.from('servers').update(patch).eq('id', row.id)
       if (upErr) {
-        errors.push(`${guildId}: ${upErr.message}`)
+        errors.push(`${guildId}: could not save enrichment`)
         continue
       }
       updated += 1
-    } catch (e) {
-      errors.push(`${guildId}: ${e instanceof Error ? e.message : String(e)}`)
+    } catch {
+      errors.push(`${guildId}: enrichment failed`)
     }
   }
 

@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type Props = {
   subjectProfileId: string;
@@ -34,7 +35,7 @@ export function ProfileStaffTools({ subjectProfileId, subjectDisplayName }: Prop
     });
     setSubmitting(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('Could not send warning.', error));
       return;
     }
     toast.success('Warning recorded.');
