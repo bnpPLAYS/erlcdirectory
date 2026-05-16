@@ -37,6 +37,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ColorPickerInput } from '@/components/ui/color-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1288,11 +1289,12 @@ const ProfileEditor = ({
               </div>
               <Field label="Custom accent">
                 <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    type="color"
-                    value={form.accent_color.match(/^#[0-9a-fA-F]{6}$/) ? form.accent_color : '#ffffff'}
-                    onChange={(e) => update('accent_color', e.target.value)}
-                    className="h-11 w-14 cursor-pointer rounded-xl border border-white/15 bg-transparent"
+                  <ColorPickerInput
+                    value={form.accent_color}
+                    onChange={(hex) => update('accent_color', hex)}
+                    fallbackHex="#ffffff"
+                    className="h-11 w-14 shrink-0 rounded-xl border border-white/15 bg-muted/20 shadow-inner"
+                    aria-label="Custom accent color"
                   />
                   <Input
                     value={form.accent_color}

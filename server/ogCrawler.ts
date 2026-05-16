@@ -128,7 +128,7 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
     const afterPrefix = pathname.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/embed.png`;
+      const imageUrl = `${url.origin}/embed.png?v=2`;
       const title = `Verify experience — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Open this link to confirm staff experience with your Discord login.`;
       return new Response(
@@ -152,7 +152,7 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
   if (!isEmbed) return null;
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const fallbackImage = `${url.origin}/embed.png`;
+  const fallbackImage = `${url.origin}/embed.png?v=2`;
 
   const serverId = parseServerPageId(pathname);
   const sb = serverId ? supabaseEnv() : null;

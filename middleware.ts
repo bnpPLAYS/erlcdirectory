@@ -117,7 +117,7 @@ export default async function middleware(request: Request): Promise<Response> {
     const afterPrefix = path.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/embed.png`;
+      const imageUrl = `${url.origin}/embed.png?v=2`;
       const title = `Verify — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Sign in with Discord to confirm.`;
       return new Response(
@@ -142,7 +142,7 @@ export default async function middleware(request: Request): Promise<Response> {
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const fallbackImage = `${url.origin}/embed.png`;
+  const fallbackImage = `${url.origin}/embed.png?v=2`;
 
   const serverId = parseServerPageId(path);
   const sb = serverId ? supabaseEnv() : null;
