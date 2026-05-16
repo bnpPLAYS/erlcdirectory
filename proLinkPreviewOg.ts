@@ -3,6 +3,8 @@
  * No framework imports — safe for Vercel Edge bundling.
  */
 
+import { sanitizeDiscordOgPlaintext } from './discordOgSanitize.ts';
+
 export const PROFILE_LINK_PREVIEW_SITE_SUFFIX = 'ERLC Directory';
 
 /** Title segments joined with " · " */
@@ -254,7 +256,10 @@ export function buildProfileOpenGraph(args: {
 
   description = description.slice(0, 3800);
 
-  return { title, description };
+  return {
+    title: sanitizeDiscordOgPlaintext(title),
+    description: sanitizeDiscordOgPlaintext(description),
+  };
 }
 
 export function pickProfileOgImageUrl(args: {

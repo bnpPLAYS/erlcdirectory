@@ -3,6 +3,7 @@
  * Reads public server row via Supabase REST (anon; SELECT policy allows everyone).
  */
 
+import { sanitizeDiscordOgPlaintext } from '../discordOgSanitize.ts';
 import type { ExperienceOgMini, ProfileOgRow } from '../proLinkPreviewOg.ts';
 import { experienceAwaitingForOg } from '../proLinkPreviewOg.ts';
 
@@ -38,11 +39,26 @@ export function fixDiscordAnimatedAssetUrlString(url: string): string {
   }
 }
 
+function isTrustedOgImageHost(hostname: string, pathname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === 'cdn.discordapp.com' || h === 'cdn.discord.com' || h === 'media.discordapp.net') return true;
+  if (h.endsWith('.supabase.co') && /^\/storage\/v1\/object\//.test(pathname)) return true;
+  return false;
+}
+
+/** HTTPS image URLs allowed in og:image — Discord CDNs and Supabase Storage only (no arbitrary hosts). */
 export function httpsOgImageUrl(raw: string | null | undefined): string | null {
   if (raw == null || typeof raw !== 'string') return null;
   const t = raw.trim();
   if (!t.startsWith('https://') || t.length > 2048) return null;
-  return fixDiscordAnimatedAssetUrlString(t);
+  try {
+    const u = new URL(t);
+    if (u.protocol !== 'https:') return null;
+    if (!isTrustedOgImageHost(u.hostname, u.pathname)) return null;
+    return fixDiscordAnimatedAssetUrlString(t);
+  } catch {
+    return null;
+  }
 }
 
 export type ServerOgRow = { name: string; description: string | null; banner: string | null };
@@ -80,6 +96,19 @@ export function truncateOgDescription(s: string | null, max: number): string {
   if (!s) return '';
   const oneLine = s.replace(/[\n\r]+/g, ' ').trim();
   return oneLine.length <= max ? oneLine : `${oneLine.slice(0, max - 1)}…`;
+}
+
+/** Server listing embed copy — truncated then mention-safe for Discord unfurls. */
+export function sanitizeServerOgFields(opts: {
+  name: string;
+  description: string | null;
+  descriptionMax: number;
+  siteFallbackDescription: string;
+}): { title: string; description: string } {
+  const title = sanitizeDiscordOgPlaintext(`${opts.name.trim().slice(0, 200)} — ERLC.Directory`);
+  const fromDesc = sanitizeDiscordOgPlaintext(truncateOgDescription(opts.description, opts.descriptionMax));
+  const description = fromDesc.trim() ? fromDesc : sanitizeDiscordOgPlaintext(opts.siteFallbackDescription);
+  return { title, description };
 }
 
 /** Mirrors `RESERVED_PROFILE_SLUGS` for OG routing (avoid catching site routes). */

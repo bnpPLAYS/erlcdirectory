@@ -12,7 +12,7 @@ import {
   httpsOgImageUrl,
   parsePublicProfileOgRoute,
   parseServerPageId,
-  truncateOgDescription,
+  sanitizeServerOgFields,
 } from './ogServerPreview.ts';
 
 const EMBED_UA =
@@ -169,13 +169,15 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
     if (row) {
       const bannerOg = httpsOgImageUrl(row.banner);
       const imageUrl = bannerOg ?? fallbackImage;
-      const descFromServer = truncateOgDescription(row.description, 280);
-      const description =
-        descFromServer ||
-        `${SITE_DESCRIPTION} Open this server’s listing on ERLC.Directory.`;
+      const { title: ogTitle, description } = sanitizeServerOgFields({
+        name: row.name,
+        description: row.description,
+        descriptionMax: 280,
+        siteFallbackDescription: `${SITE_DESCRIPTION} Open this server’s listing on ERLC.Directory.`,
+      });
       return new Response(
         ogDocument({
-          title: `${row.name.slice(0, 200)} — ${SITE_NAME}`,
+          title: ogTitle,
           description,
           canonicalUrl,
           imageUrl,
