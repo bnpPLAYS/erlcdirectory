@@ -51,9 +51,14 @@ function hexFromDiscordEmbedInt(n: number | null | undefined): string {
   return `#${c.toString(16).padStart(6, '0')}`;
 }
 
-const blockCard = 'rounded-md border border-white/10 bg-zinc-950/70 p-4 shadow-sm';
+const sectionPanel =
+  'rounded-[6px] border border-border bg-card p-4 shadow-none md:p-5';
+const blockCard =
+  'rounded-[6px] border border-border bg-background/75 p-4 shadow-none';
 const blockInput =
-  'rounded-md border border-white/10 bg-black/45 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-1 focus-visible:ring-white/20';
+  'rounded-[6px] border border-border bg-muted/35 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-1 focus-visible:ring-ring/40';
+const iconWell =
+  'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-border bg-muted/30';
 
 function parseJsonStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -105,7 +110,7 @@ type Props = {
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
     <div className="mb-4">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{title}</h3>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-foreground/85">{title}</h3>
       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>
     </div>
   );
@@ -127,7 +132,7 @@ function FieldCard({
   return (
     <div className={cn(blockCard, 'flex flex-col gap-3', className)}>
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-black/30">
+        <div className={iconWell}>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
@@ -334,9 +339,9 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   };
 
   return (
-    <div className={cn('space-y-10', className)}>
-      <header className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-900/80">
+    <div className={cn('space-y-4', className)}>
+      <header className={cn(sectionPanel, 'flex items-start gap-3')}>
+        <div className={cn(iconWell, 'mt-0 h-10 w-10')}>
           <Palette className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="min-w-0 space-y-1">
@@ -347,7 +352,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </header>
 
-      <section>
+      <section className={cn(sectionPanel, 'space-y-4')}>
         <SectionTitle
           title="Server page"
           description="What visitors see on your directory listing and server detail page."
@@ -365,7 +370,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                 placeholder="https://discord.gg/…"
                 className={cn(blockInput, 'flex-1 font-mono text-xs')}
               />
-              <Button type="button" variant="outline" size="icon" className="shrink-0 border-white/10 bg-black/30" onClick={() => void copyInvite()}>
+              <Button type="button" variant="outline" size="icon" className="shrink-0 border-border bg-muted/35" onClick={() => void copyInvite()}>
                 <Copy className="h-4 w-4" />
                 <span className="sr-only">Copy invite</span>
               </Button>
@@ -390,7 +395,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </section>
 
-      <section>
+      <section className={cn(sectionPanel, 'space-y-4')}>
         <SectionTitle title="Look & theme" description="Accent and preset control highlights and gradients on the page." />
         <div className="grid gap-4 md:grid-cols-2">
           <FieldCard icon={Palette} label="Accent color" hint="Use a hex color that matches your community brand.">
@@ -399,7 +404,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                 type="color"
                 value={/^#[0-9A-Fa-f]{6}$/.test(accent) ? accent : '#a1a1aa'}
                 onChange={(e) => setAccent(e.target.value)}
-                className="h-10 w-14 cursor-pointer rounded-md border border-white/10 bg-transparent"
+                className="h-10 w-14 cursor-pointer rounded-[6px] border border-border bg-transparent"
                 aria-label="Accent color"
               />
               <Input
@@ -428,14 +433,14 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </section>
 
-      <section>
+      <section className={cn(sectionPanel, 'space-y-4')}>
         <SectionTitle
           title="Gallery & media"
           description={ownerIsPro ? 'Up to 12 images (Pro). Drag to reorder or drop files on the zone.' : 'Up to 6 images. Pro owners can use up to 12.'}
         />
         <div className={blockCard}>
           <div className="mb-3 flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-black/30">
+            <div className={iconWell}>
               <ImagePlus className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
@@ -453,11 +458,11 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               const f = e.dataTransfer.files?.[0];
               if (f && /^image\//.test(f.type)) void uploadGalleryFile(f);
             }}
-            className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-white/20 bg-black/25 px-4 py-8 text-center"
+            className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[6px] border border-dashed border-border bg-muted/20 px-4 py-8 text-center"
           >
             <ImagePlus className="h-8 w-8 text-muted-foreground/80" />
             <p className="text-xs text-muted-foreground">Drop file here or use Add image</p>
-            <Button type="button" variant="outline" size="sm" className="relative mt-1 border-white/12 bg-zinc-900/60" disabled={uploading}>
+            <Button type="button" variant="outline" size="sm" className="relative mt-1 border-border bg-muted/30" disabled={uploading}>
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add image'}
               <input
                 type="file"
@@ -487,7 +492,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                     if (from === null) return;
                     reorderGallery(from, idx);
                   }}
-                  className="flex items-center gap-2 rounded-md border border-white/10 bg-black/30 p-2"
+                  className="flex items-center gap-2 rounded-[6px] border border-border bg-muted/25 p-2"
                 >
                   <button
                     type="button"
@@ -496,7 +501,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                   >
                     <GripVertical className="h-4 w-4" />
                   </button>
-                  <img src={url} alt="" className="no-image-drag h-14 w-24 rounded border border-white/10 object-cover" draggable={false} />
+                  <img src={url} alt="" className="no-image-drag h-14 w-24 rounded-[4px] border border-border object-cover" draggable={false} />
                   <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground">{url}</span>
                   <div className="flex flex-col gap-0.5">
                     <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveGallery(idx, -1)}>
@@ -516,7 +521,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </section>
 
-      <section>
+      <section className={cn(sectionPanel, 'space-y-4')}>
         <SectionTitle
           title="Integrations"
           description="Discord webhook for new reviews, embed styling, and optional Pro hero video."
@@ -545,7 +550,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                 type="color"
                 value={/^#[0-9A-Fa-f]{6}$/.test(embedColorHex) ? embedColorHex : DEFAULT_REVIEW_EMBED_HEX}
                 onChange={(e) => setEmbedColorHex(e.target.value)}
-                className="h-10 w-14 cursor-pointer rounded-md border border-white/10 bg-transparent"
+                className="h-10 w-14 cursor-pointer rounded-[6px] border border-border bg-transparent"
                 aria-label="Discord review embed color"
               />
               <Input
@@ -596,7 +601,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </section>
 
-      <section>
+      <section className={cn(sectionPanel, 'space-y-4')}>
         <SectionTitle title="Visibility" description="Control which blocks appear on the public server page." />
         <div className="grid gap-4 md:grid-cols-2">
           <div className={cn(blockCard, 'space-y-4')}>
@@ -624,11 +629,11 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
                   They keep their experience; they won’t appear on this server’s public staff list.
                 </p>
               </div>
-              <div className="max-h-48 divide-y divide-white/10 overflow-y-auto rounded-md border border-white/10 bg-black/25">
+              <div className="max-h-48 divide-y divide-border overflow-y-auto rounded-[6px] border border-border bg-muted/20">
                 {verifiedCoworkers.map((c) => (
                   <label
                     key={c.profileId}
-                    className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-white/[0.04]"
+                    className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-muted/40"
                   >
                     <span className="truncate">{c.label}</span>
                     <Switch
@@ -654,7 +659,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
+      <div className={cn(sectionPanel, 'flex flex-wrap items-center gap-3')}>
         <Button type="button" className="gap-2" onClick={() => void onSaveAll()} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save changes

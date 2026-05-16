@@ -399,11 +399,11 @@ const Servers = () => {
       >
         <SheetContent
           side="right"
-          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-white/10 bg-background p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
+          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-border bg-background p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
         >
-          <SheetHeader className="shrink-0 space-y-1 border-b border-white/10 px-6 py-5 pr-12 text-left">
+          <SheetHeader className="shrink-0 space-y-1 border-b border-border bg-card px-4 py-4 pr-12 text-left md:px-5 md:py-5">
             <SheetTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-muted/50">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-border bg-muted/30">
                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               </span>
               Customize server
@@ -412,7 +412,7 @@ const Servers = () => {
               {panelServer?.name ? `Editing “${panelServer.name}”.` : 'Invite, page copy, theme, gallery, and review notifications.'}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 py-5 md:px-5">
             {panelLoading ? (
               <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin" />
