@@ -581,6 +581,7 @@ export type Database = {
           roblox_verified_at: string | null
           skills: string[] | null
           show_pro_avatar_decor: boolean
+          profile_gallery_urls: unknown
           social_links: Json | null
           status: string | null
           theme_preset: string | null
@@ -618,6 +619,7 @@ export type Database = {
           roblox_verified_at?: string | null
           skills?: string[] | null
           show_pro_avatar_decor?: boolean
+          profile_gallery_urls?: unknown
           social_links?: Json | null
           status?: string | null
           theme_preset?: string | null
@@ -655,6 +657,7 @@ export type Database = {
           roblox_verified_at?: string | null
           skills?: string[] | null
           show_pro_avatar_decor?: boolean
+          profile_gallery_urls?: unknown
           social_links?: Json | null
           status?: string | null
           theme_preset?: string | null

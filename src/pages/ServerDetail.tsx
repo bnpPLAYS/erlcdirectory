@@ -33,6 +33,8 @@ import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { ServerClaimDialog } from '@/components/server/ServerClaimDialog';
 import { extractYouTubeId, youtubeEmbedSrc } from '@/lib/youtubeEmbed';
 import { cn } from '@/lib/utils';
+import { parseGalleryUrlList } from '@/lib/galleryUrls';
+import { ProfileGalleryGrid } from '@/components/profile/ProfileGalleryGrid';
 
 interface GuildExperienceRow {
   id: string;
@@ -63,11 +65,6 @@ function dedupeExperiencesOnePerProfile(exps: GuildExperienceRow[]): GuildExperi
 function hiddenStaffIdSet(raw: unknown): Set<string> {
   if (!Array.isArray(raw)) return new Set();
   return new Set(raw.map((x) => String(x)).filter(Boolean));
-}
-
-function galleryUrlList(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((x) => String(x)).filter((u) => u.startsWith('http'));
 }
 
 interface ServerRow {
@@ -262,7 +259,7 @@ const ServerDetail = () => {
   const visibleCoworkers = coworkers.filter(
     (c) => !c.profile?.id || !hiddenStaff.has(c.profile.id),
   );
-  const galleryUrls = galleryUrlList(server?.owner_gallery_urls);
+  const galleryUrls = parseGalleryUrlList(server?.owner_gallery_urls);
   const staffListedCount = !server
     ? 0
     : server.guild_id
@@ -581,21 +578,7 @@ const ServerDetail = () => {
           </div>
         ) : null}
 
-        {galleryUrls.length > 0 ? (
-          <div className="mb-6 grid grid-cols-2 md:grid-cols-3 gap-2">
-            {galleryUrls.map((u) => (
-              <a
-                key={u}
-                href={u}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-xl overflow-hidden border border-white/10 bg-white/[0.02]"
-              >
-                <img src={u} alt="" className="w-full h-40 object-cover hover:opacity-90 transition-opacity" />
-              </a>
-            ))}
-          </div>
-        ) : null}
+        <ProfileGalleryGrid urls={galleryUrls} className="mb-6" />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">

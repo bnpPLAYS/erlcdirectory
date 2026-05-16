@@ -21,6 +21,9 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  GripVertical,
+  ImagePlus,
+  Loader2,
   Globe,
   Gem,
   UserX,
@@ -94,6 +97,8 @@ import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
 import { profileEditorPath } from '@/lib/profilePath';
 import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
+import { uploadProfileGalleryImage } from '@/lib/callProfileGalleryApi';
+import { GALLERY_MAX_FREE, GALLERY_MAX_PRO, parseGalleryUrlList } from '@/lib/galleryUrls';
 
 /** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
 const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
@@ -149,6 +154,7 @@ export interface ProfileLike {
   is_pro?: boolean;
   pro_badge_label?: string | null;
   show_pro_avatar_decor?: boolean | null;
+  profile_gallery_urls?: unknown;
   roblox_user_id?: string | null;
   roblox_verified_at?: string | null;
 }
@@ -344,10 +350,18 @@ const ProfileEditor = ({
   const { signOut } = useAuth();
   const [deactivateDlgOpen, setDeactivateDlgOpen] = useState(false);
   const [deactivateBusy, setDeactivateBusy] = useState(false);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>(() => parseGalleryUrlList(profile.profile_gallery_urls));
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [galleryDragIdx, setGalleryDragIdx] = useState<number | null>(null);
+  const galleryMax = profile.is_pro ? GALLERY_MAX_PRO : GALLERY_MAX_FREE;
 
   useEffect(() => {
     setSocialDraft(buildSocialDraft(profile.social_links));
   }, [profile.id]);
+
+  useEffect(() => {
+    setGalleryUrls(parseGalleryUrlList(profile.profile_gallery_urls));
+  }, [profile.id, profile.profile_gallery_urls]);
 
   useEffect(() => {
     setProBadgeLabel(profile.pro_badge_label || '');
@@ -503,6 +517,46 @@ const ProfileEditor = ({
     } finally {
       setVerifyBusyId(null);
     }
+  };
+
+  const persistGalleryUrls = async (next: string[]) => {
+    const prev = galleryUrls;
+    setGalleryUrls(next);
+    const { error } = await supabase.from('profiles').update({ profile_gallery_urls: next }).eq('id', profile.id);
+    if (error) {
+      toast.error(publicErrorMessage('Could not update photos.', error));
+      setGalleryUrls(prev);
+      return false;
+    }
+    return true;
+  };
+
+  const uploadGalleryFile = async (file: File) => {
+    setGalleryUploading(true);
+    try {
+      const r = await uploadProfileGalleryImage(profile.id, file);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      const next = [...galleryUrls, r.url];
+      const ok = await persistGalleryUrls(next);
+      if (ok) toast.success('Photo added');
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
+  const reorderGallery = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= galleryUrls.length || to >= galleryUrls.length) return;
+    const next = [...galleryUrls];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    void persistGalleryUrls(next);
+  };
+
+  const removeGalleryAt = (idx: number) => {
+    void persistGalleryUrls(galleryUrls.filter((_, i) => i !== idx));
   };
 
   const handleSave = async () => {
@@ -1018,6 +1072,7 @@ const ProfileEditor = ({
                     ['editor-customize-preview', 'Preview'],
                     ['editor-customize-theme', 'Theme'],
                     ['editor-customize-banner', 'Banner'],
+                    ['editor-customize-gallery', 'Photos'],
                   ] as const
                 )
               : (
@@ -1025,6 +1080,7 @@ const ProfileEditor = ({
                     ['editor-customize-preview', 'Preview'],
                     ['editor-customize-theme', 'Theme'],
                     ['editor-customize-banner', 'Banner'],
+                    ['editor-customize-gallery', 'Photos'],
                   ] as const
                 )
             ).map(([sid, label]) => (
@@ -1470,6 +1526,104 @@ const ProfileEditor = ({
                   className="h-full w-full object-cover no-image-drag"
                 />
               </div>
+            ) : null}
+          </EditorSection>
+
+          <EditorSection
+            sectionId="editor-customize-gallery"
+            title="Profile photos"
+            description={
+              profile.is_pro
+                ? `Up to ${GALLERY_MAX_PRO} images on your public profile. Drag the handle to reorder.`
+                : `Up to ${GALLERY_MAX_FREE} images. Pro members can add up to ${GALLERY_MAX_PRO}.`
+            }
+            icon={ImagePlus}
+          >
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const f = e.dataTransfer.files?.[0];
+                if (f && /^image\//.test(f.type)) void uploadGalleryFile(f);
+              }}
+              className="flex min-h-[100px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-black/25 px-4 py-6 text-center"
+            >
+              <ImagePlus className="h-7 w-7 text-muted-foreground/80" aria-hidden />
+              <p className="text-xs text-muted-foreground">Drop an image or use Add photo</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="relative mt-1"
+                disabled={galleryUploading || galleryUrls.length >= galleryMax}
+              >
+                {galleryUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add photo'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  disabled={galleryUploading || galleryUrls.length >= galleryMax}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) void uploadGalleryFile(file);
+                  }}
+                />
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                {galleryUrls.length} / {galleryMax}
+              </p>
+            </div>
+            {galleryUrls.length > 0 ? (
+              <ul className="space-y-2">
+                {galleryUrls.map((url, idx) => (
+                  <li
+                    key={`${url}-${idx}`}
+                    draggable
+                    onDragStart={() => setGalleryDragIdx(idx)}
+                    onDragEnd={() => setGalleryDragIdx(null)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = galleryDragIdx;
+                      setGalleryDragIdx(null);
+                      if (from === null) return;
+                      reorderGallery(from, idx);
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-2"
+                  >
+                    <button
+                      type="button"
+                      className="cursor-grab touch-none p-1 text-muted-foreground active:cursor-grabbing"
+                      aria-label="Drag to reorder"
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                    <img
+                      src={url}
+                      alt=""
+                      draggable={false}
+                      className="no-image-drag h-14 w-24 rounded-lg border border-white/10 object-cover"
+                    />
+                    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{url}</span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => removeGalleryAt(idx)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </EditorSection>
         </TabsContent>

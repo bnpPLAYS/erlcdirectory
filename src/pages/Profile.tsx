@@ -44,6 +44,8 @@ import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
 import { ProAvatarFrame } from '@/components/profile/ProAvatarFrame';
 import type { Json } from '@/integrations/supabase/types';
 import { isExperienceAwaitingVerification } from '@/lib/experienceConstants';
+import { parseGalleryUrlList } from '@/lib/galleryUrls';
+import { ProfileGalleryGrid } from '@/components/profile/ProfileGalleryGrid';
 
 interface ProfileData {
   id: string;
@@ -70,6 +72,7 @@ interface ProfileData {
   is_pro?: boolean;
   pro_badge_label?: string | null;
   show_pro_avatar_decor?: boolean;
+  profile_gallery_urls?: unknown;
   roblox_user_id?: string | null;
   deactivated_at?: string | null;
 }
@@ -360,6 +363,7 @@ const Profile = () => {
 
   const accent = profile.accent_color || '#ffffff';
   const initial = (profile.display_name || 'U').charAt(0).toUpperCase();
+  const galleryUrls = parseGalleryUrlList(profile.profile_gallery_urls);
 
   return (
     <div className="min-h-screen bg-background">
@@ -620,6 +624,8 @@ const Profile = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <ProfileGalleryGrid urls={galleryUrls} className="mb-7" />
 
             <div className="grid lg:grid-cols-3 gap-6">
               <aside className="lg:col-span-1 space-y-4">
