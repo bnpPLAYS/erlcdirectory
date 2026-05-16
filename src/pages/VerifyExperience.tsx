@@ -263,9 +263,19 @@ const VerifyExperience = () => {
         approver?: string;
       }>(action, payload, session?.access_token ?? null);
       if (fnErr || !json) {
+        const needDiscordOAuth =
+          !oauthCode &&
+          !!fnErr &&
+          (/Discord authorization required/i.test(fnErr) ||
+            /Missing Discord authorization/i.test(fnErr));
+        if (needDiscordOAuth) {
+          startDiscord(action);
+          return;
+        }
         setError(fnErr || 'Could not complete verification.');
       } else {
-        setDecisionResult({ status: json.status || action, approver: json.approver || '' });
+        const status = json.status || (action === 'reject' ? 'rejected' : action);
+        setDecisionResult({ status, approver: json.approver || '' });
         fetchInfo();
       }
     } catch (e: unknown) {

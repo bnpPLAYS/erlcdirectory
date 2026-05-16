@@ -192,7 +192,8 @@ const ServerDetail = () => {
         const { data: expsRaw } = await supabase
           .from('experiences')
           .select('id, role, is_current, is_verified, profile_id, start_date')
-          .eq('guild_id', s.guild_id);
+          .eq('guild_id', s.guild_id)
+          .eq('is_verified', true);
         const exps = dedupeExperiencesOnePerProfile((expsRaw || []) as GuildExperienceRow[]);
         const profileIds = exps.map((e) => e.profile_id).filter(Boolean);
         let profilesMap = new Map<
@@ -257,7 +258,7 @@ const ServerDetail = () => {
 
   const hiddenStaff = hiddenStaffIdSet(server?.owner_hidden_staff_profile_ids);
   const visibleCoworkers = coworkers.filter(
-    (c) => !c.profile?.id || !hiddenStaff.has(c.profile.id),
+    (c) => c.is_verified && (!c.profile?.id || !hiddenStaff.has(c.profile.id)),
   );
   const galleryUrls = parseGalleryUrlList(server?.owner_gallery_urls);
   const staffListedCount = !server
@@ -634,7 +635,7 @@ const ServerDetail = () => {
               <ReviewsSection
                 serverId={server.id}
                 serverName={server.name}
-                serverReviewTargets={coworkers
+                serverReviewTargets={visibleCoworkers
                   .filter((c) => c.profile?.id)
                   .map((c) => ({
                     profileId: c.profile!.id,
