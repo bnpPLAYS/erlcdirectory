@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
+import { staffPanelUrl } from '@/lib/staffPanelPath';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -80,7 +81,7 @@ export function ProfileStaffTools({ subjectProfileId, subjectDisplayName }: Prop
           </Button>
         </div>
         <Button asChild variant="outline" size="sm" className="w-full border-amber-500/35">
-          <Link to="/staff?tab=reports">Open reports queue</Link>
+          <Link to={staffPanelUrl('tab=reports')}>Open reports queue</Link>
         </Button>
       </CardContent>
     </Card>

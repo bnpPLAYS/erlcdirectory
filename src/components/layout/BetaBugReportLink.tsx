@@ -3,13 +3,14 @@ import { useLocation } from 'react-router-dom';
 import { Bug } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BugReportDialog } from '@/components/moderation/BugReportDialog';
+import { isStaffPanelPath } from '@/lib/staffPanelPath';
 
 /** Fixed entry to file a site bug (opens dialog; staff triages under Staff → Reports). */
 export function BetaBugReportLink() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
 
-  if (pathname.startsWith('/staff')) return null;
+  if (pathname.startsWith('/staff') || isStaffPanelPath(pathname)) return null;
 
   return (
     <>

@@ -30,7 +30,6 @@ import ConnectButton from '@/components/profile/ConnectButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
-import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
 import { publicErrorMessage, devWarn } from '@/lib/clientErrorHandling';
 import { ProfileStaffTools } from '@/components/staff/ProfileStaffTools';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
@@ -110,7 +109,7 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile: meProfile, loading: authLoading } = useAuth();
+  const { user, profile: meProfile, loading: authLoading } = useAuth();
   const { isStaff } = useStaffAccess();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -156,8 +155,19 @@ const Profile = () => {
     !!isOwner && experiences.length > 0 && publicExperiences.length === 0;
 
   useEffect(() => {
-    setIsAdmin(isSiteOwnerDiscordUsername(meProfile?.discord_username ?? null));
-  }, [meProfile?.discord_username]);
+    if (!user?.id) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase.rpc('is_site_owner');
+      if (!cancelled) setIsAdmin(!error && data === true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!profile?.id || !(isOwner || (isStaff && !isOwner))) {

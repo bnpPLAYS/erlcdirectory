@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { profilePath, profileEditorPath } from '@/lib/profilePath';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
+import { STAFF_PANEL_PATH } from '@/lib/staffPanelPath';
 import { getDiscordSessionDisplay } from '@/lib/syncDiscordProfile';
 import { safeAvatarUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
 import { showsProAvatarDecor } from '@/lib/proAvatarDecor';
@@ -308,7 +309,7 @@ const Navbar = () => {
                   <DropdownMenuSeparator className="bg-white/10" />
                   {user && isStaff && (
                     <DropdownMenuItem asChild className="gap-3 py-2.5 cursor-pointer">
-                      <Link to="/staff">
+                      <Link to={STAFF_PANEL_PATH}>
                         <Shield className="h-4 w-4 text-zinc-400" />
                         <div className="flex flex-col">
                           <span className="text-sm">Staff Panel</span>
