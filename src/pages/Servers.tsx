@@ -399,11 +399,11 @@ const Servers = () => {
       >
         <SheetContent
           side="right"
-          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-white/10 bg-background p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
+          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-border bg-card p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
         >
-          <SheetHeader className="shrink-0 space-y-1 border-b border-white/10 px-6 py-5 pr-12 text-left">
+          <SheetHeader className="shrink-0 space-y-1 border-b border-border bg-background/80 px-6 py-5 pr-12 text-left">
             <SheetTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-muted/50">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-border bg-muted/40">
                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               </span>
               Customize server
