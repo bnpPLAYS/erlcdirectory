@@ -31,11 +31,31 @@ type ProfileChip = {
   banner_url: string | null;
 };
 
+const REVIEW_MUTATION_COOLDOWN_MS = 15 * 60 * 1000;
+
+function reviewsCooldownRemainingMs(updatedAtIso: string): number {
+  const t = new Date(updatedAtIso).getTime();
+  if (!Number.isFinite(t)) return 0;
+  return Math.max(0, REVIEW_MUTATION_COOLDOWN_MS - (Date.now() - t));
+}
+
+function reviewsCooldownHuman(remainingMs: number): string {
+  const m = Math.max(1, Math.ceil(remainingMs / 60000));
+  return m === 1 ? '1 minute' : `${m} minutes`;
+}
+
+function isReviewsMutationCooldownError(err: unknown): boolean {
+  const m =
+    err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : '';
+  return m.includes('reviews_mutation_cooldown');
+}
+
 interface ReviewRow {
   id: string;
   rating: number;
   content: string | null;
   created_at: string;
+  updated_at: string;
   reviewer_id: string;
   server_id: string | null;
   reviewee_id: string | null;
@@ -104,6 +124,8 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
   const [reviewAboutId, setReviewAboutId] = useState<string>(GENERAL_SERVER_REVIEW);
   const [memberServers, setMemberServers] = useState<MemberServer[]>([]);
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
+  /** Forces re-render so review edit cooldown countdown stays accurate while the tab is open. */
+  const [, setCooldownTick] = useState(0);
 
   const isOwn = !!profileId && me?.id === profileId;
 
@@ -141,7 +163,7 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     setLoading(true);
     let query = supabase
       .from('reviews')
-      .select('id, rating, content, created_at, reviewer_id, server_id, reviewee_id')
+      .select('id, rating, content, created_at, updated_at, reviewer_id, server_id, reviewee_id')
       .order('created_at', { ascending: false });
     if (serverId) query = query.eq('server_id', serverId);
     else if (profileId) query = query.eq('reviewee_id', profileId);
@@ -197,6 +219,14 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
         : false)
   );
 
+  const myReviewCooldownMs = myReview ? reviewsCooldownRemainingMs(myReview.updated_at) : 0;
+
+  useEffect(() => {
+    if (!myReview) return;
+    const id = window.setInterval(() => setCooldownTick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [myReview?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- timer keyed to review row id only
+
   useEffect(() => {
     if (myReview) {
       setRating(myReview.rating);
@@ -237,6 +267,17 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
         (r.server_id || null) === (payload.server_id || null)
     );
 
+    if (existing && reviewsCooldownRemainingMs(existing.updated_at) > 0) {
+      const rem = reviewsCooldownRemainingMs(existing.updated_at);
+      toast({
+        title: 'Please wait',
+        description: `You can change this review again in ${reviewsCooldownHuman(rem)}.`,
+        variant: 'destructive',
+      });
+      setSubmitting(false);
+      return;
+    }
+
     let error;
     if (existing) {
       ({ error } = await supabase
@@ -252,6 +293,14 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     }
     setSubmitting(false);
     if (error) {
+      if (isReviewsMutationCooldownError(error)) {
+        toast({
+          title: 'Please wait',
+          description: 'You can edit or delete this review once every 15 minutes.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Could not save review', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
@@ -261,8 +310,25 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
 
   const remove = async () => {
     if (!myReview) return;
+    if (reviewsCooldownRemainingMs(myReview.updated_at) > 0) {
+      const rem = reviewsCooldownRemainingMs(myReview.updated_at);
+      toast({
+        title: 'Please wait',
+        description: `You can delete this review again in ${reviewsCooldownHuman(rem)}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     const { error } = await supabase.from('reviews').delete().eq('id', myReview.id);
     if (error) {
+      if (isReviewsMutationCooldownError(error)) {
+        toast({
+          title: 'Please wait',
+          description: 'You can edit or delete this review once every 15 minutes.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Could not delete', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
@@ -349,11 +415,16 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
 
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Rating</span>
-              <Stars value={rating} onChange={setRating} size={18} />
+              <Stars
+                value={rating}
+                onChange={myReview && myReviewCooldownMs > 0 ? undefined : setRating}
+                size={18}
+              />
             </div>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              readOnly={!!myReview && myReviewCooldownMs > 0}
               placeholder={
                 serverId
                   ? reviewAboutId !== GENERAL_SERVER_REVIEW && targetMemberLabel
@@ -365,15 +436,29 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
               className="bg-background/40 border-white/10"
               maxLength={500}
             />
+            {myReview && myReviewCooldownMs > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Edits and deletes unlock in {reviewsCooldownHuman(myReviewCooldownMs)} (once every 15 minutes).
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">{content.length}/500</span>
               <div className="flex gap-2">
                 {myReview && (
-                  <Button variant="ghost" size="sm" onClick={remove}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void remove()}
+                    disabled={myReviewCooldownMs > 0}
+                  >
                     <X className="h-3 w-3 mr-1" /> Delete
                   </Button>
                 )}
-                <Button size="sm" onClick={submit} disabled={submitting}>
+                <Button
+                  size="sm"
+                  onClick={() => void submit()}
+                  disabled={submitting || (!!myReview && myReviewCooldownMs > 0)}
+                >
                   {myReview ? 'Update review' : 'Post review'}
                 </Button>
               </div>
