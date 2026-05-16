@@ -11,6 +11,7 @@ import {
   Flag,
   Loader2,
   RefreshCw,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
@@ -29,7 +30,6 @@ import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
 import { normalizeDiscordCdnMediaUrl } from '@/lib/safeAvatarUrl';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { ServerClaimDialog } from '@/components/server/ServerClaimDialog';
-import { ServerOwnerPanel } from '@/components/server/ServerOwnerPanel';
 import { extractYouTubeId, youtubeEmbedSrc } from '@/lib/youtubeEmbed';
 import { cn } from '@/lib/utils';
 
@@ -416,18 +416,14 @@ const ServerDetail = () => {
         </Link>
 
         {meIsOwner ? (
-          <ServerOwnerPanel
-            server={server}
-            ownerIsPro={ownerIsPro}
-            coworkers={coworkers
-              .filter((c) => c.profile?.id)
-              .map((c) => ({
-                profileId: c.profile!.id,
-                label: c.profile?.display_name || c.profile?.discord_username || 'Member',
-                isVerified: c.is_verified,
-              }))}
-            onPatch={(patch) => setServer((prev) => (prev ? { ...prev, ...patch } : prev))}
-          />
+          <div className="mb-4">
+            <Button asChild variant="outline" size="sm" className="gap-2 border-white/15 bg-background/60">
+              <Link to={`/servers?customize=${server.id}`}>
+                <SlidersHorizontal className="h-4 w-4" />
+                Customize listing on Servers
+              </Link>
+            </Button>
+          </div>
         ) : null}
 
         <Card
