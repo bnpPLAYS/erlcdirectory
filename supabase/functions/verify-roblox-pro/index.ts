@@ -1,6 +1,7 @@
 /**
  * Verifies ERLC Directory Pro ownership (Roblox Open Cloud inventory) and sets is_pro.
  * See _shared/robloxInventoryOwnership.ts for inventory logic.
+ * Caller must have linked Roblox via OAuth (`profiles.roblox_user_id`); arbitrary usernames are not accepted.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { userOwnsRobloxListing } from '../_shared/robloxInventoryOwnership.ts'
@@ -51,13 +52,6 @@ Deno.serve(async (req) => {
     )
   }
 
-  let body: { roblox_username?: string; roblox_user_id?: string }
-  try {
-    body = await req.json()
-  } catch {
-    return json({ ok: false, error: 'Invalid request.' }, 400)
-  }
-
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   })
@@ -69,30 +63,30 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Invalid session.' }, 401)
   }
 
-  let robloxUserId: number
-  const rawId = (body.roblox_user_id ?? '').toString().trim()
-  const username = (body.roblox_username ?? '').trim()
+  const admin = createClient(supabaseUrl, serviceKey)
+  const { data: profile, error: pErr } = await admin
+    .from('profiles')
+    .select('id, roblox_user_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (rawId && /^\d+$/.test(rawId)) {
-    robloxUserId = parseInt(rawId, 10)
-  } else if (username.length >= 3 && username.length <= 64) {
-    const ur = await fetch('https://users.roblox.com/v1/usernames/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
-    })
-    if (!ur.ok) {
-      return json({ ok: false, error: 'Could not reach Roblox. Try again in a moment.' }, 502)
-    }
-    const uj = (await ur.json()) as { data?: Array<{ id: number; name: string }> }
-    const row = uj.data?.[0]
-    if (!row?.id) {
-      return json({ ok: false, error: 'That Roblox username was not found. Check spelling (including capitals).' }, 400)
-    }
-    robloxUserId = row.id
-  } else {
-    return json({ ok: false, error: 'Enter a valid Roblox username (3–64 characters).' }, 400)
+  if (pErr || !profile?.id) {
+    return json({ ok: false, error: 'Profile not found. Refresh the page and try again.' }, 400)
   }
+
+  const linkedRaw = (profile.roblox_user_id ?? '').toString().trim()
+  if (!linkedRaw || !/^\d+$/.test(linkedRaw)) {
+    return json(
+      {
+        ok: false,
+        error:
+          'Link your Roblox account in Edit profile (Roblox authorization) before verifying Pro. Verification only checks the account you linked — not a typed username.',
+      },
+      400,
+    )
+  }
+
+  const robloxUserId = parseInt(linkedRaw, 10)
 
   const own = await userOwnsRobloxListing({ robloxUserId, listingId, apiKey: robloxKey })
 
@@ -148,17 +142,6 @@ Deno.serve(async (req) => {
       },
       400,
     )
-  }
-
-  const admin = createClient(supabaseUrl, serviceKey)
-  const { data: profile, error: pErr } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (pErr || !profile?.id) {
-    return json({ ok: false, error: 'Profile not found. Refresh the page and try again.' }, 400)
   }
 
   const now = new Date().toISOString()

@@ -69,12 +69,11 @@ async function parseRes(res: Response): Promise<{ ok: true; data: VerifyJson } |
 
 function isDefiniteUserFacing(err: string): boolean {
   return (
-    err.includes('Roblox username') ||
     err.includes('Roblox blocked') ||
     err.includes('does not own ERLC Directory Pro') ||
-    err.includes('Enter a valid Roblox') ||
     err.includes('Invalid session') ||
     err.includes('Profile not found') ||
+    err.includes('Link your Roblox account') ||
     err.includes('Pro verification is not configured') ||
     err.includes('Open Cloud API key') ||
     err.includes('user.inventory-item:read') ||
@@ -83,10 +82,9 @@ function isDefiniteUserFacing(err: string): boolean {
   );
 }
 
-export async function invokeVerifyRobloxPro(opts: {
-  roblox_username?: string;
-  roblox_user_id?: string;
-}): Promise<{ ok: true; roblox_user_id: number; pro_verified_at: string } | { ok: false; error: string }> {
+export async function invokeVerifyRobloxPro(): Promise<
+  { ok: true; roblox_user_id: number; pro_verified_at: string } | { ok: false; error: string }
+> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -101,7 +99,7 @@ export async function invokeVerifyRobloxPro(opts: {
     return { ok: false, error: e instanceof Error ? e.message : 'Configuration error.' };
   }
 
-  const body = JSON.stringify(opts);
+  const body = JSON.stringify({});
   let lastErr: string | null = null;
 
   for (const base of candidateSupabaseBases()) {

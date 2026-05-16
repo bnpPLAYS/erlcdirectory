@@ -1,0 +1,139 @@
+/** Minimal Open Graph HTML for Discord and other crawlers (no JavaScript). */
+
+const EMBED_UA =
+  /Discordbot|Twitterbot|facebookexternalhit|Facebot|Slackbot|LinkedInBot|Embedly|Pinterest|vkShare|TelegramBot|WhatsApp|SkypeUriPreview|Slack-ImgProxy/i;
+
+const SKIP_OG_PATH =
+  /\.(?:ico|png|jpg|jpeg|gif|webp|svg|json|txt|xml|woff2?|ttf|webmanifest|map|js|css|mjs)$/i;
+
+const SITE_NAME = 'ERLC.Directory';
+const SITE_TITLE = 'ERLC.Directory';
+const SITE_DESCRIPTION =
+  'Discover ER:LC roleplay servers, staff portfolios, and communities.';
+const THEME_COLOR = '#0b0b0f';
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function ogDocument(opts: {
+  title: string;
+  description: string;
+  canonicalUrl: string;
+  imageUrl: string;
+  siteName: string;
+  themeColor: string;
+  bodyHtml: string;
+}): string {
+  const escTitle = escapeHtml(opts.title);
+  const escDesc = escapeHtml(opts.description);
+  const escUrl = escapeHtml(opts.canonicalUrl);
+  const escImg = escapeHtml(opts.imageUrl);
+  const escSite = escapeHtml(opts.siteName);
+  const escTheme = escapeHtml(opts.themeColor);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escTitle}</title>
+<link rel="canonical" href="${escUrl}" />
+<meta name="description" content="${escDesc}" />
+<meta property="og:title" content="${escTitle}" />
+<meta property="og:description" content="${escDesc}" />
+<meta property="og:url" content="${escUrl}" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="${escSite}" />
+<meta property="og:image" content="${escImg}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="${escTitle}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${escTitle}" />
+<meta name="twitter:description" content="${escDesc}" />
+<meta name="twitter:image" content="${escImg}" />
+<meta name="theme-color" content="${escTheme}" />
+</head>
+<body style="margin:0;background:#0b0b0f;color:#e8e8ec;font-family:system-ui,sans-serif;padding:2rem;line-height:1.5">
+${opts.bodyHtml}
+</body>
+</html>`;
+}
+
+function verifyEmbedBody(canonicalUrl: string): string {
+  const escUrl = escapeHtml(canonicalUrl);
+  return `<p style="max-width:28rem"><a href="${escUrl}" style="color:#93c5fd">Continue to verification</a> — you will sign in with Discord on the next screen.</p>`;
+}
+
+function siteEmbedBody(canonicalUrl: string): string {
+  const escUrl = escapeHtml(canonicalUrl);
+  return `<p style="max-width:28rem"><a href="${escUrl}" style="color:#93c5fd">Open ERLC.Directory</a></p>`;
+}
+
+const ogHtmlHeaders = {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'public, max-age=300, s-maxage=600',
+};
+
+export function shouldSkipOgForPath(pathname: string): boolean {
+  if (pathname.startsWith('/api/')) return true;
+  return SKIP_OG_PATH.test(pathname);
+}
+
+/** Returns HTML for embed crawlers, or null to serve the SPA / static file instead. */
+export function getCrawlerOgResponse(request: Request): Response | null {
+  if (request.method !== 'GET') return null;
+
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+
+  if (shouldSkipOgForPath(pathname)) return null;
+
+  const ua = request.headers.get('user-agent') ?? '';
+  const isEmbed = EMBED_UA.test(ua);
+
+  if (pathname.startsWith('/verify/')) {
+    const afterPrefix = pathname.slice('/verify/'.length);
+    if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
+      const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
+      const imageUrl = `${url.origin}/embed.png`;
+      const title = `Verify experience — ${SITE_NAME}`;
+      const description = `${SITE_DESCRIPTION} Open this link to confirm staff experience with your Discord login.`;
+      return new Response(
+        ogDocument({
+          title,
+          description,
+          canonicalUrl,
+          imageUrl,
+          siteName: SITE_NAME,
+          themeColor: THEME_COLOR,
+          bodyHtml: verifyEmbedBody(canonicalUrl),
+        }),
+        { status: 200, headers: ogHtmlHeaders },
+      );
+    }
+    return null;
+  }
+
+  if (!isEmbed) return null;
+
+  const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
+  const imageUrl = `${url.origin}/embed.png`;
+
+  return new Response(
+    ogDocument({
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      canonicalUrl,
+      imageUrl,
+      siteName: SITE_NAME,
+      themeColor: THEME_COLOR,
+      bodyHtml: siteEmbedBody(canonicalUrl),
+    }),
+    { status: 200, headers: ogHtmlHeaders },
+  );
+}

@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
 
   const { data: server, error: sErr } = await admin
     .from('servers')
-    .select('id, name, owner_review_webhook_url')
+    .select('id, name, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer')
     .eq('id', serverId)
     .maybeSingle()
 
@@ -98,12 +98,24 @@ Deno.serve(async (req) => {
   const who = meProf.display_name || meProf.discord_username || 'Someone'
   const snippet = (review.content as string | null)?.trim()?.slice(0, 350) || '(no text)'
 
+  const rawColor = server.owner_discord_embed_color
+  const embedColor =
+    typeof rawColor === 'number' &&
+    Number.isFinite(rawColor) &&
+    rawColor >= 0 &&
+    rawColor <= 0xffffff
+      ? Math.floor(rawColor)
+      : 0x5865f2
+
+  const footerRaw = typeof server.owner_discord_embed_footer === 'string' ? server.owner_discord_embed_footer.trim() : ''
+  const footerText = footerRaw ? footerRaw.slice(0, 200) : 'ERLC Directory'
+
   const embed = {
     title: `New review — ${server.name}`,
     url: serverUrl,
     description: `**${who}** left ${stars}\n\n${snippet}`,
-    color: 0x5865f2,
-    footer: { text: 'ERLC Directory' },
+    color: embedColor,
+    footer: { text: footerText },
   }
 
   const whRes = await fetch(hook, {

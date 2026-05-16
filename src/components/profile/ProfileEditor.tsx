@@ -322,7 +322,6 @@ const ProfileEditor = ({
     buildSocialDraft(profile.social_links),
   );
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
-  const [robloxVerifyInput, setRobloxVerifyInput] = useState('');
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
   const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
 
@@ -403,19 +402,18 @@ const ProfileEditor = ({
   };
 
   const handleVerifyPro = async () => {
-    if (robloxVerifyInput.trim().length < 3) {
-      toast.error('Roblox username should be at least 3 characters.');
+    if (!profile.roblox_user_id) {
+      toast.error('Link Roblox in the Roblox profile section on this tab first (official Roblox sign-in).');
       return;
     }
     setProVerifyBusy(true);
     try {
-      const r = await invokeVerifyRobloxPro({ roblox_username: robloxVerifyInput.trim() });
+      const r = await invokeVerifyRobloxPro();
       if (!r.ok) {
         toast.error(r.error);
         return;
       }
       toast.success('Pro unlocked!');
-      setRobloxVerifyInput('');
       onProVerified?.();
     } finally {
       setProVerifyBusy(false);
@@ -913,22 +911,21 @@ const ProfileEditor = ({
             >
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Purchase on Roblox, then verify with the username that owns the pass. Set Roblox privacy → inventory
-                  visible to Everyone if verification fails.
+                  Purchase on Roblox, then verify here. We only check the Roblox account you linked via{' '}
+                  <span className="text-foreground/90">Continue with Roblox</span> in the Roblox profile section above.
+                  Set Roblox privacy → inventory visible to Everyone if verification fails.
                 </p>
+                {!profile.roblox_user_id ? (
+                  <p className="text-sm text-amber-200/90 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2">
+                    Link Roblox first (Roblox profile section on this tab), then return here to verify your purchase.
+                  </p>
+                ) : null}
                 <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
-                  <Input
-                    value={robloxVerifyInput}
-                    onChange={(e) => setRobloxVerifyInput(e.target.value)}
-                    placeholder="Roblox username"
-                    maxLength={64}
-                    className={editorInput}
-                  />
                   <Button
                     type="button"
                     variant="secondary"
                     className="h-11 rounded-xl shrink-0 border border-white/18 bg-white/[0.1] hover:bg-white/[0.16] text-white shadow-md shadow-white/8"
-                    disabled={proVerifyBusy || robloxVerifyInput.trim().length < 3}
+                    disabled={proVerifyBusy || !profile.roblox_user_id}
                     onClick={() => void handleVerifyPro()}
                   >
                     {proVerifyBusy ? 'Checking…' : 'Verify purchase'}

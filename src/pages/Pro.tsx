@@ -5,7 +5,6 @@ import { RobloxIcon } from '@/components/icons/RobloxIcon';
 import Navbar from '@/components/layout/Navbar';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { invokeVerifyRobloxPro } from '@/lib/callVerifyRobloxPro';
@@ -22,42 +21,26 @@ const PRO_FEATURES = [
 
 const Pro = () => {
   const { user, profile, refreshProfile } = useAuth();
-  const [robloxUsername, setRobloxUsername] = useState('');
   const [busy, setBusy] = useState(false);
 
   const linked = !!profile?.roblox_user_id;
-  const overrideName = robloxUsername.trim().length >= 3;
-  const canVerify =
-    !busy &&
-    (linked ? overrideName || robloxUsername.trim().length === 0 : robloxUsername.trim().length >= 3);
+  const canVerify = !busy && linked;
 
   const onVerify = async () => {
-    if (!linked && robloxUsername.trim().length < 3) {
-      toast.error('Add the Roblox account that bought Pro (or link Roblox in Edit profile).');
-      return;
-    }
-    if (linked && robloxUsername.trim().length > 0 && robloxUsername.trim().length < 3) {
-      toast.error('Username too short — or leave blank to use your linked Roblox.');
+    if (!linked) {
+      toast.error('Link your Roblox account in Edit profile (Roblox authorization) before verifying Pro.');
       return;
     }
 
     setBusy(true);
     try {
-      const useUsername = !linked || overrideName;
-      if (!useUsername && !profile?.roblox_user_id) {
-        toast.error('Link Roblox in Edit profile first.');
-        return;
-      }
-      const r = useUsername
-        ? await invokeVerifyRobloxPro({ roblox_username: robloxUsername.trim() })
-        : await invokeVerifyRobloxPro({ roblox_user_id: String(profile.roblox_user_id) });
+      const r = await invokeVerifyRobloxPro();
       if (!r.ok) {
         toast.error(r.error);
         return;
       }
       toast.success('Pro unlocked. Your profile is updated.');
       await refreshProfile();
-      setRobloxUsername('');
     } finally {
       setBusy(false);
     }
@@ -71,7 +54,7 @@ const Pro = () => {
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">Simple pricing for Pro</h1>
           <p className="mt-3 text-sm sm:text-base text-zinc-500 leading-relaxed">
             Pay on Roblox, then tap <span className="text-zinc-300">Verify purchase</span> here. We check your game pass
-            automatically — no codes.
+            on the Roblox account you linked — no typed usernames.
           </p>
         </div>
 
@@ -84,10 +67,13 @@ const Pro = () => {
           ) : user ? (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 mb-6 text-left">
               <p className="text-xs text-amber-100/90 leading-relaxed">
-                <Link to={profile ? profileEditorPath(profile, { tab: 'customize' }) : '/browse'} className="underline underline-offset-2 font-medium text-white">
+                <Link
+                  to={profile ? profileEditorPath(profile, { tab: 'customize' }) : '/browse'}
+                  className="underline underline-offset-2 font-medium text-white"
+                >
                   Link Roblox
                 </Link>{' '}
-                in Edit profile so you can verify in one tap. Or enter the buyer username below.
+                in Edit profile (authorization) before you can verify Pro. This keeps the pass tied to the right account.
               </p>
             </div>
           ) : null}
@@ -135,30 +121,22 @@ const Pro = () => {
                   {busy ? 'Checking…' : 'Verify purchase'}
                 </Button>
 
-                <Button variant="outline" asChild className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06] hover:text-white">
+                <Button
+                  variant="outline"
+                  asChild
+                  className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06] hover:text-white"
+                >
                   <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
                     Purchase on Roblox
                     <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
                   </a>
                 </Button>
 
-                <div className="pt-2">
-                  <label htmlFor="pro-roblox-username" className="sr-only">
-                    Roblox username (if different from linked account)
-                  </label>
-                  <Input
-                    id="pro-roblox-username"
-                    placeholder={linked ? 'Different buyer username (optional)' : 'Roblox username that bought Pro'}
-                    value={robloxUsername}
-                    onChange={(e) => setRobloxUsername(e.target.value)}
-                    className="h-10 rounded-xl border-white/10 bg-black/50 text-sm text-zinc-200 placeholder:text-zinc-600"
-                  />
-                  <p className="text-[11px] text-zinc-600 mt-2 text-center leading-relaxed">
-                    Roblox → Settings → Privacy → set “Who can see my inventory?” to <span className="text-zinc-500">Everyone</span> so
-                    we can see the game pass. If it still fails, the site needs an Open Cloud API key with{' '}
-                    <span className="text-zinc-500">user.inventory-item:read</span>.
-                  </p>
-                </div>
+                <p className="text-[11px] text-zinc-600 mt-2 text-center leading-relaxed">
+                  Roblox → Settings → Privacy → set “Who can see my inventory?” to <span className="text-zinc-500">Everyone</span> so
+                  we can see the game pass. If it still fails, the site needs an Open Cloud API key with{' '}
+                  <span className="text-zinc-500">user.inventory-item:read</span>.
+                </p>
               </div>
             )
           ) : (
@@ -166,7 +144,11 @@ const Pro = () => {
               <Button asChild className="w-full h-12 rounded-full bg-white text-black hover:bg-zinc-100 font-medium">
                 <Link to="/auth">Sign in to verify</Link>
               </Button>
-              <Button variant="outline" asChild className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06]">
+              <Button
+                variant="outline"
+                asChild
+                className="w-full h-11 rounded-full border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06]"
+              >
                 <a href={ERLC_PRO_ROBLOX_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
                   Purchase on Roblox
                   <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
