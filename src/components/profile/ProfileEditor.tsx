@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -93,26 +93,9 @@ import { invokeRobloxOAuthStart } from '@/lib/callRobloxProfileOAuth';
 import { ERLC_PRO_PRICE_ROBUX, ERLC_PRO_ROBLOX_URL } from '@/lib/robloxPro';
 import { profileEditorPath } from '@/lib/profilePath';
 import { ROBLOX_OAUTH_RETURN_PATH_KEY } from '@/lib/robloxOAuthSession';
-import {
-  DEFAULT_PROFILE_LINK_PREVIEW,
-  buildProfileOpenGraph,
-  normalizeProfileLinkPreviewConfig,
-  PRO_PREVIEW_DESC_LABELS,
-  PRO_PREVIEW_PLACEHOLDER_HINTS,
-  PRO_PREVIEW_TITLE_LABELS,
-  type ProfileOgRow,
-  type ProPreviewDescBlock,
-  type ProPreviewImageMode,
-  type ProPreviewLayoutMode,
-  type ProPreviewTitlePart,
-} from '@/lib/proLinkPreview';
 
 /** Social URL fields in the editor — Roblox uses OAuth linking instead of a pasted URL. */
 const EDITOR_SOCIAL_URL_KEYS = PROFILE_SOCIAL_KEYS.filter((k) => k !== 'roblox');
-
-/** Starter templates when switching Pro link preview to “Custom text”. */
-const LINK_PREVIEW_CUSTOM_TITLE_DEFAULT = '{display_name} · {site}';
-const LINK_PREVIEW_CUSTOM_DESC_DEFAULT = `{verified}\n\n{rating}\n\n{bio}`;
 
 function buildSocialDraft(social: unknown): Record<ProfileSocialKey, string> {
   const parsed = parseProfileSocialLinks(social);
@@ -139,7 +122,7 @@ interface Experience {
   verified_by_discord_username?: string | null;
 }
 
-interface ProfileLike {
+export interface ProfileLike {
   id: string;
   display_name: string | null;
   bio: string | null;
@@ -164,7 +147,6 @@ interface ProfileLike {
   review_count?: number | null;
   is_pro?: boolean;
   pro_badge_label?: string | null;
-  pro_link_preview_config?: Json | null;
   show_pro_avatar_decor?: boolean | null;
   roblox_user_id?: string | null;
   roblox_verified_at?: string | null;
@@ -355,19 +337,6 @@ const ProfileEditor = ({
     buildSocialDraft(profile.social_links),
   );
   const [proBadgeLabel, setProBadgeLabel] = useState(profile.pro_badge_label || '');
-  const [linkPreviewEnabled, setLinkPreviewEnabled] = useState(false);
-  const [linkPreviewTitleOrder, setLinkPreviewTitleOrder] = useState<ProPreviewTitlePart[]>(() => [
-    ...(DEFAULT_PROFILE_LINK_PREVIEW.title as ProPreviewTitlePart[]),
-  ]);
-  const [linkPreviewDescOrder, setLinkPreviewDescOrder] = useState<ProPreviewDescBlock[]>(() => [
-    ...(DEFAULT_PROFILE_LINK_PREVIEW.description as ProPreviewDescBlock[]),
-  ]);
-  const [linkPreviewImage, setLinkPreviewImage] = useState<ProPreviewImageMode>(
-    DEFAULT_PROFILE_LINK_PREVIEW.image as ProPreviewImageMode,
-  );
-  const [linkPreviewLayoutMode, setLinkPreviewLayoutMode] = useState<ProPreviewLayoutMode>('blocks');
-  const [linkPreviewCustomTitle, setLinkPreviewCustomTitle] = useState('');
-  const [linkPreviewCustomDesc, setLinkPreviewCustomDesc] = useState('');
   const [proVerifyBusy, setProVerifyBusy] = useState(false);
   const [robloxOAuthBusy, setRobloxOAuthBusy] = useState(false);
   const navigate = useNavigate();
@@ -388,17 +357,6 @@ const ProfileEditor = ({
   }, [profile.id, profile.is_pro, profile.show_pro_avatar_decor]);
 
   useEffect(() => {
-    const cfg = normalizeProfileLinkPreviewConfig(profile.pro_link_preview_config);
-    setLinkPreviewEnabled(cfg.enabled);
-    setLinkPreviewLayoutMode(cfg.layout_mode);
-    setLinkPreviewCustomTitle(cfg.custom_title);
-    setLinkPreviewCustomDesc(cfg.custom_description);
-    setLinkPreviewTitleOrder([...(cfg.title as ProPreviewTitlePart[])]);
-    setLinkPreviewDescOrder([...(cfg.description as ProPreviewDescBlock[])]);
-    setLinkPreviewImage(cfg.image as ProPreviewImageMode);
-  }, [profile.id, profile.pro_link_preview_config]);
-
-  useEffect(() => {
     if (!openAddExperienceOnMount) return;
     setAddOpen(true);
     onConsumedAddDeepLink?.();
@@ -415,107 +373,6 @@ const ProfileEditor = ({
   }, []);
 
   const update = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
-
-  const moveLinkPreviewTitle = (index: number, delta: number) => {
-    setLinkPreviewTitleOrder((arr) => {
-      const j = index + delta;
-      if (j < 0 || j >= arr.length) return arr;
-      const n = [...arr];
-      [n[index], n[j]] = [n[j]!, n[index]!];
-      return n;
-    });
-  };
-
-  const moveLinkPreviewDesc = (index: number, delta: number) => {
-    setLinkPreviewDescOrder((arr) => {
-      const j = index + delta;
-      if (j < 0 || j >= arr.length) return arr;
-      const n = [...arr];
-      [n[index], n[j]] = [n[j]!, n[index]!];
-      return n;
-    });
-  };
-
-  const onLinkPreviewLayoutTabChange = (v: string) => {
-    const mode: ProPreviewLayoutMode = v === 'custom' ? 'custom' : 'blocks';
-    setLinkPreviewLayoutMode(mode);
-    if (mode === 'custom') {
-      setLinkPreviewCustomTitle((t) => (t.trim() ? t : LINK_PREVIEW_CUSTOM_TITLE_DEFAULT));
-      setLinkPreviewCustomDesc((d) => (d.trim() ? d : LINK_PREVIEW_CUSTOM_DESC_DEFAULT));
-    }
-  };
-
-  const discordOgPreview = useMemo(() => {
-    const topMini = (() => {
-      for (const e of exps) {
-        if (!isExperienceAwaitingVerification(e)) {
-          return {
-            role: e.role,
-            server_name: e.server_name,
-            is_verified: !!e.is_verified,
-            guild_id: e.guild_id ?? null,
-          };
-        }
-      }
-      return null;
-    })();
-
-    const row: ProfileOgRow = {
-      id: profile.id,
-      display_name: form.display_name.trim() || null,
-      discord_username: profile.discord_username ?? null,
-      bio: form.bio.trim() || null,
-      banner_url: form.banner_url.trim() || null,
-      discord_avatar: profile.discord_avatar ?? null,
-      is_verified: !!profile.is_verified,
-      is_pro: !!profile.is_pro,
-      rating: profile.rating ?? null,
-      review_count: profile.review_count ?? null,
-      skills,
-      location: form.location.trim() || null,
-      pronouns: form.pronouns.trim() || null,
-      pro_badge_label: proBadgeLabel.trim() || null,
-      pro_link_preview_config: {
-        enabled: linkPreviewEnabled,
-        layout_mode: linkPreviewLayoutMode,
-        title: linkPreviewTitleOrder,
-        description: linkPreviewDescOrder,
-        image: linkPreviewImage,
-        custom_title: linkPreviewCustomTitle,
-        custom_description: linkPreviewCustomDesc,
-      },
-    };
-
-    const useCustom = !!profile.is_pro && linkPreviewEnabled;
-    return buildProfileOpenGraph({
-      profile: row,
-      topExperience: topMini,
-      useProCustomization: useCustom,
-    });
-  }, [
-    profile.id,
-    profile.discord_username,
-    profile.discord_avatar,
-    profile.is_verified,
-    profile.is_pro,
-    profile.rating,
-    profile.review_count,
-    form.display_name,
-    form.bio,
-    form.banner_url,
-    form.location,
-    form.pronouns,
-    skills,
-    proBadgeLabel,
-    exps,
-    linkPreviewEnabled,
-    linkPreviewLayoutMode,
-    linkPreviewCustomTitle,
-    linkPreviewCustomDesc,
-    linkPreviewTitleOrder,
-    linkPreviewDescOrder,
-    linkPreviewImage,
-  ]);
 
   const applyBannerFromFile = async (file: File | undefined | null) => {
     if (!file) return;
@@ -686,11 +543,6 @@ const ProfileEditor = ({
       }
       const badgeF = filterPlaintext(proBadgeLabel.trim());
       filterHits += badgeF.blockedHits;
-      const lpTitleF = filterPlaintext(linkPreviewCustomTitle);
-      const lpDescF = filterPlaintext(linkPreviewCustomDesc);
-      if (profile.is_pro) {
-        filterHits += lpTitleF.blockedHits + lpDescF.blockedHits;
-      }
       const safeTheme =
         profile.is_pro || !PRO_THEME_IDS.has(form.theme_preset) ? form.theme_preset || 'mono' : 'mono';
       const baseProfileUpdate = {
@@ -711,15 +563,6 @@ const ProfileEditor = ({
           ? {
               pro_badge_label: badgeF.text.slice(0, 28) || null,
               show_pro_avatar_decor: showProAvatarDecor,
-              pro_link_preview_config: {
-                enabled: linkPreviewEnabled,
-                layout_mode: linkPreviewLayoutMode,
-                title: linkPreviewTitleOrder,
-                description: linkPreviewDescOrder,
-                image: linkPreviewImage,
-                custom_title: lpTitleF.text.slice(0, 250),
-                custom_description: lpDescF.text.slice(0, 3800),
-              },
             }
           : {}),
       };
@@ -1173,7 +1016,6 @@ const ProfileEditor = ({
                     ['editor-customize-pro', 'Pro'],
                     ['editor-customize-preview', 'Preview'],
                     ['editor-customize-theme', 'Theme'],
-                    ['editor-customize-link-preview', 'Link preview'],
                     ['editor-customize-banner', 'Banner'],
                   ] as const
                 )
@@ -1211,7 +1053,6 @@ const ProfileEditor = ({
                   'Higher placement in the Member Directory after staff-featured profiles',
                   'Pro badge with optional short custom tagline',
                   'Optional animated ring around your avatar (toggle below — off by default)',
-                  'Customize how your profile looks when pasted in Discord — reorder fields and pick banner vs picture',
                 ].map((t) => (
                   <li
                     key={t}
@@ -1466,228 +1307,6 @@ const ProfileEditor = ({
                 </div>
               </Field>
             </div>
-          </EditorSection>
-
-          <EditorSection
-            sectionId="editor-customize-link-preview"
-            title="Discord link preview"
-            description="How your profile appears when someone shares your URL in Discord or other apps that read Open Graph tags."
-            icon={Sparkles}
-          >
-            {profile.is_pro ? (
-              <div className="space-y-5">
-                <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Large preview image</p>
-                  <Select
-                    value={linkPreviewImage}
-                    onValueChange={(v) => setLinkPreviewImage(v as ProPreviewImageMode)}
-                  >
-                    <SelectTrigger className={cn(editorSelect, 'max-w-md')}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto — banner if set, otherwise profile picture</SelectItem>
-                      <SelectItem value="banner">Banner only</SelectItem>
-                      <SelectItem value="avatar">Profile picture only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Custom layout</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Reorder preset blocks, or write your own title and description with placeholders. Turn off to use
-                      the default directory preview text.
-                    </p>
-                  </div>
-                  <Switch checked={linkPreviewEnabled} onCheckedChange={(v) => setLinkPreviewEnabled(v === true)} />
-                </div>
-
-                {linkPreviewEnabled ? (
-                  <Tabs value={linkPreviewLayoutMode} onValueChange={onLinkPreviewLayoutTabChange} className="w-full">
-                    <TabsList className="flex w-full flex-wrap justify-start gap-1 rounded-xl bg-black/40 p-1 h-auto">
-                      <TabsTrigger value="blocks" className="rounded-lg text-xs sm:text-sm flex-1 sm:flex-none">
-                        Preset blocks
-                      </TabsTrigger>
-                      <TabsTrigger value="custom" className="rounded-lg text-xs sm:text-sm flex-1 sm:flex-none">
-                        Custom text
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="blocks" className="mt-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Title order</p>
-                          <p className="text-[11px] text-muted-foreground leading-snug">
-                            Joined with middle dots · Title truncates on very long combinations.
-                          </p>
-                          <ul className="space-y-1.5 pt-1">
-                            {linkPreviewTitleOrder.map((key, i) => (
-                              <li
-                                key={`${key}-${i}`}
-                                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5"
-                              >
-                                <span className="flex-1 text-sm truncate">{PRO_PREVIEW_TITLE_LABELS[key]}</span>
-                                <div className="flex shrink-0 gap-0.5">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    disabled={i === 0}
-                                    aria-label="Move up"
-                                    onClick={() => moveLinkPreviewTitle(i, -1)}
-                                  >
-                                    <ChevronUp className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    disabled={i === linkPreviewTitleOrder.length - 1}
-                                    aria-label="Move down"
-                                    onClick={() => moveLinkPreviewTitle(i, 1)}
-                                  >
-                                    <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Description blocks
-                          </p>
-                          <p className="text-[11px] text-muted-foreground leading-snug">
-                            Each block becomes its own paragraph when data is available.
-                          </p>
-                          <ul className="space-y-1.5 pt-1">
-                            {linkPreviewDescOrder.map((key, i) => (
-                              <li
-                                key={`${key}-${i}`}
-                                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5"
-                              >
-                                <span className="flex-1 text-sm truncate">{PRO_PREVIEW_DESC_LABELS[key]}</span>
-                                <div className="flex shrink-0 gap-0.5">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    disabled={i === 0}
-                                    aria-label="Move up"
-                                    onClick={() => moveLinkPreviewDesc(i, -1)}
-                                  >
-                                    <ChevronUp className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    disabled={i === linkPreviewDescOrder.length - 1}
-                                    aria-label="Move down"
-                                    onClick={() => moveLinkPreviewDesc(i, 1)}
-                                  >
-                                    <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="custom" className="mt-4 space-y-4">
-                      <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          Embed title
-                        </Label>
-                        <Textarea
-                          value={linkPreviewCustomTitle}
-                          onChange={(e) => setLinkPreviewCustomTitle(e.target.value.slice(0, 250))}
-                          rows={2}
-                          maxLength={250}
-                          placeholder={LINK_PREVIEW_CUSTOM_TITLE_DEFAULT}
-                          className={cn(editorInput, 'min-h-[3rem] resize-y')}
-                        />
-                        <p className="text-[11px] text-muted-foreground">{linkPreviewCustomTitle.length}/250</p>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-2">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          Embed description
-                        </Label>
-                        <Textarea
-                          value={linkPreviewCustomDesc}
-                          onChange={(e) => setLinkPreviewCustomDesc(e.target.value.slice(0, 3800))}
-                          rows={10}
-                          maxLength={3800}
-                          placeholder={LINK_PREVIEW_CUSTOM_DESC_DEFAULT}
-                          className={cn(editorInput, 'min-h-[12rem] resize-y whitespace-pre-wrap')}
-                        />
-                        <p className="text-[11px] text-muted-foreground">{linkPreviewCustomDesc.length}/3800</p>
-                      </div>
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-2">
-                        <p className="text-xs font-medium text-foreground">Placeholder tokens</p>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Type curly braces exactly as shown. Empty placeholders disappear when you don&apos;t have
-                          that data. Line breaks in the description are kept (Discord may collapse some spacing).
-                        </p>
-                        <ul className="grid gap-1 sm:grid-cols-2 text-[11px] font-mono text-muted-foreground">
-                          {PRO_PREVIEW_PLACEHOLDER_HINTS.map((h) => (
-                            <li key={h.token} className="flex gap-2">
-                              <span className="text-foreground/90 shrink-0">{h.token}</span>
-                              <span className="text-muted-foreground">— {h.label}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                ) : null}
-
-                <div className="rounded-xl border border-white/10 bg-zinc-950/80 p-4 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Approximate preview</p>
-                  <p className="text-sm font-semibold text-foreground leading-snug">{discordOgPreview.title}</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{discordOgPreview.description}</p>
-                  <p className="text-[11px] text-muted-foreground/70 pt-1">
-                    Discord may cache previews; image follows “{linkPreviewImage}”. Save profile to publish changes.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl border-white/15"
-                  onClick={() => {
-                    const d = DEFAULT_PROFILE_LINK_PREVIEW;
-                    setLinkPreviewEnabled(false);
-                    setLinkPreviewLayoutMode('blocks');
-                    setLinkPreviewCustomTitle('');
-                    setLinkPreviewCustomDesc('');
-                    setLinkPreviewTitleOrder([...(d.title as ProPreviewTitlePart[])]);
-                    setLinkPreviewDescOrder([...(d.description as ProPreviewDescBlock[])]);
-                    setLinkPreviewImage(d.image as ProPreviewImageMode);
-                  }}
-                >
-                  Reset link preview defaults
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.04] p-4">
-                <p className="text-sm text-foreground font-medium mb-1">Pro feature</p>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                  Upgrade to choose banner vs avatar, reorder preset embed blocks, or write your own title and
-                  description with placeholders when your profile link is shared.
-                </p>
-                <Button asChild size="sm" variant="secondary" className="rounded-xl">
-                  <Link to="/pro">View Pro</Link>
-                </Button>
-              </div>
-            )}
           </EditorSection>
 
           <EditorSection

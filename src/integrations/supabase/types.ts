@@ -574,7 +574,6 @@ export type Database = {
           location: string | null
           pronouns: string | null
           pro_badge_label: string | null
-          pro_link_preview_config: Json | null
           pro_verified_at: string | null
           rating: number | null
           review_count: number | null
@@ -612,7 +611,6 @@ export type Database = {
           location?: string | null
           pronouns?: string | null
           pro_badge_label?: string | null
-          pro_link_preview_config?: Json | null
           pro_verified_at?: string | null
           rating?: number | null
           review_count?: number | null
@@ -650,7 +648,6 @@ export type Database = {
           location?: string | null
           pronouns?: string | null
           pro_badge_label?: string | null
-          pro_link_preview_config?: Json | null
           pro_verified_at?: string | null
           rating?: number | null
           review_count?: number | null

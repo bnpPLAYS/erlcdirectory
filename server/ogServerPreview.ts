@@ -163,7 +163,7 @@ export function parsePublicProfileOgRoute(pathname: string): ProfileOgLookup | n
 }
 
 const PROFILE_OG_SELECT =
-  'id,display_name,discord_username,bio,banner_url,discord_avatar,is_verified,is_pro,rating,review_count,skills,location,pronouns,pro_badge_label,pro_link_preview_config';
+  'id,display_name,discord_username,bio,banner_url,discord_avatar,is_verified,is_pro,rating,review_count,skills,location,pronouns,pro_badge_label';
 
 function mapProfileOgRow(row: Record<string, unknown>): ProfileOgRow | null {
   const id = typeof row.id === 'string' ? row.id : '';
@@ -186,7 +186,6 @@ function mapProfileOgRow(row: Record<string, unknown>): ProfileOgRow | null {
     location: typeof row.location === 'string' ? row.location : null,
     pronouns: typeof row.pronouns === 'string' ? row.pronouns : null,
     pro_badge_label: typeof row.pro_badge_label === 'string' ? row.pro_badge_label : null,
-    pro_link_preview_config: row.pro_link_preview_config,
   };
 }
 

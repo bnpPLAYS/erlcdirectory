@@ -2,9 +2,7 @@
 
 import {
   buildProfileOpenGraph,
-  normalizeProfileLinkPreviewConfig,
   pickProfileOgImageUrl,
-  type ProPreviewImageMode,
 } from './proLinkPreviewOg.ts';
 import {
   fetchPublicProfileOgBundle,
@@ -185,13 +183,9 @@ export default async function middleware(request: Request): Promise<Response> {
   if (profileOgLookup && sb) {
     const bundle = await fetchPublicProfileOgBundle(sb.url, sb.anonKey, profileOgLookup);
     if (bundle) {
-      const cfg = normalizeProfileLinkPreviewConfig(bundle.profile.pro_link_preview_config);
-      const useProCustom = !!bundle.profile.is_pro && cfg.enabled;
-      const imgMode: ProPreviewImageMode = bundle.profile.is_pro ? cfg.image : 'auto';
       const built = buildProfileOpenGraph({
         profile: bundle.profile,
         topExperience: bundle.topExperience,
-        useProCustomization: useProCustom,
       });
       const bannerHttps = httpsOgImageUrl(bundle.profile.banner_url);
       const avatarHttps = httpsOgImageUrl(bundle.profile.discord_avatar);
@@ -199,7 +193,6 @@ export default async function middleware(request: Request): Promise<Response> {
         bannerHttps,
         avatarHttps,
         fallbackUrl: fallbackImage,
-        mode: imgMode,
       });
       return new Response(
         ogDocument({
