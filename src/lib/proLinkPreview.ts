@@ -3,6 +3,7 @@
 export {
   buildProfileOpenGraph,
   DEFAULT_PROFILE_LINK_PREVIEW,
+  DEFAULT_NORMALIZED_PROFILE_LINK_PREVIEW,
   normalizeProfileLinkPreviewConfig,
   pickProfileOgImageUrl,
   PROFILE_LINK_PREVIEW_SITE_SUFFIX,
@@ -10,10 +11,12 @@ export {
   PRO_PREVIEW_IMAGE_MODES,
   PRO_PREVIEW_TITLE_PARTS,
   type ExperienceOgMini,
+  type NormalizedProfileLinkPreview,
   type ProfileOgRow,
   type ProfileLinkPreviewConfig,
   type ProPreviewDescBlock,
   type ProPreviewImageMode,
+  type ProPreviewLayoutMode,
   type ProPreviewTitlePart,
 } from '../../proLinkPreviewOg.ts';
 
@@ -35,3 +38,18 @@ export const PRO_PREVIEW_DESC_LABELS: Record<ProPreviewDescBlock, string> = {
   location: 'Location',
   pronouns: 'Pronouns',
 };
+
+/** Tokens for “Custom text” link preview mode (`{token}` in title/description). */
+export const PRO_PREVIEW_PLACEHOLDER_HINTS: { token: string; label: string }[] = [
+  { token: '{display_name}', label: 'Directory display name' },
+  { token: '{discord_username}', label: 'Discord @username' },
+  { token: '{pro_badge}', label: 'Pro badge label (if Pro)' },
+  { token: '{site}', label: 'Site line (ERLC Directory)' },
+  { token: '{verified}', label: 'Verified staff paragraph (if verified)' },
+  { token: '{rating}', label: 'Stars & review count line' },
+  { token: '{bio}', label: 'Bio text' },
+  { token: '{skills}', label: 'Skills line' },
+  { token: '{experience}', label: 'Latest experience role · server' },
+  { token: '{location}', label: 'Location line' },
+  { token: '{pronouns}', label: 'Pronouns line' },
+];
