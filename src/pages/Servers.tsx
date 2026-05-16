@@ -14,12 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Navbar from '@/components/layout/Navbar';
 import ServerCard from '@/components/server/ServerCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -386,7 +386,7 @@ const Servers = () => {
         </div>
       </section>
 
-      <Sheet
+      <Dialog
         open={customizeOpen}
         onOpenChange={(open) => {
           setCustomizeOpen(open);
@@ -397,43 +397,45 @@ const Servers = () => {
           }
         }}
       >
-        <SheetContent
-          side="right"
-          className="flex h-[100dvh] max-h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-border bg-card p-0 sm:max-w-xl md:max-w-2xl lg:max-w-[44rem]"
+        <DialogContent
+          fullscreen
+          className="flex max-h-[100dvh] flex-col gap-0 overflow-hidden border-0 bg-background p-0 shadow-none"
         >
-          <SheetHeader className="shrink-0 space-y-1 border-b border-border bg-background/80 px-6 py-5 pr-12 text-left">
-            <SheetTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
+          <DialogHeader className="shrink-0 space-y-1 border-b border-border bg-card/80 px-4 py-4 text-left sm:px-6 sm:py-5 sm:pr-14">
+            <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-border bg-muted/40">
                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               </span>
               Customize server
-            </SheetTitle>
-            <SheetDescription className="text-sm text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
               {panelServer?.name ? `Editing “${panelServer.name}”.` : 'Invite, page copy, theme, gallery, and review notifications.'}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-            {panelLoading ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="text-sm">Loading settings…</span>
-              </div>
-            ) : panelServer ? (
-              <ServerOwnerPanel
-                server={panelServer}
-                ownerIsPro={panelOwnerIsPro}
-                coworkers={panelCoworkers}
-                onPatch={(patch) => {
-                  setPanelServer((prev) => (prev ? { ...prev, ...patch } : prev));
-                  void fetchServers({ silent: true });
-                }}
-              />
-            ) : (
-              <p className="py-12 text-center text-sm text-muted-foreground">Could not load this server.</p>
-            )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6">
+            <div className="mx-auto w-full max-w-5xl">
+              {panelLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="text-sm">Loading settings…</span>
+                </div>
+              ) : panelServer ? (
+                <ServerOwnerPanel
+                  server={panelServer}
+                  ownerIsPro={panelOwnerIsPro}
+                  coworkers={panelCoworkers}
+                  onPatch={(patch) => {
+                    setPanelServer((prev) => (prev ? { ...prev, ...patch } : prev));
+                    void fetchServers({ silent: true });
+                  }}
+                />
+              ) : (
+                <p className="py-12 text-center text-sm text-muted-foreground">Could not load this server.</p>
+              )}
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <SiteFooter />
     </div>
