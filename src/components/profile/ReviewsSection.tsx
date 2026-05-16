@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Star, MessageSquareText, Server as ServerIcon, X, Flag, ExternalLink, PenLine } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Star, MessageSquareText, Server as ServerIcon, X, Flag, Link2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +21,7 @@ import {
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { notifyServerReview } from '@/lib/callServerOwnerApi';
 import { normalizeDiscordCdnMediaUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { getPublicSiteOrigin } from '@/lib/publicSiteUrl';
 import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type ProfileChip = {
@@ -104,6 +105,27 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
   const [reviewAboutId, setReviewAboutId] = useState<string>(GENERAL_SERVER_REVIEW);
   const [memberServers, setMemberServers] = useState<MemberServer[]>([]);
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
+
+  const copyServerLinkForDiscordEmbed = useCallback(async (id: string) => {
+    const origin = (getPublicSiteOrigin() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(
+      /\/+$/,
+      '',
+    );
+    const url = `${origin}/server/${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: 'Link copied',
+        description: 'Paste it in Discord (or another chat) to show the rich server preview.',
+      });
+    } catch {
+      toast({
+        title: 'Could not copy',
+        description: 'Copy the server URL from your address bar instead.',
+        variant: 'destructive',
+      });
+    }
+  }, []);
 
   const isOwn = !!profileId && me?.id === profileId;
 
@@ -481,21 +503,14 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
                         {reviewServerId ? (
                           <div className="mt-3 flex flex-wrap gap-2">
                             <Button
-                              asChild
+                              type="button"
                               variant="outline"
                               size="sm"
                               className="h-8 gap-1.5 border-white/12 bg-background/60 text-xs"
+                              onClick={() => void copyServerLinkForDiscordEmbed(reviewServerId)}
                             >
-                              <Link to={`/server/${reviewServerId}`}>
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                Server page
-                              </Link>
-                            </Button>
-                            <Button asChild variant="secondary" size="sm" className="h-8 gap-1.5 text-xs">
-                              <Link to={`/server/${reviewServerId}#reviews`}>
-                                <PenLine className="h-3.5 w-3.5" />
-                                Write a review
-                              </Link>
+                              <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              Discord embed
                             </Button>
                           </div>
                         ) : null}
