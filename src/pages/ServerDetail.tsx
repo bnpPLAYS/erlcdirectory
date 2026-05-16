@@ -93,6 +93,8 @@ interface ServerRow {
   owner_show_staff_section?: boolean | null;
   owner_show_reviews_section?: boolean | null;
   owner_hero_video_url?: string | null;
+  owner_discord_embed_color?: number | null;
+  owner_discord_embed_footer?: string | null;
 }
 
 interface CoworkerRow {

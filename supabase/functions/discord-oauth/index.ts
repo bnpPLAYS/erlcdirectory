@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 import { discordDefaultAvatarCdnUrl } from '../_shared/discordDefaultAvatar.ts'
+import { upsertDiscordOAuthCredentials } from '../_shared/discordOAuthCredentials.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -164,9 +165,6 @@ Deno.serve(async (req) => {
       discord_username: username,
       discord_avatar: avatarUrl,
       display_name: displayName,
-      discord_access_token: tokenData.access_token,
-      discord_refresh_token: tokenData.refresh_token,
-      discord_token_expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     }
     if (bannerUrl && (isNewProfile || !existingProfile?.banner_url)) {
@@ -178,6 +176,12 @@ Deno.serve(async (req) => {
       : await admin.from('profiles').update(profilePatch).eq('id', existingProfile!.id)
 
     if (profileError) return json({ error: 'Could not save Discord to your profile.' }, 500)
+
+    await upsertDiscordOAuthCredentials(admin, userId, {
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token ?? null,
+      expires_at: expiresAt,
+    })
 
     const { data: magicLink, error: linkError } = await admin.auth.admin.generateLink({
       type: 'magiclink',

@@ -149,7 +149,7 @@ const Admin = () => {
 
   const refresh = async () => {
     const [p, s, po, st, rep] = await Promise.all([
-      supabase.from('profiles').select('id, user_id, display_name, discord_username, discord_avatar, is_verified, is_featured, is_pro').order('created_at', { ascending: false }).limit(200),
+      supabase.rpc('staff_admin_list_profiles', { p_limit: 200 }),
       supabase.from('servers').select('id, name, icon, member_count, guild_id, is_verified').order('created_at', { ascending: false }).limit(200),
       supabase.from('posts').select('id, title, type, author_id, created_at, status').order('created_at', { ascending: false }).limit(200),
       supabase.from('user_roles').select('id, user_id, role').eq('role', 'admin'),
@@ -161,7 +161,7 @@ const Admin = () => {
         .order('created_at', { ascending: false })
         .limit(250),
     ]);
-    setProfiles(p.data || []);
+    setProfiles(!p.error && Array.isArray(p.data) ? p.data : []);
     setServers(s.data || []);
     setPosts(po.data || []);
     // Hydrate staff with profile names

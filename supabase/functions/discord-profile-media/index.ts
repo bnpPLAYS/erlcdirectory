@@ -10,6 +10,7 @@ import {
   enrichDiscordGuildForDirectory,
 } from '../_shared/discordGuildEnrichment.ts'
 import { discordDefaultAvatarCdnUrl } from '../_shared/discordDefaultAvatar.ts'
+import { upsertDiscordOAuthCredentials } from '../_shared/discordOAuthCredentials.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -227,9 +228,7 @@ Deno.serve(async (req) => {
 
   const { data: row, error: rowErr } = await admin
     .from('profiles')
-    .select(
-      'id, user_id, discord_access_token, discord_refresh_token, discord_id',
-    )
+    .select('id, user_id, discord_id')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -237,8 +236,16 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Profile not found.' }, 400)
   }
 
-  let accessToken = row.discord_access_token?.trim() ?? ''
-  let refreshToken = row.discord_refresh_token?.trim() ?? ''
+  const { data: credsRow } = await admin
+    .from('discord_oauth_credentials')
+    .select('access_token, refresh_token, expires_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const creds = credsRow as { access_token: string | null; refresh_token: string | null; expires_at: string | null } | null
+
+  let accessToken = creds?.access_token?.trim() ?? ''
+  let refreshToken = creds?.refresh_token?.trim() ?? ''
   let oauthExpiresIn: number | null = null
 
   if (!accessToken && !refreshToken) {
@@ -306,19 +313,26 @@ Deno.serve(async (req) => {
   const bannerUrl = discordId ? bannerCdn(discordId, du.banner ?? null) : null
 
   const patch: Record<string, unknown> = {
-    discord_access_token: accessToken || null,
-    discord_refresh_token: refreshToken || null,
     updated_at: new Date().toISOString(),
   }
   // Respect syncMode so "banner only" does not replace the profile picture (and vice versa).
   if (syncMode !== 'banner' && avatarUrl != null) patch.discord_avatar = avatarUrl
   if (syncMode !== 'avatar' && bannerUrl != null) patch.banner_url = bannerUrl
-  if (oauthExpiresIn != null && oauthExpiresIn > 0) {
-    patch.discord_token_expires_at = new Date(Date.now() + oauthExpiresIn * 1000).toISOString()
-  }
 
   const { error: upErr } = await admin.from('profiles').update(patch).eq('id', row.id)
   if (upErr) return json({ ok: false, error: upErr.message }, 500)
+
+  let expiresAt: string | null = null
+  if (oauthExpiresIn != null && oauthExpiresIn > 0) {
+    expiresAt = new Date(Date.now() + oauthExpiresIn * 1000).toISOString()
+  } else if (creds?.expires_at) {
+    expiresAt = creds.expires_at
+  }
+  await upsertDiscordOAuthCredentials(admin, user.id, {
+    access_token: accessToken || null,
+    refresh_token: refreshToken || null,
+    expires_at: expiresAt,
+  })
 
   let servers_refreshed = 0
   try {

@@ -36,6 +36,20 @@ import { cn } from '@/lib/utils';
 const PRESETS_FREE = ['zinc', 'slate', 'neutral'] as const;
 const PRESETS_PRO = ['rose', 'cyan', 'amber', 'violet'] as const;
 const MAX_DESC = 8000;
+const MAX_EMBED_FOOTER = 200;
+const DEFAULT_REVIEW_EMBED_HEX = '#5865f2';
+
+function discordEmbedIntFromHex(hex: string): number | null {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  return parseInt(m[1], 16);
+}
+
+function hexFromDiscordEmbedInt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return DEFAULT_REVIEW_EMBED_HEX;
+  const c = Math.max(0, Math.min(0xffffff, Math.floor(n)));
+  return `#${c.toString(16).padStart(6, '0')}`;
+}
 
 const blockCard = 'rounded-md border border-white/10 bg-zinc-950/70 p-4 shadow-sm';
 const blockInput =
@@ -72,6 +86,8 @@ export type ServerOwnerPanelServer = {
   owner_theme_preset: string | null;
   owner_gallery_urls: unknown;
   owner_review_webhook_url: string | null;
+  owner_discord_embed_color: number | null;
+  owner_discord_embed_footer: string | null;
   owner_hidden_staff_profile_ids: unknown;
   owner_show_staff_section: boolean | null;
   owner_show_reviews_section: boolean | null;
@@ -134,6 +150,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   const [preset, setPreset] = useState(server.owner_theme_preset || 'zinc');
   const [galleryUrls, setGalleryUrls] = useState<string[]>(() => parseJsonStringArray(server.owner_gallery_urls));
   const [webhook, setWebhook] = useState(server.owner_review_webhook_url ?? '');
+  const [embedColorHex, setEmbedColorHex] = useState(() => hexFromDiscordEmbedInt(server.owner_discord_embed_color));
+  const [embedFooter, setEmbedFooter] = useState(server.owner_discord_embed_footer ?? '');
   const [invite, setInvite] = useState(server.discord_invite ?? '');
   const [showStaff, setShowStaff] = useState(server.owner_show_staff_section !== false);
   const [showReviews, setShowReviews] = useState(server.owner_show_reviews_section !== false);
@@ -148,6 +166,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
     setPreset(server.owner_theme_preset || 'zinc');
     setGalleryUrls(parseJsonStringArray(server.owner_gallery_urls));
     setWebhook(server.owner_review_webhook_url ?? '');
+    setEmbedColorHex(hexFromDiscordEmbedInt(server.owner_discord_embed_color));
+    setEmbedFooter(server.owner_discord_embed_footer ?? '');
     setInvite(server.discord_invite ?? '');
     setShowStaff(server.owner_show_staff_section !== false);
     setShowReviews(server.owner_show_reviews_section !== false);
@@ -246,6 +266,12 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       toast.error('Webhook must be a https://discord.com/api/webhooks/… URL.');
       return;
     }
+    const embedInt = discordEmbedIntFromHex(embedColorHex.trim() || DEFAULT_REVIEW_EMBED_HEX);
+    if (embedInt == null) {
+      toast.error('Review embed color must be a #RRGGBB hex value.');
+      return;
+    }
+    const foot = embedFooter.trim().slice(0, MAX_EMBED_FOOTER);
     const inv = invite.trim();
     if (inv && !discordInviteLooksValid(inv)) {
       toast.error('Invite must look like a real Discord invite link or code.');
@@ -279,6 +305,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       owner_theme_preset: safePreset,
       owner_gallery_urls: galleryUrls,
       owner_review_webhook_url: wh || null,
+      owner_discord_embed_color: embedInt,
+      owner_discord_embed_footer: foot || null,
       owner_hidden_staff_profile_ids: [...hiddenIds],
       owner_show_staff_section: showStaff,
       owner_show_reviews_section: showReviews,
@@ -491,13 +519,14 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       <section>
         <SectionTitle
           title="Integrations"
-          description="Discord webhook for new reviews and optional hero video for Pro owners."
+          description="Discord webhook for new reviews, embed styling, and optional Pro hero video."
         />
         <div className="grid gap-4 md:grid-cols-2">
           <FieldCard
             icon={Link2}
             label="Review Discord webhook"
             hint="We post a short embed with a link when someone leaves a review. Leave empty to disable."
+            className="md:col-span-2"
           >
             <Input
               value={webhook}
@@ -506,11 +535,48 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               className={cn(blockInput, 'font-mono text-xs')}
             />
           </FieldCard>
+          <FieldCard
+            icon={Palette}
+            label="Review embed color"
+            hint="Accent color for the Discord notification embed (#RRGGBB)."
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="color"
+                value={/^#[0-9A-Fa-f]{6}$/.test(embedColorHex) ? embedColorHex : DEFAULT_REVIEW_EMBED_HEX}
+                onChange={(e) => setEmbedColorHex(e.target.value)}
+                className="h-10 w-14 cursor-pointer rounded-md border border-white/10 bg-transparent"
+                aria-label="Discord review embed color"
+              />
+              <Input
+                value={embedColorHex}
+                onChange={(e) => setEmbedColorHex(e.target.value)}
+                placeholder={DEFAULT_REVIEW_EMBED_HEX}
+                className={cn(blockInput, 'min-w-[8rem] flex-1 font-mono text-sm')}
+              />
+            </div>
+          </FieldCard>
+          <FieldCard
+            icon={Type}
+            label="Review embed footer"
+            hint={`Short footer under the embed (Discord limit ${MAX_EMBED_FOOTER} characters).`}
+          >
+            <Input
+              value={embedFooter}
+              onChange={(e) => setEmbedFooter(e.target.value.slice(0, MAX_EMBED_FOOTER))}
+              placeholder="e.g. Your server name · reviews"
+              className={cn(blockInput, 'text-sm')}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {embedFooter.length} / {MAX_EMBED_FOOTER}
+            </p>
+          </FieldCard>
           {ownerIsPro ? (
             <FieldCard
               icon={Youtube}
               label="Hero video"
               hint="YouTube watch or youtu.be link only. Shown prominently for Pro listings."
+              className="md:col-span-2"
             >
               <Input
                 value={heroVideo}
@@ -520,9 +586,11 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               />
             </FieldCard>
           ) : (
-            <div className={cn(blockCard, 'flex flex-col justify-center text-xs text-muted-foreground')}>
-              <p className="font-medium text-foreground/90">Hero video</p>
-              <p className="mt-2 leading-relaxed">Upgrade to Pro to feature a YouTube hero on your server page.</p>
+            <div className={cn(blockCard, 'flex flex-col justify-center md:col-span-2')}>
+              <p className="text-sm font-medium text-foreground">Hero video</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Upgrade to Pro to feature a YouTube hero on your server page.
+              </p>
             </div>
           )}
         </div>
