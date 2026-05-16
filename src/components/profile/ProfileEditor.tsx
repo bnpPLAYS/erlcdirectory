@@ -67,7 +67,7 @@ import {
   normalizeStoredCounty,
   PROFILE_LOCATION_OPTIONS,
 } from '@/lib/profileLocations';
-import { sanitizeProfilePronouns } from '@/lib/profilePronouns';
+import { PROFILE_PRONOUN_OPTIONS, sanitizeProfilePronouns } from '@/lib/profilePronouns';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
 import {
   invokeDiscordProfileMediaSync,
