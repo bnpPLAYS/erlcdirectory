@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ColorPickerInput } from '@/components/ui/color-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -484,10 +485,10 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <FieldCard icon={Palette} label="Accent color" hint="Use a hex color that matches your community brand.">
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="color"
-                value={/^#[0-9A-Fa-f]{6}$/.test(accent) ? accent : '#a1a1aa'}
-                onChange={(e) => setAccent(e.target.value)}
+              <ColorPickerInput
+                value={accent}
+                onChange={setAccent}
+                fallbackHex="#a1a1aa"
                 className={colorWell}
                 aria-label="Accent color"
               />
@@ -561,10 +562,10 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
           </FieldCard>
           <FieldCard icon={Palette} label="Review embed color" hint="Accent color for the Discord notification embed (#RRGGBB).">
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="color"
-                value={/^#[0-9A-Fa-f]{6}$/.test(embedColorHex) ? embedColorHex : DEFAULT_REVIEW_EMBED_HEX}
-                onChange={(e) => setEmbedColorHex(e.target.value)}
+              <ColorPickerInput
+                value={embedColorHex}
+                onChange={setEmbedColorHex}
+                fallbackHex={DEFAULT_REVIEW_EMBED_HEX}
                 className={colorWell}
                 aria-label="Discord review embed color"
               />
