@@ -3,6 +3,16 @@
  * Caller must be the reviewer who created the review.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
+import {
+  applyReviewEmbedPlaceholders,
+  buildPlaceholderContext,
+  clampDiscordUtf16,
+  DEFAULT_ACTIVITY_TEMPLATE,
+  DEFAULT_AUTHOR_NAME_TEMPLATE,
+  DEFAULT_BUTTON_VIEW_SERVER,
+  DEFAULT_BUTTON_WRITE_REVIEW,
+  parseOwnerReviewEmbedConfig,
+} from '../_shared/reviewWebhookEmbed.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -139,7 +149,7 @@ Deno.serve(async (req) => {
   const { data: server, error: sErr } = await admin
     .from('servers')
     .select(
-      'id, name, icon, banner, description, owner_long_description, member_count, staff_count, is_verified, is_hiring, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer',
+      'id, name, icon, banner, description, owner_long_description, member_count, staff_count, is_verified, is_hiring, owner_id, owner_review_webhook_url, owner_discord_embed_color, owner_discord_embed_footer, owner_review_embed_config',
     )
     .eq('id', serverId)
     .maybeSingle()
@@ -149,6 +159,13 @@ Deno.serve(async (req) => {
   const hook = typeof server.owner_review_webhook_url === 'string' ? server.owner_review_webhook_url.trim() : ''
   if (!hook) return json({ ok: true, skipped: true, reason: 'no_webhook' })
   if (!discordWebhookOk(hook)) return json({ ok: false, error: 'Server webhook URL is invalid.' }, 400)
+
+  const ownerId = typeof server.owner_id === 'string' ? server.owner_id.trim() : ''
+  let ownerIsPro = false
+  if (ownerId && UUID_RE.test(ownerId)) {
+    const { data: op } = await admin.from('profiles').select('is_pro').eq('id', ownerId).maybeSingle()
+    ownerIsPro = !!op?.is_pro
+  }
 
   const base = siteBase()
   const serverPageUrl = `${base}/server/${serverId}`
@@ -224,13 +241,57 @@ Deno.serve(async (req) => {
     snippet ? snippet : '_No written comment._',
     aboutSuffix,
   ]
-  const description = descriptionParts.join('\n').slice(0, 4096)
+  const defaultDescription = descriptionParts.join('\n').slice(0, 4096)
 
   const serverNameSafe = String(server.name).slice(0, 180)
-  const embedTitle = `${serverNameSafe} | ERLC Directory`.slice(0, 256)
+  const defaultTitle = `${serverNameSafe} | ERLC Directory`.slice(0, 256)
+
+  const discordIdForLead = typeof meProf.discord_id === 'string' ? meProf.discord_id.trim() : ''
+  const reviewerLead =
+    discordIdForLead && isDiscordSnowflake(discordIdForLead)
+      ? `<@${discordIdForLead}> `
+      : `**${safeContentChunk(who, 80)}** `
+
+  const ctx = buildPlaceholderContext({
+    serverName: serverNameSafe,
+    serverPageUrl,
+    reviewsUrl,
+    intro,
+    bullets: bulletLines.join('\n'),
+    reviewSnippet: snippet ? snippet : '_No written comment._',
+    reviewAbout: aboutSuffix,
+    reviewerLead,
+    reviewerName: safeContentChunk(who, 120),
+    avgDisplay,
+    reviewCount: String(reviewCount),
+    stars,
+    rating,
+    memberStr: memberStr ?? '',
+    staffStr: staffStr ?? '',
+  })
+
+  const customCfg = ownerIsPro ? parseOwnerReviewEmbedConfig(server.owner_review_embed_config) : null
+
+  let embedTitle: string
+  let description: string
+  let authorName: string
+  if (customCfg) {
+    embedTitle = clampDiscordUtf16(applyReviewEmbedPlaceholders(customCfg.title_template, ctx), 256).trim() || defaultTitle
+    description =
+      clampDiscordUtf16(applyReviewEmbedPlaceholders(customCfg.description_template, ctx), 4096).trim() ||
+      defaultDescription
+    authorName = clampDiscordUtf16(
+      applyReviewEmbedPlaceholders(customCfg.author_name_template, ctx).trim() || DEFAULT_AUTHOR_NAME_TEMPLATE,
+      256,
+    )
+  } else {
+    embedTitle = defaultTitle
+    description = defaultDescription
+    authorName = DEFAULT_AUTHOR_NAME_TEMPLATE
+  }
 
   const embed: Record<string, unknown> = {
-    author: { name: 'ERLC Directory' },
+    author: { name: authorName },
     title: embedTitle,
     url: serverPageUrl,
     description,
@@ -238,8 +299,10 @@ Deno.serve(async (req) => {
     footer: { text: footerText, icon_url: `${base}/favicon.png` },
   }
 
-  if (serverIcon) embed.thumbnail = { url: serverIcon }
-  if (serverBannerImg) embed.image = { url: serverBannerImg }
+  const hideThumb = customCfg && !customCfg.show_thumbnail
+  const hideBanner = customCfg && !customCfg.show_banner_image
+  if (!hideThumb && serverIcon) embed.thumbnail = { url: serverIcon }
+  if (!hideBanner && serverBannerImg) embed.image = { url: serverBannerImg }
 
   try {
     const d = new Date(review.created_at as string)
@@ -248,50 +311,81 @@ Deno.serve(async (req) => {
     /* omit timestamp */
   }
 
-  const components = [
-    {
-      type: 1,
-      components: [
-        {
-          type: 2,
-          style: 5,
-          label: 'View server',
-          url: serverPageUrl,
-        },
-        {
-          type: 2,
-          style: 5,
-          label: 'Write a review',
-          url: reviewsUrl,
-        },
-      ],
-    },
-  ]
+  const viewLabel =
+    customCfg?.button_view_server?.trim().slice(0, 80) || DEFAULT_BUTTON_VIEW_SERVER
+  const reviewLabel =
+    customCfg?.button_write_review?.trim().slice(0, 80) || DEFAULT_BUTTON_WRITE_REVIEW
+
+  const components =
+    customCfg && !customCfg.show_buttons
+      ? []
+      : [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: viewLabel,
+                url: serverPageUrl,
+              },
+              {
+                type: 2,
+                style: 5,
+                label: reviewLabel,
+                url: reviewsUrl,
+              },
+            ],
+          },
+        ]
 
   const serverChunk = safeContentChunk(String(server.name), 120)
-  const discordId = typeof meProf.discord_id === 'string' ? meProf.discord_id.trim() : ''
   let messageContent = ''
-  if (discordId && isDiscordSnowflake(discordId)) {
-    messageContent = `<@${discordId}> left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
-      0,
+  if (customCfg) {
+    messageContent = clampDiscordUtf16(
+      applyReviewEmbedPlaceholders(customCfg.activity_template, ctx),
       2000,
-    )
-  } else {
-    messageContent = `**${safeContentChunk(who, 80)}** left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
-      0,
-      2000,
-    )
+    ).trim()
+    if (!messageContent) {
+      messageContent = clampDiscordUtf16(
+        applyReviewEmbedPlaceholders(DEFAULT_ACTIVITY_TEMPLATE, ctx),
+        2000,
+      ).trim()
+    }
+  }
+  if (!messageContent) {
+    if (discordIdForLead && isDiscordSnowflake(discordIdForLead)) {
+      messageContent = `<@${discordIdForLead}> left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
+        0,
+        2000,
+      )
+    } else {
+      messageContent = `**${safeContentChunk(who, 80)}** left a **${rating}/5** review on **${serverChunk}** on **ERLC Directory.**`.slice(
+        0,
+        2000,
+      )
+    }
+  }
+
+  let hookUsername = 'ERLC Directory'
+  let hookAvatar = `${base}/favicon.png`
+  if (customCfg) {
+    const u = customCfg.webhook_username?.trim()
+    if (u) hookUsername = clampDiscordUtf16(u, 80)
+    const av = customCfg.webhook_avatar_url?.trim()
+    if (av && av.startsWith('https://') && av.length <= 2048) hookAvatar = av
   }
 
   const whRes = await fetch(hook, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: 'ERLC Directory',
-      avatar_url: `${base}/favicon.png`,
+      username: hookUsername,
+      avatar_url: hookAvatar,
       content: messageContent,
       embeds: [embed],
       components,
+      allowed_mentions: { parse: [] },
     }),
   })
 

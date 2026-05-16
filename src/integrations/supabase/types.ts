@@ -755,6 +755,7 @@ export type Database = {
           owner_hero_video_url: string | null
           owner_discord_embed_color: number | null
           owner_discord_embed_footer: string | null
+          owner_review_embed_config: Json | null
         }
         Insert: {
           banner?: string | null
@@ -787,6 +788,7 @@ export type Database = {
           owner_hero_video_url?: string | null
           owner_discord_embed_color?: number | null
           owner_discord_embed_footer?: string | null
+          owner_review_embed_config?: Json | null
         }
         Update: {
           banner?: string | null
@@ -819,6 +821,7 @@ export type Database = {
           owner_hero_video_url?: string | null
           owner_discord_embed_color?: number | null
           owner_discord_embed_footer?: string | null
+          owner_review_embed_config?: Json | null
         }
         Relationships: [
           {
