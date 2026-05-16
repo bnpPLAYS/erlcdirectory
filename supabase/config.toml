@@ -51,6 +51,9 @@ verify_jwt = false
 [functions.upload-server-gallery]
 verify_jwt = false
 
+[functions.upload-profile-gallery]
+verify_jwt = false
+
 [functions.server-review-notify]
 verify_jwt = false
 

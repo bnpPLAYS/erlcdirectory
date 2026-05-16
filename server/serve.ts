@@ -57,6 +57,7 @@ const API_LOADERS: Record<string, () => Promise<ApiHandler>> = {
   'sync-discord-tokens': async () => (await import('../api/sync-discord-tokens.ts')).default,
   'server-review-notify': async () => (await import('../api/server-review-notify.ts')).default,
   'upload-server-gallery': async () => (await import('../api/upload-server-gallery.ts')).default,
+  'upload-profile-gallery': async () => (await import('../api/upload-profile-gallery.ts')).default,
   'verify-roblox-pro': async () => (await import('../api/verify-roblox-pro.ts')).default,
 };
 
