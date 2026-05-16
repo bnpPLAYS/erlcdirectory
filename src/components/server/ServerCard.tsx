@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserCheck, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, ExternalLink, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/mockData';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
@@ -25,9 +25,12 @@ interface ServerCardProps {
     owner_id?: string | null;
     owner_profile?: { display_name: string | null; discord_username: string | null } | null;
   };
+  currentProfileId?: string | null;
+  onCustomize?: (serverId: string) => void;
 }
 
-const ServerCard = ({ server }: ServerCardProps) => {
+const ServerCard = ({ server, currentProfileId, onCustomize }: ServerCardProps) => {
+  const isOwner = !!(currentProfileId && server.owner_id && currentProfileId === server.owner_id);
   const joinHref = normalizeDiscordInvite(server.discord_invite ?? null);
 
   return (
@@ -111,6 +114,18 @@ const ServerCard = ({ server }: ServerCardProps) => {
               </div>
               
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {isOwner && onCustomize ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 gap-1 px-2 text-xs border border-white/10"
+                    onClick={() => onCustomize(server.id)}
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    Customize
+                  </Button>
+                ) : null}
                 {joinHref ? (
                   <a href={joinHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" className="h-7 px-2.5 text-xs gap-1.5">
