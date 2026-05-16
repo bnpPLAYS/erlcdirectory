@@ -25,6 +25,14 @@ const SITE_DESCRIPTION =
   'Discover ER:LC roleplay servers, staff portfolios, and communities.';
 const THEME_COLOR = '#0b0b0f';
 
+const OG_FALLBACK_IMAGE_FILE = 'og-image.png?v=1';
+const OG_FALLBACK_WIDTH = 1156;
+const OG_FALLBACK_HEIGHT = 810;
+
+function ogFallbackImageUrl(origin: string): string {
+  return `${origin}/${OG_FALLBACK_IMAGE_FILE}`;
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -50,8 +58,8 @@ function ogDocument(opts: {
   const escImg = escapeHtml(opts.imageUrl);
   const escSite = escapeHtml(opts.siteName);
   const escTheme = escapeHtml(opts.themeColor);
-  const w = opts.imageWidth ?? 1200;
-  const h = opts.imageHeight ?? 630;
+  const w = opts.imageWidth ?? 1156;
+  const h = opts.imageHeight ?? 810;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,7 +142,7 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
     const afterPrefix = pathname.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/embed.png?v=2`;
+      const imageUrl = ogFallbackImageUrl(url.origin);
       const title = `Verify experience — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Open this link to confirm staff experience with your Discord login.`;
       return new Response(
@@ -143,8 +151,8 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
           description,
           canonicalUrl,
           imageUrl,
-          imageWidth: 1200,
-          imageHeight: 630,
+          imageWidth: OG_FALLBACK_WIDTH,
+          imageHeight: OG_FALLBACK_HEIGHT,
           siteName: SITE_NAME,
           themeColor: THEME_COLOR,
           bodyHtml: verifyEmbedBody(canonicalUrl),
@@ -158,7 +166,7 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
   if (!isEmbed) return null;
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const fallbackImage = `${url.origin}/embed.png?v=2`;
+  const fallbackImage = ogFallbackImageUrl(url.origin);
   const sb = supabaseEnv();
 
   const serverId = parseServerPageId(pathname);
@@ -179,8 +187,8 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
           description,
           canonicalUrl,
           imageUrl,
-          imageWidth: bannerOg ? 960 : 1200,
-          imageHeight: bannerOg ? 540 : 630,
+          imageWidth: bannerOg ? 960 : OG_FALLBACK_WIDTH,
+          imageHeight: bannerOg ? 540 : OG_FALLBACK_HEIGHT,
           siteName: SITE_NAME,
           themeColor: THEME_COLOR,
           bodyHtml: siteEmbedBody(canonicalUrl),
@@ -204,6 +212,8 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
         bannerHttps,
         avatarHttps,
         fallbackUrl: fallbackImage,
+        fallbackWidth: OG_FALLBACK_WIDTH,
+        fallbackHeight: OG_FALLBACK_HEIGHT,
       });
       return new Response(
         ogDocument({
@@ -228,8 +238,8 @@ export async function getCrawlerOgResponse(request: Request): Promise<Response |
       description: SITE_DESCRIPTION,
       canonicalUrl,
       imageUrl: fallbackImage,
-      imageWidth: 1200,
-      imageHeight: 630,
+      imageWidth: OG_FALLBACK_WIDTH,
+      imageHeight: OG_FALLBACK_HEIGHT,
       siteName: SITE_NAME,
       themeColor: THEME_COLOR,
       bodyHtml: siteEmbedBody(canonicalUrl),

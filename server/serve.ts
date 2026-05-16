@@ -180,8 +180,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   const method = req.method || 'GET';
 
   if (method === 'GET' && pathname === '/share-verify-preview.png') {
-    const embed = path.join(DIST, 'embed.png');
-    if (await trySendFile(res, embed, method)) return;
+    const ogImg = path.join(DIST, 'og-image.png');
+    if (await trySendFile(res, ogImg, method)) return;
   }
 
   if (method === 'GET' || method === 'HEAD') {

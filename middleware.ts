@@ -28,6 +28,15 @@ const SITE_TITLE = 'ERLC.Directory';
 const SITE_DESCRIPTION = 'ER:LC servers, staff profiles, invites.';
 const THEME_COLOR = '#0b0b0f';
 
+/** Real site screenshot for default Discord/link previews (see `public/og-image.png`). */
+const OG_FALLBACK_IMAGE_FILE = 'og-image.png?v=1';
+const OG_FALLBACK_WIDTH = 1156;
+const OG_FALLBACK_HEIGHT = 810;
+
+function ogFallbackImageUrl(origin: string): string {
+  return `${origin}/${OG_FALLBACK_IMAGE_FILE}`;
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -123,7 +132,7 @@ export default async function middleware(request: Request): Promise<Response> {
     const afterPrefix = path.slice('/verify/'.length);
     if (afterPrefix && !afterPrefix.includes('/') && isEmbed) {
       const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-      const imageUrl = `${url.origin}/embed.png?v=2`;
+      const imageUrl = ogFallbackImageUrl(url.origin);
       const title = `Verify — ${SITE_NAME}`;
       const description = `${SITE_DESCRIPTION} Sign in with Discord to confirm.`;
       return new Response(
@@ -132,8 +141,8 @@ export default async function middleware(request: Request): Promise<Response> {
           description,
           canonicalUrl,
           imageUrl,
-          imageWidth: 1200,
-          imageHeight: 630,
+          imageWidth: OG_FALLBACK_WIDTH,
+          imageHeight: OG_FALLBACK_HEIGHT,
           themeColor: THEME_COLOR,
           bodyHtml: verifyEmbedBody(canonicalUrl),
         }),
@@ -148,7 +157,7 @@ export default async function middleware(request: Request): Promise<Response> {
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const fallbackImage = `${url.origin}/embed.png?v=2`;
+  const fallbackImage = ogFallbackImageUrl(url.origin);
   const sb = supabaseEnv();
 
   const serverId = parseServerPageId(path);
@@ -169,8 +178,8 @@ export default async function middleware(request: Request): Promise<Response> {
           description,
           canonicalUrl,
           imageUrl,
-          imageWidth: bannerOg ? 960 : 1200,
-          imageHeight: bannerOg ? 540 : 630,
+          imageWidth: bannerOg ? 960 : OG_FALLBACK_WIDTH,
+          imageHeight: bannerOg ? 540 : OG_FALLBACK_HEIGHT,
           themeColor: THEME_COLOR,
           bodyHtml: siteEmbedBody(canonicalUrl),
         }),
@@ -193,6 +202,8 @@ export default async function middleware(request: Request): Promise<Response> {
         bannerHttps,
         avatarHttps,
         fallbackUrl: fallbackImage,
+        fallbackWidth: OG_FALLBACK_WIDTH,
+        fallbackHeight: OG_FALLBACK_HEIGHT,
       });
       return new Response(
         ogDocument({
@@ -216,8 +227,8 @@ export default async function middleware(request: Request): Promise<Response> {
       description: SITE_DESCRIPTION,
       canonicalUrl,
       imageUrl: fallbackImage,
-      imageWidth: 1200,
-      imageHeight: 630,
+      imageWidth: OG_FALLBACK_WIDTH,
+      imageHeight: OG_FALLBACK_HEIGHT,
       themeColor: THEME_COLOR,
       bodyHtml: siteEmbedBody(canonicalUrl),
     }),
