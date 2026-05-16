@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { isProfileDmPrefsSchemaError } from '@/lib/profileDmPrefsMigration';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 /**
  * Blocks app interaction until new Discord-linked profiles accept Terms + Privacy.
@@ -50,7 +51,7 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
     }
     setBusy(false);
     if (error) {
-      toast.error(error.message || 'Could not save your acceptance.');
+      toast.error(publicErrorMessage('Could not save your acceptance.', error));
       return;
     }
     await refreshProfile();

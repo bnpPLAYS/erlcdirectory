@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useStaffAccess } from '@/hooks/useStaffAccess';
 import { isSiteOwnerDiscordUsername } from '@/lib/siteOwner';
+import { publicErrorMessage, devWarn } from '@/lib/clientErrorHandling';
 import { ProfileStaffTools } from '@/components/staff/ProfileStaffTools';
 import { profilePath, looksLikeProfileUuid, normalizeDiscordUsernameKey } from '@/lib/profilePath';
 import { sanitizeProfilePronouns } from '@/lib/profilePronouns';
@@ -223,8 +224,8 @@ const Profile = () => {
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_profile_by_username_lookup', {
         lookup: slug,
       });
-      if (rpcError && import.meta.env.DEV) {
-        console.warn('[Profile] get_profile_by_username_lookup:', rpcError.message);
+      if (rpcError) {
+        devWarn('[Profile] get_profile_by_username_lookup:', rpcError.message);
       }
       profileData = unwrapRpcProfileRow(rpcData);
 
@@ -315,7 +316,7 @@ const Profile = () => {
     }
 
     if (error) {
-      toast.error(error.message || 'Profile failed to load');
+      toast.error(publicErrorMessage('Could not update profile.', error));
       return;
     }
     toast.success(`${field === 'is_verified' ? 'Verified' : 'Featured'} ${newVal ? 'granted' : 'removed'}`);

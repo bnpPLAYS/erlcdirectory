@@ -59,6 +59,7 @@ import AddExperienceDialog from './AddExperienceDialog';
 import { isPendingPlaceholderRole, PENDING_EXPERIENCE_ROLE } from '@/lib/experienceConstants';
 import { ensureVerificationLink, copyTextToClipboard } from '@/lib/experienceVerificationLink';
 import { cn } from '@/lib/utils';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 import {
   PROFILE_LOCATION_GROUPS,
   normalizeStoredCounty,
@@ -454,7 +455,7 @@ const ProfileEditor = ({
     try {
       const { error } = await supabase.rpc('deactivate_own_account');
       if (error) {
-        toast.error(error.message || 'Could not deactivate your account.');
+        toast.error(publicErrorMessage('Could not deactivate your account.', error));
         return;
       }
       toast.success('Your account has been deactivated.');

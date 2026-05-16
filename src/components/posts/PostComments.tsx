@@ -10,6 +10,7 @@ import { formatTimeAgo } from '@/lib/mockData';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { toast } from 'sonner';
 import { profilePath } from '@/lib/profilePath';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type CommentRow = {
   id: string;
@@ -54,7 +55,7 @@ export function PostComments({ postId, postStatus }: Props) {
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('That action failed.', error));
       setComments([]);
       setLoading(false);
       return;
@@ -127,7 +128,7 @@ export function PostComments({ postId, postStatus }: Props) {
     });
     setSending(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('That action failed.', error));
       return;
     }
     if (blockedHits) toast.info('Wording was adjusted to meet community guidelines.');
@@ -140,7 +141,7 @@ export function PostComments({ postId, postStatus }: Props) {
     if (!confirm('Delete this comment?')) return;
     const { error } = await supabase.from('post_comments').delete().eq('id', id).eq('author_id', profile.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('That action failed.', error));
       return;
     }
     void load();

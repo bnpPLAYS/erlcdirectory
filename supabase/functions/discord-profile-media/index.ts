@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
   if (syncMode !== 'avatar' && bannerUrl != null) patch.banner_url = bannerUrl
 
   const { error: upErr } = await admin.from('profiles').update(patch).eq('id', row.id)
-  if (upErr) return json({ ok: false, error: upErr.message }, 500)
+  if (upErr) return json({ ok: false, error: 'Could not update profile media.' }, 500)
 
   let expiresAt: string | null = null
   if (oauthExpiresIn != null && oauthExpiresIn > 0) {

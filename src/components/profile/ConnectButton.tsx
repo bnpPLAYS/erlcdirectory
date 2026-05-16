@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { devWarn, publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type RequestRow = {
   id: string;
@@ -92,15 +93,14 @@ const ConnectButton = ({ targetProfileId, targetName, className }: Props) => {
       .single();
     setBusy(false);
     if (error) {
-      console.error('Connect request failed', error);
+      devWarn('[ConnectButton] insert failed', error);
       const msg = error.message || '';
       if (msg.includes('is_my_profile') || msg.includes('are_connected')) {
-        console.error(
-          'Connection RLS: grant EXECUTE on public.is_my_profile(uuid) and are_connected(uuid,uuid) to authenticated (see supabase/migrations/*ensure_rls_helper*).',
+        toast.error(
+          'Could not send your request right now. The directory needs a quick database update—try again after your host applies the latest migrations.',
         );
-        toast.error('Could not send your request right now. The directory needs a quick database update—try again after your host applies the latest migrations.');
       } else {
-        toast.error(msg || 'Could not send request');
+        toast.error(publicErrorMessage('Could not send your request.', error));
       }
       return;
     }

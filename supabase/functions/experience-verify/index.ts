@@ -647,7 +647,7 @@ Deno.serve(async (req) => {
 
       return json({ ok: true, status: 'rejected', approver: me.username })
     }
-  } catch (error) {
-    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500)
+  } catch {
+    return json({ error: 'Verification request failed.' }, 500)
   }
 })

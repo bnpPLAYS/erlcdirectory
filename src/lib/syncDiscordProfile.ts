@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { invokeDiscordProfileMediaSync } from '@/lib/callDiscordProfileMedia';
 import { invokeSyncDiscordTokens } from '@/lib/callSyncDiscordTokens';
 import { discordDefaultAvatarCdnUrl } from '@/lib/discordDefaultAvatar';
+import { devWarn } from '@/lib/clientErrorHandling';
 
 /** Discord CDN avatar URL from user id + avatar hash (OAuth sometimes omits full `avatar_url` in JWT). */
 export function discordAvatarCdnUrl(userId: string, avatarHash: string | null | undefined): string | null {
@@ -83,7 +84,7 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     (typeof custom.sub === 'string' ? custom.sub : null);
 
   if (!discordId) {
-    console.warn('syncDiscordProfileFromSession: no Discord id in JWT yet; skipping profile patch');
+    devWarn('syncDiscordProfileFromSession: no Discord id in JWT yet; skipping profile patch');
     return { error: null };
   }
 
@@ -135,7 +136,7 @@ export async function syncDiscordProfileFromSession(session: Session): Promise<{
     if (!body.access_token && !body.refresh_token) return;
     const r = await invokeSyncDiscordTokens(body);
     if (!r.ok && r.error) {
-      console.warn('syncDiscordProfileFromSession: token sync', r.error);
+      devWarn('syncDiscordProfileFromSession: token sync', r.error);
     }
   };
 
@@ -176,10 +177,10 @@ export async function pullDiscordProfileAfterOAuth(session: Session): Promise<{ 
   try {
     const r = await invokeDiscordProfileMediaSync();
     if (!r.ok && r.error) {
-      console.warn('pullDiscordProfileAfterOAuth: media sync', r.error);
+      devWarn('pullDiscordProfileAfterOAuth: media sync', r.error);
     }
   } catch (e) {
-    console.warn('pullDiscordProfileAfterOAuth: media sync threw', e);
+    devWarn('pullDiscordProfileAfterOAuth: media sync threw', e);
   }
   return { error: null };
 }

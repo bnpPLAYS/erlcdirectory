@@ -17,6 +17,7 @@ import { orderedParticipantIds } from '@/lib/conversationPair';
 import { profilePath } from '@/lib/profilePath';
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { cn } from '@/lib/utils';
+import { publicErrorMessage, devWarn } from '@/lib/clientErrorHandling';
 import logo from '@/assets/logo.png';
 
 interface Participant {
@@ -89,7 +90,7 @@ const Messages = () => {
       .order('created_at', { ascending: true });
     setMsgLoading(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('Could not load messages.', error));
       setMessages([]);
       return;
     }
@@ -183,7 +184,8 @@ const Messages = () => {
 
       setConversations(rows);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Inbox failed to load');
+      devWarn('[Messages] loadConversations', e);
+      toast.error(publicErrorMessage('Inbox failed to load.', e));
       setConversations([]);
     } finally {
       setListLoading(false);
@@ -244,7 +246,8 @@ const Messages = () => {
       try {
         conversationId = await ensureConversationRow(profile.id, otherId);
       } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : 'Could not start that chat');
+        devWarn('[Messages] openThread', e);
+        toast.error(publicErrorMessage('Could not start that chat.', e));
         return;
       }
 
@@ -255,7 +258,7 @@ const Messages = () => {
         .maybeSingle();
 
       if (pe || !p) {
-        toast.error('Profile failed to load');
+        toast.error(publicErrorMessage('Profile failed to load.', pe));
         return;
       }
 
@@ -326,7 +329,7 @@ const Messages = () => {
     });
 
     if (error) {
-      toast.error(error.message || 'Message did not send');
+      toast.error(publicErrorMessage('Message did not send.', error));
       return;
     }
 

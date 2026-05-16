@@ -10,6 +10,7 @@ import { fetchDiscordGuilds } from '@/lib/fetchDiscordGuilds';
 import { VERIFICATION_LINK_HOURS } from '@/lib/experienceVerificationLink';
 import { buildVerifyExperienceUrl } from '@/lib/publicSiteUrl';
 import { cn } from '@/lib/utils';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 interface Guild {
   id: string;
@@ -102,7 +103,7 @@ const VerifyExperienceDialog = ({
         .select('id, guild_id, guild_name, token, status, expires_at, approver_discord_username')
         .single();
       if (error) {
-        toast({ title: 'Could not create link', description: error.message, variant: 'destructive' });
+        toast({ title: 'Could not create link', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
         return false;
       }
       setActive(data as ExistingRequest);
@@ -211,7 +212,7 @@ const VerifyExperienceDialog = ({
     if (!active) return;
     const { error } = await supabase.from('experience_verification_requests').delete().eq('id', active.id);
     if (error) {
-      toast({ title: 'Could not revoke', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not revoke', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     setActive(null);

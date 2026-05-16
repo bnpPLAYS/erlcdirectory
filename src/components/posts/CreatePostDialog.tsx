@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { filterPlaintext } from '@/lib/chatFilter';
 import { isMissingPostsColumnError } from '@/lib/postsSchemaCompat';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 const TYPES = [
   {
@@ -117,7 +118,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
       .select('id')
       .single();
     if (error) {
-      toast({ title: 'Server link failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Server link failed', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return null;
     }
     return created.id;
@@ -204,7 +205,7 @@ const CreatePostDialog = ({ onCreated }: { onCreated?: () => void }) => {
     }
     setSubmitting(false);
     if (error) {
-      toast({ title: 'Post did not save', description: error.message, variant: 'destructive' });
+      toast({ title: 'Post did not save', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     toast({ title: 'Posted!' });
