@@ -1,8 +1,16 @@
 // OG HTML for crawler user agents (no JS). Helps when upstream returns a challenge page.
 
 import {
+  buildProfileOpenGraph,
+  normalizeProfileLinkPreviewConfig,
+  pickProfileOgImageUrl,
+  type ProPreviewImageMode,
+} from './proLinkPreviewOg.ts';
+import {
+  fetchPublicProfileOgBundle,
   fetchPublicServerOgRow,
   httpsOgImageUrl,
+  parsePublicProfileOgRoute,
   parseServerPageId,
   sanitizeServerOgFields,
 } from './server/ogServerPreview';
@@ -143,9 +151,9 @@ export default async function middleware(request: Request): Promise<Response> {
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
   const fallbackImage = `${url.origin}/embed.png?v=2`;
+  const sb = supabaseEnv();
 
   const serverId = parseServerPageId(path);
-  const sb = serverId ? supabaseEnv() : null;
   if (serverId && sb) {
     const row = await fetchPublicServerOgRow(sb.url, sb.anonKey, serverId);
     if (row) {
@@ -165,6 +173,42 @@ export default async function middleware(request: Request): Promise<Response> {
           imageUrl,
           imageWidth: bannerOg ? 960 : 1200,
           imageHeight: bannerOg ? 540 : 630,
+          themeColor: THEME_COLOR,
+          bodyHtml: siteEmbedBody(canonicalUrl),
+        }),
+        { status: 200, headers: ogHtmlHeaders },
+      );
+    }
+  }
+
+  const profileOgLookup = parsePublicProfileOgRoute(path);
+  if (profileOgLookup && sb) {
+    const bundle = await fetchPublicProfileOgBundle(sb.url, sb.anonKey, profileOgLookup);
+    if (bundle) {
+      const cfg = normalizeProfileLinkPreviewConfig(bundle.profile.pro_link_preview_config);
+      const useProCustom = !!bundle.profile.is_pro && cfg.enabled;
+      const imgMode: ProPreviewImageMode = bundle.profile.is_pro ? cfg.image : 'auto';
+      const built = buildProfileOpenGraph({
+        profile: bundle.profile,
+        topExperience: bundle.topExperience,
+        useProCustomization: useProCustom,
+      });
+      const bannerHttps = httpsOgImageUrl(bundle.profile.banner_url);
+      const avatarHttps = httpsOgImageUrl(bundle.profile.discord_avatar);
+      const pick = pickProfileOgImageUrl({
+        bannerHttps,
+        avatarHttps,
+        fallbackUrl: fallbackImage,
+        mode: imgMode,
+      });
+      return new Response(
+        ogDocument({
+          title: built.title,
+          description: built.description,
+          canonicalUrl,
+          imageUrl: pick.url,
+          imageWidth: pick.width,
+          imageHeight: pick.height,
           themeColor: THEME_COLOR,
           bodyHtml: siteEmbedBody(canonicalUrl),
         }),
