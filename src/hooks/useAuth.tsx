@@ -15,6 +15,7 @@ import { isCanarySiteHost } from '@/lib/canaryHost';
 import { buildDiscordNativeSignInUrl } from '@/lib/discordOAuth';
 import { toast } from 'sonner';
 import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
+import { devWarn } from '@/lib/clientErrorHandling';
 
 interface AuthContextType {
   user: User | null;
@@ -182,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!access_token || !refresh_token) return;
       const { error } = await supabase.auth.setSession({ access_token, refresh_token });
       if (error) {
-        console.warn('[auth] Supabase fragment session:', error.message);
+        devWarn('[auth] Supabase fragment session:', error.message);
         return;
       }
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);

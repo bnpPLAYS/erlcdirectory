@@ -192,8 +192,7 @@ Deno.serve(async (req) => {
     if (linkError || !magicLink?.properties?.action_link) return json({ error: 'Could not finish sign in.' }, 500)
 
     return json({ success: true, actionLink: magicLink.properties.action_link, isNewProfile })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return json({ error: message }, 500)
+  } catch {
+    return json({ error: 'Discord sign-in failed. Please try again.' }, 500)
   }
 })

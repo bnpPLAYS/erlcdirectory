@@ -21,6 +21,7 @@ import {
 import { SubmitReportDialog } from '@/components/moderation/SubmitReportDialog';
 import { notifyServerReview } from '@/lib/callServerOwnerApi';
 import { normalizeDiscordCdnMediaUrl, avatarReferrerPolicy } from '@/lib/safeAvatarUrl';
+import { publicErrorMessage } from '@/lib/clientErrorHandling';
 
 type ProfileChip = {
   id: string;
@@ -251,7 +252,7 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     }
     setSubmitting(false);
     if (error) {
-      toast({ title: 'Could not save review', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not save review', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     toast({ title: existing ? 'Review updated' : 'Review posted' });
@@ -262,7 +263,7 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     if (!myReview) return;
     const { error } = await supabase.from('reviews').delete().eq('id', myReview.id);
     if (error) {
-      toast({ title: 'Could not delete', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not delete', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     setContent('');
@@ -275,7 +276,7 @@ const ReviewsSection = ({ profileId, serverId, serverName, serverReviewTargets, 
     if (!window.confirm('Remove this review permanently?')) return;
     const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
     if (error) {
-      toast({ title: 'Could not remove review', description: error.message, variant: 'destructive' });
+      toast({ title: 'Could not remove review', description: publicErrorMessage('Please try again.', error), variant: 'destructive' });
       return;
     }
     toast({ title: 'Review removed' });

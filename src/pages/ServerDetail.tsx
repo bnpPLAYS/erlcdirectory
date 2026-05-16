@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import Navbar from '@/components/layout/Navbar';
 import { profilePath } from '@/lib/profilePath';
+import { devWarn, publicErrorMessage } from '@/lib/clientErrorHandling';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,14 +161,8 @@ const ServerDetail = () => {
         });
         if (cancelled) return;
         if (enrichErr) {
-          const fromBody =
-            enrichData &&
-            typeof enrichData === 'object' &&
-            'error' in enrichData &&
-            typeof (enrichData as { error?: unknown }).error === 'string'
-              ? String((enrichData as { error: string }).error).trim()
-              : '';
-          toast.error(fromBody || enrichErr.message || 'Invite lookup failed.');
+          devWarn('[ServerDetail] servers-enrich-metadata', enrichData, enrichErr);
+          toast.error(publicErrorMessage('Invite lookup failed.', enrichErr));
           return;
         }
         if (
@@ -366,7 +361,7 @@ const ServerDetail = () => {
         p_invite: trimmed,
       });
       if (error) {
-        toast.error(error.message);
+        toast.error(publicErrorMessage('Could not save invite.', error));
         return;
       }
       toast.success('Invite saved for this server.');
@@ -385,7 +380,7 @@ const ServerDetail = () => {
       p_is_verified: next,
     });
     if (error) {
-      toast.error(error.message);
+      toast.error(publicErrorMessage('Could not update verify badge.', error));
       return;
     }
     toast.success(next ? 'Verify badge granted' : 'Verify badge removed');

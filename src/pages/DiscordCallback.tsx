@@ -15,6 +15,7 @@ import { getDiscordRedirectUri, isFreshDiscordSignInState } from '@/lib/discordO
 import { isCanarySiteHost } from '@/lib/canaryHost';
 import { invokeDiscordOauthSignIn } from '@/lib/callDiscordOauthSignIn';
 import { pullDiscordProfileAfterOAuth } from '@/lib/syncDiscordProfile';
+import { devWarn } from '@/lib/clientErrorHandling';
 
 function readOAuthParams() {
   const search = new URLSearchParams(window.location.search);
@@ -72,10 +73,10 @@ const DiscordCallback = () => {
       try {
         const syncResult = await pullDiscordProfileAfterOAuth(session);
         if (syncResult.error) {
-          console.warn('DiscordCallback profile sync:', syncResult.error.message);
+          devWarn('DiscordCallback profile sync:', syncResult.error.message);
         }
       } catch (e) {
-        console.warn('DiscordCallback profile sync threw:', e);
+        devWarn('DiscordCallback profile sync threw:', e);
       }
 
       stripOAuthParamsFromUrl();
@@ -93,7 +94,7 @@ const DiscordCallback = () => {
 
       if (oauthError) {
         const rawDetail = oauthErrorDesc ? parseOAuthErrorDescription(oauthErrorDesc) : '';
-        console.warn('[Discord OAuth]', { code: oauthError, description: rawDetail });
+        devWarn('[Discord OAuth]', { code: oauthError, description: rawDetail });
         if (!cancelled) {
           setStatus('error');
           setShowExchangeHelp(isDiscordTokenExchangeFailure(rawDetail));
@@ -182,7 +183,7 @@ const DiscordCallback = () => {
           if (!cancelled) {
             setStatus('error');
             const raw = exchangeError.message || '';
-            console.warn('[Discord OAuth exchange]', raw);
+            devWarn('[Discord OAuth exchange]', raw);
             setShowExchangeHelp(isDiscordTokenExchangeFailure(raw));
             setMessage(
               getPublicDiscordSignInMessage({
