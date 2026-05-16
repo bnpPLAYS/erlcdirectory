@@ -1,5 +1,12 @@
 // OG HTML for crawler user agents (no JS). Helps when upstream returns a challenge page.
 
+import {
+  fetchPublicServerOgRow,
+  httpsOgImageUrl,
+  parseServerPageId,
+  truncateOgDescription,
+} from './server/ogServerPreview';
+
 export const config = {
   matcher: [
     '/',
@@ -28,6 +35,8 @@ function ogDocument(opts: {
   description: string;
   canonicalUrl: string;
   imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
   themeColor: string;
   bodyHtml: string;
 }): string {
@@ -49,6 +58,8 @@ function ogDocument(opts: {
 <meta property="og:url" content="${escUrl}" />
 <meta property="og:type" content="website" />
 <meta property="og:image" content="${escImg}" />
+<meta property="og:image:width" content="${String(opts.imageWidth)}" />
+<meta property="og:image:height" content="${String(opts.imageHeight)}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="${escImg}" />
 <meta name="theme-color" content="${escTheme}" />
@@ -74,7 +85,24 @@ const ogHtmlHeaders = {
   'Cache-Control': 'public, max-age=300, s-maxage=600',
 };
 
-export default function middleware(request: Request): Response | Promise<Response> {
+function supabaseEnv(): { url: string; anonKey: string } | null {
+  const ref = process.env.VITE_SUPABASE_PROJECT_ID?.trim();
+  const supabaseUrl = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    (ref ? `https://${ref}.supabase.co` : '')
+  )
+    .trim()
+    .replace(/\/$/, '');
+  const anonKey =
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    '';
+  if (!supabaseUrl || !anonKey) return null;
+  return { url: supabaseUrl, anonKey };
+}
+
+export default async function middleware(request: Request): Promise<Response> {
   if (request.method !== 'GET') {
     return fetch(request);
   }
@@ -98,6 +126,8 @@ export default function middleware(request: Request): Response | Promise<Respons
           description,
           canonicalUrl,
           imageUrl,
+          imageWidth: 1200,
+          imageHeight: 630,
           themeColor: THEME_COLOR,
           bodyHtml: verifyEmbedBody(canonicalUrl),
         }),
@@ -112,14 +142,43 @@ export default function middleware(request: Request): Response | Promise<Respons
   }
 
   const canonicalUrl = `${url.origin}${url.pathname}${url.search}`;
-  const imageUrl = `${url.origin}/embed.png?v=2`;
+  const fallbackImage = `${url.origin}/embed.png?v=2`;
+
+  const serverId = parseServerPageId(path);
+  const sb = serverId ? supabaseEnv() : null;
+  if (serverId && sb) {
+    const row = await fetchPublicServerOgRow(sb.url, sb.anonKey, serverId);
+    if (row) {
+      const bannerOg = httpsOgImageUrl(row.banner);
+      const imageUrl = bannerOg ?? fallbackImage;
+      const descFromServer = truncateOgDescription(row.description, 280);
+      const description =
+        descFromServer ||
+        `${SITE_DESCRIPTION} Open this server’s listing on ERLC.Directory.`;
+      return new Response(
+        ogDocument({
+          title: `${row.name.slice(0, 200)} — ${SITE_NAME}`,
+          description,
+          canonicalUrl,
+          imageUrl,
+          imageWidth: bannerOg ? 960 : 1200,
+          imageHeight: bannerOg ? 540 : 630,
+          themeColor: THEME_COLOR,
+          bodyHtml: siteEmbedBody(canonicalUrl),
+        }),
+        { status: 200, headers: ogHtmlHeaders },
+      );
+    }
+  }
 
   return new Response(
     ogDocument({
       title: SITE_TITLE,
       description: SITE_DESCRIPTION,
       canonicalUrl,
-      imageUrl,
+      imageUrl: fallbackImage,
+      imageWidth: 1200,
+      imageHeight: 630,
       themeColor: THEME_COLOR,
       bodyHtml: siteEmbedBody(canonicalUrl),
     }),

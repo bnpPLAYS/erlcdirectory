@@ -544,13 +544,13 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       <div className={shell}>
         <SectionTitle
           title="Review notifications"
-          description="Discord webhook for new reviews, embed styling, and optional Pro hero video."
+          description="Discord webhook for new reviews: short activity line above the embed, linked title, intro + stat bullets, server banner and icon, plus View server / Write a review buttons."
         />
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <FieldCard
             icon={Webhook}
             label="Review Discord webhook"
-            hint="We post a short embed with a link when someone leaves a review. Leave empty to disable."
+            hint="We post an embed with your server banner (and icon), star rating, and link buttons. Leave empty to disable."
             className="md:col-span-2"
           >
             <Input
