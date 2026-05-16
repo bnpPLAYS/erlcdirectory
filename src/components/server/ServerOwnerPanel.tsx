@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Copy,
   FileText,
@@ -36,13 +38,38 @@ import {
 import { uploadServerGalleryImage } from '@/lib/callServerOwnerApi';
 import { discordInviteLooksValid } from '@/lib/discordInvite';
 import { extractYouTubeId } from '@/lib/youtubeEmbed';
+import {
+  OWNER_REVIEW_EMBED_PLACEHOLDERS_CHEAT_SHEET,
+  applyReviewEmbedPlaceholders,
+  buildPlaceholderContext,
+  clampDiscordUtf16,
+  defaultOwnerReviewEmbedConfig,
+  ownerReviewEmbedConfigJsonSizeOk,
+  parseOwnerReviewEmbedConfig,
+  serializeOwnerReviewEmbedConfig,
+  type OwnerReviewEmbedConfig,
+  type ReviewEmbedPlaceholderInput,
+} from '@/lib/reviewWebhookEmbed';
 import { cn } from '@/lib/utils';
 import { devWarn, publicErrorMessage } from '@/lib/clientErrorHandling';
+import type { Json } from '@/integrations/supabase/types';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 const PRESETS_FREE = ['zinc', 'slate', 'neutral'] as const;
 const PRESETS_PRO = ['rose', 'cyan', 'amber', 'violet'] as const;
 const MAX_DESC = 8000;
 const MAX_EMBED_FOOTER = 200;
+const MAX_WEBHOOK_ACTIVITY = 2000;
+const MAX_EMBED_DESC_CUSTOM = 4096;
+const MAX_EMBED_TITLE_CUSTOM = 256;
+const MAX_EMBED_AUTHOR_CUSTOM = 256;
+const MAX_WEBHOOK_USERNAME = 80;
+const MAX_WEBHOOK_AVATAR_URL = 2048;
+const MAX_BUTTON_LABEL = 80;
 const DEFAULT_REVIEW_EMBED_HEX = '#5865f2';
 
 function discordEmbedIntFromHex(hex: string): number | null {
@@ -99,6 +126,7 @@ export type ServerOwnerPanelServer = {
   owner_review_webhook_url: string | null;
   owner_discord_embed_color: number | null;
   owner_discord_embed_footer: string | null;
+  owner_review_embed_config?: Json | null;
   owner_hidden_staff_profile_ids: unknown;
   owner_show_staff_section: boolean | null;
   owner_show_reviews_section: boolean | null;
@@ -170,6 +198,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(
     () => new Set(parseJsonStringArray(server.owner_hidden_staff_profile_ids)),
   );
+  const [embedCustomizeEnabled, setEmbedCustomizeEnabled] = useState(false);
+  const [embedCfg, setEmbedCfg] = useState<OwnerReviewEmbedConfig>(() => defaultOwnerReviewEmbedConfig());
 
   useEffect(() => {
     setLongDesc(server.owner_long_description ?? '');
@@ -184,6 +214,9 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
     setShowReviews(server.owner_show_reviews_section !== false);
     setHeroVideo(server.owner_hero_video_url ?? '');
     setHiddenIds(new Set(parseJsonStringArray(server.owner_hidden_staff_profile_ids)));
+    const parsed = parseOwnerReviewEmbedConfig(server.owner_review_embed_config);
+    setEmbedCustomizeEnabled(!!parsed);
+    setEmbedCfg(parsed ?? defaultOwnerReviewEmbedConfig());
   }, [server]);
 
   useEffect(() => {
@@ -195,6 +228,30 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   const presetOptions = useMemo(() => {
     return [...PRESETS_FREE, ...(ownerIsPro ? PRESETS_PRO : [])];
   }, [ownerIsPro]);
+
+  const embedPreviewSample = useMemo<ReviewEmbedPlaceholderInput>(
+    () => ({
+      serverName: ((server.name ?? '').trim() || 'Your server').slice(0, 180),
+      serverPageUrl: 'https://www.erlc.directory/server/preview',
+      reviewsUrl: 'https://www.erlc.directory/server/preview#reviews',
+      intro: 'Sample intro text from your long or short listing description.',
+      bullets:
+        '• **4.5/5** avg from **10** reviews\n• This review: ★★★★☆ (**4/5**)\n• **1,000** Discord members (approx.)\n• **25** staff listed',
+      reviewSnippet: 'Example review comment goes here.',
+      reviewAbout: '',
+      reviewerLead: '**preview.member** ',
+      reviewerName: 'preview.member',
+      avgDisplay: '4.5',
+      reviewCount: '10',
+      stars: '★★★★☆',
+      rating: 4,
+      memberStr: '1,000',
+      staffStr: '25',
+    }),
+    [server.name],
+  );
+
+  const embedPreviewCtx = useMemo(() => buildPlaceholderContext(embedPreviewSample), [embedPreviewSample]);
 
   const verifiedCoworkers = useMemo(
     () => coworkers.filter((c) => c.isVerified && c.profileId),
@@ -312,6 +369,16 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       return;
     }
 
+    let owner_review_embed_config: Json | null = null;
+    if (ownerIsPro && embedCustomizeEnabled) {
+      const payload = serializeOwnerReviewEmbedConfig({ ...embedCfg, enabled: true });
+      if (!ownerReviewEmbedConfigJsonSizeOk(payload)) {
+        toast.error('Discord embed customization is too large to save.');
+        return;
+      }
+      owner_review_embed_config = payload as Json;
+    }
+
     await persist({
       owner_long_description: longDesc.trim() || null,
       owner_accent_hex: accentHex,
@@ -320,6 +387,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       owner_review_webhook_url: wh || null,
       owner_discord_embed_color: embedInt,
       owner_discord_embed_footer: foot || null,
+      owner_review_embed_config,
       owner_hidden_staff_profile_ids: [...hiddenIds],
       owner_show_staff_section: showStaff,
       owner_show_reviews_section: showReviews,
@@ -544,13 +612,13 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       <div className={shell}>
         <SectionTitle
           title="Review notifications"
-          description="Discord webhook for new reviews: short activity line above the embed, linked title, intro + stat bullets, server banner and icon, plus View server / Write a review buttons."
+          description="Webhook URL sends Discord notifications when someone leaves a review. Embed color and footer apply to everyone; Pro owners can customize the activity line, embed body, optional webhook username/avatar, and link buttons."
         />
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <FieldCard
             icon={Webhook}
             label="Review Discord webhook"
-            hint="We post an embed with your server banner (and icon), star rating, and link buttons. Leave empty to disable."
+            hint="Leave empty to disable. Uses Discord’s webhook URL format only."
             className="md:col-span-2"
           >
             <Input
@@ -592,13 +660,289 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               {embedFooter.length} / {MAX_EMBED_FOOTER}
             </p>
           </FieldCard>
+
+          {!ownerIsPro ? (
+            <div className={cn(cell, 'md:col-span-2')}>
+              <p className="text-sm font-medium text-foreground">Pro unlocks full webhook customization</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                Rewrite the plain-text activity line and embed (title, author label, description with stat bullets), optional
+                webhook bot name and avatar, button labels, and toggles for thumbnail / banner / buttons.
+              </p>
+              <Button asChild type="button" variant="secondary" size="sm" className="mt-3 border-border bg-muted/40">
+                <Link to="/pro">View Pro</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className={cn(cell, 'md:col-span-2 space-y-4')}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-medium text-foreground">Custom Discord templates</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Turn on to replace our default copy. Use placeholders like{' '}
+                    <span className="font-mono text-[11px] text-foreground/90">{'{server_name}'}</span>,{' '}
+                    <span className="font-mono text-[11px] text-foreground/90">{'{bullets}'}</span>,{' '}
+                    <span className="font-mono text-[11px] text-foreground/90">{'{review_snippet}'}</span>. Mentions are disabled so templates cannot ping roles or everyone.
+                  </p>
+                </div>
+                <Switch
+                  checked={embedCustomizeEnabled}
+                  onCheckedChange={(on) => {
+                    setEmbedCustomizeEnabled(on);
+                  }}
+                />
+              </div>
+
+              {embedCustomizeEnabled ? (
+                <div className="space-y-4 border-t border-border pt-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-border bg-muted/30"
+                      onClick={() => setEmbedCfg(defaultOwnerReviewEmbedConfig())}
+                    >
+                      Reset templates to defaults
+                    </Button>
+                  </div>
+
+                  <Collapsible defaultOpen={false}>
+                    <CollapsibleTrigger className="group flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
+                      Placeholder reference
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 rounded-[6px] border border-border bg-muted/20 px-3 py-2">
+                      <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted-foreground">
+                        {OWNER_REVIEW_EMBED_PLACEHOLDERS_CHEAT_SHEET}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <FieldCard
+                    icon={Sparkles}
+                    label="Activity line"
+                    hint={`Plain message above the embed (max ${MAX_WEBHOOK_ACTIVITY}). Supports Discord **bold** and links.`}
+                    className="md:col-span-2 border-0 bg-transparent p-0"
+                  >
+                    <Textarea
+                      value={embedCfg.activity_template}
+                      onChange={(e) =>
+                        setEmbedCfg((c) => ({ ...c, activity_template: e.target.value.slice(0, MAX_WEBHOOK_ACTIVITY) }))
+                      }
+                      rows={3}
+                      className={cn(inputRec, 'resize-y font-mono text-xs')}
+                    />
+                    <p className="text-[11px] text-muted-foreground">{embedCfg.activity_template.length} / {MAX_WEBHOOK_ACTIVITY}</p>
+                  </FieldCard>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldCard
+                      icon={Type}
+                      label="Embed author label"
+                      hint={`Small header above the title (max ${MAX_EMBED_AUTHOR_CUSTOM}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.author_name_template}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({
+                            ...c,
+                            author_name_template: e.target.value.slice(0, MAX_EMBED_AUTHOR_CUSTOM),
+                          }))
+                        }
+                        className={cn(inputRec, 'font-mono text-xs')}
+                      />
+                    </FieldCard>
+                    <FieldCard
+                      icon={Tag}
+                      label="Embed title"
+                      hint={`Linked title (max ${MAX_EMBED_TITLE_CUSTOM}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.title_template}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({ ...c, title_template: e.target.value.slice(0, MAX_EMBED_TITLE_CUSTOM) }))
+                        }
+                        className={cn(inputRec, 'font-mono text-xs')}
+                      />
+                    </FieldCard>
+                  </div>
+
+                  <FieldCard
+                    icon={FileText}
+                    label="Embed description"
+                    hint={`Main embed body (max ${MAX_EMBED_DESC_CUSTOM}). Usually includes {intro}, {bullets}, and latest review lines.`}
+                    className="border-0 bg-transparent p-0"
+                  >
+                    <Textarea
+                      value={embedCfg.description_template}
+                      onChange={(e) =>
+                        setEmbedCfg((c) => ({
+                          ...c,
+                          description_template: e.target.value.slice(0, MAX_EMBED_DESC_CUSTOM),
+                        }))
+                      }
+                      rows={10}
+                      className={cn(inputRec, 'resize-y font-mono text-xs')}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {embedCfg.description_template.length} / {MAX_EMBED_DESC_CUSTOM}
+                    </p>
+                  </FieldCard>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldCard
+                      icon={UserIcon}
+                      label="Webhook display name"
+                      hint={`Optional override (max ${MAX_WEBHOOK_USERNAME}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.webhook_username ?? ''}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({
+                            ...c,
+                            webhook_username: e.target.value.trim()
+                              ? e.target.value.trim().slice(0, MAX_WEBHOOK_USERNAME)
+                              : null,
+                          }))
+                        }
+                        placeholder="ERLC Directory"
+                        className={cn(inputRec, 'text-sm')}
+                      />
+                    </FieldCard>
+                    <FieldCard
+                      icon={ImageIcon}
+                      label="Webhook avatar URL"
+                      hint={`Optional https image (max ${MAX_WEBHOOK_AVATAR_URL}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.webhook_avatar_url ?? ''}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({
+                            ...c,
+                            webhook_avatar_url: e.target.value.trim().slice(0, MAX_WEBHOOK_AVATAR_URL) || null,
+                          }))
+                        }
+                        placeholder="https://…"
+                        className={cn(inputRec, 'font-mono text-xs')}
+                      />
+                    </FieldCard>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldCard
+                      icon={Link2}
+                      label="View server button"
+                      hint={`Label for the server link button (max ${MAX_BUTTON_LABEL}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.button_view_server ?? ''}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({
+                            ...c,
+                            button_view_server: e.target.value.trim().slice(0, MAX_BUTTON_LABEL) || null,
+                          }))
+                        }
+                        className={cn(inputRec, 'text-sm')}
+                      />
+                    </FieldCard>
+                    <FieldCard
+                      icon={Link2}
+                      label="Write a review button"
+                      hint={`Label for the reviews link button (max ${MAX_BUTTON_LABEL}).`}
+                      className="border-0 bg-transparent p-0"
+                    >
+                      <Input
+                        value={embedCfg.button_write_review ?? ''}
+                        onChange={(e) =>
+                          setEmbedCfg((c) => ({
+                            ...c,
+                            button_write_review: e.target.value.trim().slice(0, MAX_BUTTON_LABEL) || null,
+                          }))
+                        }
+                        className={cn(inputRec, 'text-sm')}
+                      />
+                    </FieldCard>
+                  </div>
+
+                  <div className={cn(cell, 'space-y-3')}>
+                    <p className="text-sm font-medium text-foreground">Embed layout</p>
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">Show server icon thumbnail</span>
+                      <Switch
+                        checked={embedCfg.show_thumbnail}
+                        onCheckedChange={(on) => setEmbedCfg((c) => ({ ...c, show_thumbnail: on }))}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">Show banner image</span>
+                      <Switch
+                        checked={embedCfg.show_banner_image}
+                        onCheckedChange={(on) => setEmbedCfg((c) => ({ ...c, show_banner_image: on }))}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">Show link buttons</span>
+                      <Switch
+                        checked={embedCfg.show_buttons}
+                        onCheckedChange={(on) => setEmbedCfg((c) => ({ ...c, show_buttons: on }))}
+                      />
+                    </label>
+                  </div>
+
+                  <div className={cn(cell, 'space-y-2')}>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">Approximate preview</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Sample data substitutes your server title; real webhooks use live ratings and membership counts.
+                    </p>
+                    <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-[6px] border border-border bg-muted/25 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      {clampDiscordUtf16(
+                        applyReviewEmbedPlaceholders(embedCfg.activity_template, embedPreviewCtx),
+                        MAX_WEBHOOK_ACTIVITY,
+                      )}
+                      {'\n\n— embed —\n'}
+                      {clampDiscordUtf16(
+                        applyReviewEmbedPlaceholders(embedCfg.author_name_template, embedPreviewCtx),
+                        MAX_EMBED_AUTHOR_CUSTOM,
+                      )}
+                      {'\n'}
+                      {clampDiscordUtf16(
+                        applyReviewEmbedPlaceholders(embedCfg.title_template, embedPreviewCtx),
+                        MAX_EMBED_TITLE_CUSTOM,
+                      )}
+                      {'\n\n'}
+                      {clampDiscordUtf16(
+                        applyReviewEmbedPlaceholders(embedCfg.description_template, embedPreviewCtx),
+                        MAX_EMBED_DESC_CUSTOM,
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={shell}>
+        <SectionTitle
+          title="Hero video"
+          description={
+            ownerIsPro
+              ? 'YouTube watch or youtu.be link only. Shown prominently on your server page for Pro listings.'
+              : 'Pro owners can feature a YouTube hero on the server page.'
+          }
+        />
+        <div className="mt-4">
           {ownerIsPro ? (
-            <FieldCard
-              icon={Youtube}
-              label="Hero video"
-              hint="YouTube watch or youtu.be link only. Shown prominently for Pro listings."
-              className="md:col-span-2"
-            >
+            <FieldCard icon={Youtube} label="YouTube URL" hint="Must be a standard watch or youtu.be link.">
               <Input
                 value={heroVideo}
                 onChange={(e) => setHeroVideo(e.target.value)}
@@ -607,11 +951,14 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               />
             </FieldCard>
           ) : (
-            <div className={cn(cell, 'flex flex-col justify-center md:col-span-2')}>
-              <p className="text-sm font-medium text-foreground">Hero video</p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Upgrade to Pro to feature a YouTube hero on your server page.
+            <div className={cn(cell, 'flex flex-col justify-center')}>
+              <p className="text-sm font-medium text-foreground">YouTube hero</p>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                Upgrade to Pro to feature a hero video on your listing.
               </p>
+              <Button asChild type="button" variant="secondary" size="sm" className="mt-3 w-fit border-border bg-muted/40">
+                <Link to="/pro">View Pro</Link>
+              </Button>
             </div>
           )}
         </div>

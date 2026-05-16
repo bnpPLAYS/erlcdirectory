@@ -1,0 +1,18 @@
+export {
+  OWNER_REVIEW_EMBED_PLACEHOLDERS_CHEAT_SHEET,
+  DEFAULT_ACTIVITY_TEMPLATE,
+  DEFAULT_AUTHOR_NAME_TEMPLATE,
+  DEFAULT_TITLE_TEMPLATE,
+  DEFAULT_DESCRIPTION_TEMPLATE,
+  DEFAULT_BUTTON_VIEW_SERVER,
+  DEFAULT_BUTTON_WRITE_REVIEW,
+  applyReviewEmbedPlaceholders,
+  buildPlaceholderContext,
+  clampDiscordUtf16,
+  defaultOwnerReviewEmbedConfig,
+  ownerReviewEmbedConfigJsonSizeOk,
+  parseOwnerReviewEmbedConfig,
+  serializeOwnerReviewEmbedConfig,
+  type OwnerReviewEmbedConfig,
+  type ReviewEmbedPlaceholderInput,
+} from '../../supabase/functions/_shared/reviewWebhookEmbed.ts';
