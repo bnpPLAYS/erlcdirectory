@@ -17,6 +17,7 @@ import { RouteFallback } from "@/components/layout/RouteFallback";
 import { BetaBugReportLink } from "@/components/layout/BetaBugReportLink";
 import { PostTutorialExperienceNudge } from "@/components/onboarding/PostTutorialExperienceNudge";
 import { CanaryGate } from "@/components/canary/CanaryGate";
+import { STAFF_PANEL_PATH } from "@/lib/staffPanelPath";
 
 const Browse = lazy(() => import("./pages/Browse"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -77,7 +78,8 @@ const App = () => (
                     <Route path="/discord/callback" element={<DiscordCallback />} />
                     <Route path="/roblox/callback" element={<RobloxOAuthCallback />} />
                     <Route path="/verify/:token" element={<VerifyExperience />} />
-                    <Route path="/staff" element={<Admin />} />
+                    <Route path="/staff" element={<NotFound />} />
+                    <Route path={STAFF_PANEL_PATH} element={<Admin />} />
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/contact" element={<Contact />} />

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { CANARY_PASS_STORAGE_KEY, isCanarySiteHost } from '@/lib/canaryHost';
 import { getCanonicalSiteBaseUrl } from '@/lib/canonicalHost';
+import { staffPanelUrl } from '@/lib/staffPanelPath';
 import {
   canaryPublicStatus,
   canaryValidateCode,
@@ -142,7 +143,7 @@ export function CanaryGate({ children }: { children: ReactNode }) {
               panel (Canary tab), then open this URL again with the test code they share.
             </p>
             <Button asChild variant="secondary" className="w-full">
-              <a href={`${main}/staff?tab=canary`}>Open staff panel on main site</a>
+              <a href={`${main}${staffPanelUrl('tab=canary')}`}>Open staff panel on main site</a>
             </Button>
           </CardContent>
         </Card>
