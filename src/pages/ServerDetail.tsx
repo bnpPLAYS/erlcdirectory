@@ -35,6 +35,11 @@ import { extractYouTubeId, youtubeEmbedSrc } from '@/lib/youtubeEmbed';
 import { cn } from '@/lib/utils';
 import { parseGalleryUrlList } from '@/lib/galleryUrls';
 import { ProfileGalleryGrid } from '@/components/profile/ProfileGalleryGrid';
+import {
+  resolveServerAccent,
+  resolveServerBannerUrl,
+  resolveServerPresetSurface,
+} from '@/lib/serverPageAppearance';
 
 interface GuildExperienceRow {
   id: string;
@@ -83,6 +88,7 @@ interface ServerRow {
   owner_id: string | null;
   claim_open?: boolean | null;
   owner_long_description?: string | null;
+  owner_banner_url?: string | null;
   owner_accent_hex?: string | null;
   owner_theme_preset?: string | null;
   owner_gallery_urls?: unknown;
@@ -300,25 +306,12 @@ const ServerDetail = () => {
       ? server.owner_long_description.trim()
       : null) || server.description || 'No description yet.';
 
-  const accentHex = server.owner_accent_hex && /^#[0-9A-Fa-f]{6}$/.test(server.owner_accent_hex)
-    ? server.owner_accent_hex
+  const accentHex = resolveServerAccent(server);
+  const presetSurface = resolveServerPresetSurface(server);
+  const displayBannerRaw = resolveServerBannerUrl(server);
+  const displayBannerSrc = displayBannerRaw
+    ? normalizeDiscordCdnMediaUrl(displayBannerRaw) ?? displayBannerRaw
     : null;
-
-  const preset = server.owner_theme_preset || 'zinc';
-  const presetSurface =
-    preset === 'slate'
-      ? 'from-slate-500/10'
-      : preset === 'neutral'
-        ? 'from-neutral-500/10'
-        : preset === 'rose'
-          ? 'from-rose-500/12'
-          : preset === 'cyan'
-            ? 'from-cyan-500/12'
-            : preset === 'amber'
-              ? 'from-amber-500/12'
-              : preset === 'violet'
-                ? 'from-violet-500/12'
-                : 'from-zinc-500/10';
 
   const heroYt = ownerIsPro ? extractYouTubeId(server.owner_hero_video_url) : null;
 
@@ -389,18 +382,46 @@ const ServerDetail = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="relative h-48 md:h-60 w-full overflow-hidden border-b border-white/10">
-        {server.banner ? (
+      <div
+        className="relative h-48 md:h-60 w-full overflow-hidden border-b border-white/10"
+        style={accentHex ? { borderColor: `${accentHex}44` } : undefined}
+      >
+        {displayBannerSrc ? (
           <img
-            src={normalizeDiscordCdnMediaUrl(server.banner) ?? server.banner}
+            src={displayBannerSrc}
             alt=""
             draggable={false}
             className="w-full h-full object-cover no-image-drag"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/15 via-background to-background" />
+          <div
+            className={cn('w-full h-full bg-gradient-to-br to-background', presetSurface)}
+            style={
+              accentHex
+                ? {
+                    background: `radial-gradient(900px 280px at 18% 0%, ${accentHex}28, transparent 55%), linear-gradient(180deg, hsl(0 0% 12%), hsl(0 0% 4%))`,
+                  }
+                : undefined
+            }
+          />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+        {accentHex ? (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: `linear-gradient(180deg, ${accentHex}22 0%, transparent 40%, hsl(0 0% 0% / 0.65) 100%)`,
+            }}
+            aria-hidden
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent pointer-events-none" />
+        {accentHex ? (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px pointer-events-none"
+            style={{ background: `linear-gradient(90deg, transparent, ${accentHex}88, transparent)` }}
+            aria-hidden
+          />
+        ) : null}
       </div>
 
       <div className="container mx-auto px-4 -mt-16 relative z-10">
@@ -426,11 +447,18 @@ const ServerDetail = () => {
             'card-elevated mb-6 border border-white/10 bg-gradient-to-br to-transparent',
             presetSurface,
           )}
-          style={accentHex ? { borderColor: `${accentHex}66` } : undefined}
+          style={
+            accentHex
+              ? { borderColor: `${accentHex}55`, boxShadow: `0 0 0 1px ${accentHex}22, 0 24px 48px -24px ${accentHex}18` }
+              : undefined
+          }
         >
           <CardContent className="p-5 md:p-7">
             <div className="flex flex-col md:flex-row md:items-end gap-5">
-              <Avatar className="h-24 w-24 rounded-2xl ring-4 ring-background">
+              <Avatar
+                className="h-24 w-24 rounded-2xl ring-4 ring-background"
+                style={accentHex ? { boxShadow: `0 0 0 3px ${accentHex}44` } : undefined}
+              >
                 <AvatarImage src={server.icon || undefined} className="object-cover" />
                 <AvatarFallback className="rounded-2xl text-2xl bg-secondary">
                   <ServerIcon className="h-8 w-8" />
@@ -438,7 +466,12 @@ const ServerDetail = () => {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{server.name}</h1>
+                  <h1
+                    className="text-2xl md:text-3xl font-bold tracking-tight truncate"
+                    style={accentHex ? { color: accentHex } : undefined}
+                  >
+                    {server.name}
+                  </h1>
                   {server.is_verified && (
                     <Badge className="badge-verified text-[10px] px-2 py-0.5 shrink-0" title={DIRECTORY_STAFF_VERIFIED_TITLE}>
                       Verified
@@ -486,7 +519,14 @@ const ServerDetail = () => {
                 )}
                 {joinHrefSafe ? (
                   <a href={joinHrefSafe} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                    <Button className="gap-2 w-full sm:w-auto">
+                    <Button
+                      className="gap-2 w-full sm:w-auto border-0"
+                      style={
+                        accentHex
+                          ? { backgroundColor: accentHex, color: '#0a0a0a' }
+                          : undefined
+                      }
+                    >
                       <ExternalLink className="h-4 w-4" /> Join Discord
                     </Button>
                   </a>

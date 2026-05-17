@@ -20,10 +20,10 @@ function headersJson(accessToken: string): Record<string, string> {
   };
 }
 
-/** Upload one gallery image; returns public URL on success. */
-export async function uploadServerGalleryImage(
+async function uploadServerImage(
   serverId: string,
   file: File,
+  kind: 'gallery' | 'banner',
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const {
     data: { session },
@@ -33,6 +33,7 @@ export async function uploadServerGalleryImage(
   const fd = new FormData();
   fd.set('server_id', serverId);
   fd.set('file', file);
+  fd.set('kind', kind);
 
   for (const base of candidateSupabaseBases()) {
     try {
@@ -68,6 +69,22 @@ export async function uploadServerGalleryImage(
   }
 
   return { ok: false, error: 'Could not upload image. Try again.' };
+}
+
+/** Upload one gallery image; returns public URL on success. */
+export function uploadServerGalleryImage(
+  serverId: string,
+  file: File,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  return uploadServerImage(serverId, file, 'gallery');
+}
+
+/** Upload custom page banner; sets owner_banner_url on the server row. */
+export function uploadServerBannerImage(
+  serverId: string,
+  file: File,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  return uploadServerImage(serverId, file, 'banner');
 }
 
 /** Notify Discord webhook (if configured). Errors are swallowed — best-effort. */
