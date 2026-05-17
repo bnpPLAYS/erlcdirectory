@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/mockData';
 import { normalizeDiscordInvite } from '@/lib/discordInvite';
 import { DIRECTORY_STAFF_VERIFIED_TITLE } from '@/lib/directoryVerified';
+import { resolveServerBannerUrl } from '@/lib/serverPageAppearance';
 
 interface ServerCardProps {
   server: {
@@ -15,6 +16,7 @@ interface ServerCardProps {
     description: string | null;
     icon: string | null;
     banner?: string | null;
+    owner_banner_url?: string | null;
     member_count: number;
     staff_count: number;
     is_verified: boolean;
@@ -32,12 +34,13 @@ interface ServerCardProps {
 const ServerCard = ({ server, currentProfileId, onCustomize }: ServerCardProps) => {
   const isOwner = !!(currentProfileId && server.owner_id && currentProfileId === server.owner_id);
   const joinHref = normalizeDiscordInvite(server.discord_invite ?? null);
+  const bannerUrl = resolveServerBannerUrl(server);
 
   return (
     <Card className="group card-interactive hover-lift h-full overflow-hidden rounded-2xl">
       <div className="relative h-28 w-full overflow-hidden border-b border-white/[0.06]">
-        {server.banner ? (
-          <img src={server.banner} alt="" className="h-full w-full object-cover" loading="lazy" />
+        {bannerUrl ? (
+          <img src={bannerUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div
             className="h-full w-full bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent"

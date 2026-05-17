@@ -38,7 +38,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { uploadServerGalleryImage } from '@/lib/callServerOwnerApi';
+import { uploadServerBannerImage, uploadServerGalleryImage } from '@/lib/callServerOwnerApi';
+import {
+  SERVER_THEME_PRESETS,
+  normalizeServerAccentHex,
+  resolveServerAccent,
+  resolveServerPresetSurface,
+  type ServerThemePreset,
+} from '@/lib/serverPageAppearance';
 import { discordInviteLooksValid } from '@/lib/discordInvite';
 import { extractYouTubeId } from '@/lib/youtubeEmbed';
 import {
@@ -123,6 +130,7 @@ export type ServerOwnerPanelServer = {
   name?: string | null;
   discord_invite: string | null;
   owner_long_description: string | null;
+  owner_banner_url?: string | null;
   owner_accent_hex: string | null;
   owner_theme_preset: string | null;
   owner_gallery_urls: unknown;
@@ -188,8 +196,12 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   const [dragGalleryIdx, setDragGalleryIdx] = useState<number | null>(null);
 
   const [longDesc, setLongDesc] = useState(server.owner_long_description ?? '');
-  const [accent, setAccent] = useState(server.owner_accent_hex ?? '#a1a1aa');
+  const [ownerBannerUrl, setOwnerBannerUrl] = useState(server.owner_banner_url ?? '');
+  const [accent, setAccent] = useState(
+    () => server.owner_accent_hex ?? SERVER_THEME_PRESETS[(server.owner_theme_preset || 'zinc') as ServerThemePreset]?.accent ?? '#a1a1aa',
+  );
   const [preset, setPreset] = useState(server.owner_theme_preset || 'zinc');
+  const [bannerUploading, setBannerUploading] = useState(false);
   const [galleryUrls, setGalleryUrls] = useState<string[]>(() => parseJsonStringArray(server.owner_gallery_urls));
   const [webhook, setWebhook] = useState(server.owner_review_webhook_url ?? '');
   const [embedColorHex, setEmbedColorHex] = useState(() => hexFromDiscordEmbedInt(server.owner_discord_embed_color));
@@ -206,7 +218,12 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
 
   useEffect(() => {
     setLongDesc(server.owner_long_description ?? '');
-    setAccent(server.owner_accent_hex ?? '#a1a1aa');
+    setOwnerBannerUrl(server.owner_banner_url ?? '');
+    setAccent(
+      server.owner_accent_hex ??
+        SERVER_THEME_PRESETS[(server.owner_theme_preset || 'zinc') as ServerThemePreset]?.accent ??
+        '#a1a1aa',
+    );
     setPreset(server.owner_theme_preset || 'zinc');
     setGalleryUrls(parseJsonStringArray(server.owner_gallery_urls));
     setWebhook(server.owner_review_webhook_url ?? '');
@@ -231,6 +248,18 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
   const presetOptions = useMemo(() => {
     return [...PRESETS_FREE, ...(ownerIsPro ? PRESETS_PRO : [])];
   }, [ownerIsPro]);
+
+  const appearancePreview = useMemo(
+    () => ({
+      accent: resolveServerAccent({
+        owner_id: 'claimed',
+        owner_accent_hex: normalizeServerAccentHex(accent),
+        owner_theme_preset: preset,
+      }),
+      surface: resolveServerPresetSurface({ owner_id: 'claimed', owner_theme_preset: preset }),
+    }),
+    [accent, preset],
+  );
 
   const embedPreviewSample = useMemo<ReviewEmbedPlaceholderInput>(
     () => ({
@@ -366,8 +395,8 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       ? preset
       : 'zinc';
 
-    const accentHex: string | null = accent.trim() || null;
-    if (accentHex && !/^#[0-9A-Fa-f]{6}$/.test(accentHex)) {
+    const accentHex = normalizeServerAccentHex(accent);
+    if (accent.trim() && !accentHex) {
       toast.error('Accent must be a #RRGGBB color.');
       return;
     }
@@ -384,6 +413,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
 
     await persist({
       owner_long_description: longDesc.trim() || null,
+      owner_banner_url: ownerBannerUrl.trim() || null,
       owner_accent_hex: accentHex,
       owner_theme_preset: safePreset,
       owner_gallery_urls: galleryUrls,
@@ -397,6 +427,32 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       owner_hero_video_url: ownerIsPro ? hero : null,
       discord_invite: inv || null,
     });
+  };
+
+  const onPickBanner = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBannerUploading(true);
+    void (async () => {
+      try {
+        const r = await uploadServerBannerImage(server.id, file);
+        if (!r.ok) {
+          toast.error(r.error);
+          return;
+        }
+        setOwnerBannerUrl(r.url);
+        onPatch({ owner_banner_url: r.url });
+        toast.success('Custom banner uploaded');
+      } finally {
+        setBannerUploading(false);
+      }
+    })();
+  };
+
+  const clearCustomBanner = async () => {
+    setOwnerBannerUrl('');
+    await persist({ owner_banner_url: null });
   };
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -552,9 +608,78 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
       </div>
 
       <div className={shell}>
-        <SectionTitle title="Page appearance" description="Accent and preset control highlights and gradients on the page." />
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <FieldCard icon={Palette} label="Accent color" hint="Use a hex color that matches your community brand.">
+        <SectionTitle
+          title="Page appearance"
+          description="Custom banner, accent color, and theme preset on your public server page. Click Save at the bottom after changing accent or preset."
+        />
+        <div className="mt-4 space-y-4">
+          <FieldCard
+            icon={ImageIcon}
+            label="Page banner"
+            hint="Replaces the Discord banner on your directory page. Recommended 1200×400 or wider."
+          >
+            <div className="space-y-3">
+              <div className="relative h-28 w-full overflow-hidden rounded-[6px] border border-border bg-muted/20">
+                {ownerBannerUrl ? (
+                  <img src={ownerBannerUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                    Using Discord banner until you upload a custom one
+                  </div>
+                )}
+                {appearancePreview.accent ? (
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      background: `linear-gradient(180deg, ${appearancePreview.accent}33 0%, transparent 45%, hsl(0 0% 0% / 0.75) 100%)`,
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <label className="inline-flex cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="sr-only"
+                    disabled={bannerUploading}
+                    onChange={onPickBanner}
+                  />
+                  <span className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-secondary px-3 text-sm font-medium">
+                    {bannerUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    Upload banner
+                  </span>
+                </label>
+                {ownerBannerUrl ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => void clearCustomBanner()}>
+                    Use Discord banner
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </FieldCard>
+
+          <div
+            className={cn(
+              'overflow-hidden rounded-[6px] border border-white/10 bg-gradient-to-br to-transparent p-4',
+              appearancePreview.surface,
+            )}
+            style={
+              appearancePreview.accent
+                ? { borderColor: `${appearancePreview.accent}55`, boxShadow: `inset 0 1px 0 ${appearancePreview.accent}22` }
+                : undefined
+            }
+          >
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Live preview</p>
+            <p className="text-sm font-semibold" style={appearancePreview.accent ? { color: appearancePreview.accent } : undefined}>
+              Accent & preset preview
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Matches your server page after you save.</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+          <FieldCard icon={Palette} label="Accent color" hint="Highlights, borders, and buttons on your server page.">
             <div className="flex flex-wrap items-center gap-2">
               <ColorPickerInput
                 value={accent}
@@ -572,7 +697,14 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
             </div>
           </FieldCard>
           <FieldCard icon={LayoutGrid} label="Theme preset" hint="Pro unlocks extra presets beyond the free set.">
-            <Select value={preset} onValueChange={setPreset}>
+            <Select
+              value={preset}
+              onValueChange={(v) => {
+                setPreset(v);
+                const theme = SERVER_THEME_PRESETS[v as ServerThemePreset];
+                if (theme) setAccent(theme.accent);
+              }}
+            >
               <SelectTrigger className={inputRec}>
                 <SelectValue />
               </SelectTrigger>
@@ -586,6 +718,7 @@ export function ServerOwnerPanel({ server, ownerIsPro, coworkers, onPatch, class
               </SelectContent>
             </Select>
           </FieldCard>
+          </div>
         </div>
       </div>
 

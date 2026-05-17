@@ -1,5 +1,6 @@
 /**
- * Claimed server owners upload gallery images to storage bucket `server-custom`.
+ * Claimed server owners upload to storage bucket `server-custom`.
+ * Form field `kind`: `gallery` (default) or `banner` (sets owner_banner_url).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0'
 
@@ -57,10 +58,14 @@ Deno.serve(async (req) => {
   }
 
   const serverId = String(form.get('server_id') ?? '').trim()
+  const kind = String(form.get('kind') ?? 'gallery').trim().toLowerCase()
   const file = form.get('file')
   if (!UUID_RE.test(serverId)) return json({ ok: false, error: 'Invalid server id.' }, 400)
   if (!file || !(file instanceof File)) return json({ ok: false, error: 'Missing file.' }, 400)
   if (file.size > MAX_BYTES) return json({ ok: false, error: 'Image is too large (max ~4.5 MB).' }, 400)
+  if (kind !== 'gallery' && kind !== 'banner') {
+    return json({ ok: false, error: 'Invalid upload kind.' }, 400)
+  }
 
   const mime = file.type || 'application/octet-stream'
   const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
@@ -77,7 +82,40 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   if (sErr || !server?.owner_id) return json({ ok: false, error: 'Server not found or not claimed.' }, 400)
-  if (server.owner_id !== meProf.id) return json({ ok: false, error: 'Only the claimed owner can upload gallery images.' }, 403)
+  if (server.owner_id !== meProf.id) {
+    return json({ ok: false, error: 'Only the claimed owner can upload images for this server.' }, 403)
+  }
+
+  const ext = extForMime(mime === 'image/jpg' ? 'image/jpeg' : mime)
+  const buf = new Uint8Array(await file.arrayBuffer())
+  const contentType = mime === 'image/jpg' ? 'image/jpeg' : mime
+
+  if (kind === 'banner') {
+    const objectPath = `${serverId}/banner.${ext}`
+    const { error: upErr } = await admin.storage.from('server-custom').upload(objectPath, buf, {
+      contentType,
+      upsert: true,
+    })
+    if (upErr) {
+      console.error('[upload-server-gallery] banner', upErr)
+      return json({ ok: false, error: 'Banner upload failed. Try a smaller image or different format.' }, 500)
+    }
+
+    const { data: pub } = admin.storage.from('server-custom').getPublicUrl(objectPath)
+    const publicUrl = pub?.publicUrl
+    if (!publicUrl) return json({ ok: false, error: 'Could not build public URL.' }, 500)
+
+    const { error: patchErr } = await admin
+      .from('servers')
+      .update({ owner_banner_url: publicUrl })
+      .eq('id', serverId)
+    if (patchErr) {
+      console.error('[upload-server-gallery] banner patch', patchErr)
+      return json({ ok: false, error: 'Uploaded but could not save banner on server.' }, 500)
+    }
+
+    return json({ ok: true, url: publicUrl, path: objectPath, kind: 'banner' })
+  }
 
   const { data: ownerProf } = await admin.from('profiles').select('is_pro').eq('id', server.owner_id).maybeSingle()
   const isPro = !!(ownerProf as { is_pro?: boolean } | null)?.is_pro
@@ -96,12 +134,10 @@ Deno.serve(async (req) => {
     )
   }
 
-  const ext = extForMime(mime === 'image/jpg' ? 'image/jpeg' : mime)
   const objectPath = `${serverId}/${crypto.randomUUID()}.${ext}`
-  const buf = new Uint8Array(await file.arrayBuffer())
 
   const { error: upErr } = await admin.storage.from('server-custom').upload(objectPath, buf, {
-    contentType: mime === 'image/jpg' ? 'image/jpeg' : mime,
+    contentType,
     upsert: false,
   })
   if (upErr) {
@@ -113,5 +149,5 @@ Deno.serve(async (req) => {
   const publicUrl = pub?.publicUrl
   if (!publicUrl) return json({ ok: false, error: 'Could not build public URL.' }, 500)
 
-  return json({ ok: true, url: publicUrl, path: objectPath })
+  return json({ ok: true, url: publicUrl, path: objectPath, kind: 'gallery' })
 })

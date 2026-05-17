@@ -748,6 +748,7 @@ export type Database = {
           claim_open: boolean
           claimed_at: string | null
           owner_long_description: string | null
+          owner_banner_url: string | null
           owner_accent_hex: string | null
           owner_theme_preset: string
           owner_gallery_urls: unknown
@@ -781,6 +782,7 @@ export type Database = {
           claim_open?: boolean
           claimed_at?: string | null
           owner_long_description?: string | null
+          owner_banner_url?: string | null
           owner_accent_hex?: string | null
           owner_theme_preset?: string
           owner_gallery_urls?: unknown
@@ -814,6 +816,7 @@ export type Database = {
           claim_open?: boolean
           claimed_at?: string | null
           owner_long_description?: string | null
+          owner_banner_url?: string | null
           owner_accent_hex?: string | null
           owner_theme_preset?: string
           owner_gallery_urls?: unknown

@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
   let query = admin
     .from('servers')
-    .select('id, guild_id, discord_invite, banner, description, icon')
+    .select('id, guild_id, discord_invite, banner, owner_banner_url, description, icon')
     .not('guild_id', 'is', null)
 
   if (guildFilter.length > 0) {
@@ -150,7 +150,8 @@ Deno.serve(async (req) => {
       if (enriched.discordInvite?.trim() && shouldPatch(true, row.discord_invite)) {
         patch.discord_invite = enriched.discordInvite.trim()
       }
-      if (enriched.bannerUrl?.trim() && shouldPatch(true, row.banner)) {
+      const hasCustomBanner = !!(row.owner_banner_url && String(row.owner_banner_url).trim())
+      if (enriched.bannerUrl?.trim() && !hasCustomBanner && shouldPatch(true, row.banner)) {
         patch.banner = enriched.bannerUrl.trim()
       }
       if (enriched.description?.trim() && shouldPatch(true, row.description)) {

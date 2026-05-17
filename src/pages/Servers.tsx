@@ -99,7 +99,7 @@ const Servers = () => {
     if (!silent) setLoading(true);
     try {
       let query = supabase.from('servers').select(
-        'id, guild_id, name, description, icon, banner, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite, owner_id, owner_profile:profiles!servers_owner_id_fkey(display_name, discord_username)',
+        'id, guild_id, name, description, icon, banner, owner_banner_url, member_count, staff_count, is_verified, is_featured, is_hiring, tags, discord_invite, owner_id, owner_profile:profiles!servers_owner_id_fkey(display_name, discord_username)',
       );
 
       if (sortBy === 'featured') {
